@@ -95,6 +95,9 @@ class Gps {
   public:
     bool feed(char byte, uint64_t now); // true when a valid RMC establishes UTC
     Fix nearest(uint64_t capture_ms, uint32_t max_age_ms) const;
+    // Receiver location at capture time, allowing for worker-to-parent timing error.
+    Fix tag(const Observation &observation, uint32_t max_age_ms,
+            uint32_t max_timing_uncertainty_ms) const;
     bool utc(uint64_t at_ms, int64_t &utc_ms) const;
     bool has_time() const {
         return has_time_;

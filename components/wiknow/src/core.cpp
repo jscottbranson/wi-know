@@ -430,6 +430,12 @@ Fix Gps::nearest(uint64_t capture, uint32_t max_age) const {
         }
     return best;
 }
+Fix Gps::tag(const Observation &o, uint32_t max_age, uint32_t max_uncertainty) const {
+    if (o.timing_uncertainty_ms > max_uncertainty || o.timing_uncertainty_ms > max_age)
+        return {};
+    // The entire possible capture-time interval must be within the fix-age limit.
+    return nearest(o.at_ms, max_age - o.timing_uncertainty_ms);
+}
 bool Gps::utc(uint64_t at, int64_t &out) const {
     if (!has_time_)
         return false;

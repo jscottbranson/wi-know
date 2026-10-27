@@ -98,6 +98,10 @@ there is no autonomous fallback that silently changes coverage.
   null UTC before validated synchronization, and capture-age-based association for
   buffered child observations. Full bus round-trip time is a conservative timing
   uncertainty; uncertain associations get null location. All nodes must be co-located.
+  Tagging includes timing uncertainty in the fix-age limit, and the parent drains
+  GPS input after bus polls before associating observations. Each log records the
+  receiver location at capture and preserves the location of the strongest sample;
+  a stronger sample without a usable fix records a null peak location.
 - Per-source/channel/session peak RSSI with the receiver fix at that peak. Tracking
   is bounded to 64 entries and evicts the least-recently observed entry when full.
   Logged history persists, but an evicted entry begins a new in-memory peak history.

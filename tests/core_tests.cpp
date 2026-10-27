@@ -131,6 +131,45 @@ static void gps_test() {
     CHECK(!feed(g, "$" + std::string(300, 'x') + "\n", 4000));
     CHECK(feed(g, valid, 5000));
 }
+static void gps_tagging_test() {
+    Gps gps;
+    auto o = obs(-60, 1100);
+    CHECK(!gps.tag(o, 3000, 250).valid);
+    CHECK(feed(gps, nmea("GNRMC,120000.000,A,4200.000,N,08300.000,W,0,0,271026,,,A"), 1000));
+    o.timing_uncertainty_ms = 250;
+    auto fix = gps.tag(o, 350, 250);
+    CHECK(fix.valid && fix.latitude == 42 && fix.longitude == -83);
+    CHECK(!gps.tag(o, 349, 250).valid);
+    CHECK(!gps.tag(o, 3000, 249).valid);
+    CHECK(!gps.tag(o, 249, 250).valid);
+    // Buffered captures can precede a received fix; use capture time, not arrival time.
+    o.at_ms = 900;
+    CHECK(gps.tag(o, 350, 250).valid);
+    o.at_ms = 1100;
+    Tracker tracker;
+    tracker.observe(o, fix);
+    CHECK(feed(gps, nmea("GNRMC,120001.000,A,4300.000,N,08400.000,W,0,0,271026,,,A"), 2000));
+    o.at_ms = 2100;
+    o.rssi = -70;
+    fix = gps.tag(o, 350, 250);
+    CHECK(fix.valid && fix.latitude == 43 && fix.longitude == -84);
+    auto &track = tracker.observe(o, fix);
+    char json[log_line_capacity];
+    CHECK(observation_json(o, track, {}, fix, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"receiver_fix\":{\"latitude\":43.0000000,\"longitude\":-84.0000000"));
+    CHECK(std::strstr(json,
+                      "\"peak_receiver_fix\":{\"latitude\":42.0000000,\"longitude\":-83.0000000"));
+    CHECK(std::strstr(json, "\"utc_ms\":1793102401100"));
+    // A stronger observation with stale GPS must not inherit the previous peak's location.
+    o.at_ms = 6000;
+    o.rssi = -40;
+    fix = gps.tag(o, 3000, 250);
+    CHECK(!fix.valid);
+    auto &peak = tracker.observe(o, fix);
+    CHECK(observation_json(o, peak, {}, fix, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"receiver_fix\":null"));
+    CHECK(std::strstr(json, "\"peak_receiver_fix\":null"));
+}
 static void tracking_test() {
     Tracker t(TrendConfig{1000, 3000, 3, 1, 3});
     Fix a{true, 42, -83, 0}, b{true, 43, -84, 1000};
@@ -252,6 +291,7 @@ int main() {
     membership_test();
     parser_match_test();
     gps_test();
+    gps_tagging_test();
     tracking_test();
     trend_confirmation_test();
     protocol_test();

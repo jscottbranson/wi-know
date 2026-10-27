@@ -23,9 +23,9 @@ static bool same_target(const Observation &a, const Observation &b) {
 }
 static void consume(Observation o) {
     o.receiver_boot = platform::boot_id;
-    Fix fix = o.timing_uncertainty_ms <= uint32_t(c::gps_max_timing_uncertainty_ms)
-                  ? gps.nearest(o.at_ms, c::gps_max_fix_age_ms)
-                  : Fix{};
+    // Drain GPS again after a bus poll so buffered worker captures use the latest fixes.
+    platform::gps_update(gps);
+    Fix fix = gps.tag(o, c::gps_max_fix_age_ms, c::gps_max_timing_uncertainty_ms);
     Match match = best_match(c::rules.data(), c::rules.size(), o);
     // Preserve matching target state even when logging is matches-only.
     if (!match.rule && std::strcmp(c::logging_mode, "all") != 0)

@@ -97,7 +97,7 @@ void screen(const char *a, const char *b) {
     }
 }
 void gps_update(wiknow::Gps &gps) {
-    if (!c::gps_enabled)
+    if (c::role != wiknow::Role::parent || !c::gps_enabled)
         return;
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
@@ -106,6 +106,8 @@ void gps_update(wiknow::Gps &gps) {
         gps.feed(char(data[i]), now);
 }
 void indicators(wiknow::Trend trend, bool beep) {
+    if (c::role != wiknow::Role::parent)
+        return;
     if (c::signal_trend_enabled) {
         gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
                        trend == wiknow::Trend::increasing);
