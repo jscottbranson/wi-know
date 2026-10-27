@@ -77,6 +77,9 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     for field in ('first_node_id', 'last_node_id'):
         integer(bus[field], 1, 16, f'bus.{field}')
     require(bus['first_node_id'] <= bus['last_node_id'], 'invalid bus ID range')
+    require(not bus['enabled'] or node['role'] == 'parent' or
+            bus['first_node_id'] <= node['id'] <= bus['last_node_id'],
+            'worker node ID must be inside the bus discovery range')
     integer(bus['poll_timeout_ms'], 20, 1000, 'bus.poll_timeout_ms')
     integer(bus['baud'], 9600, 921600, 'bus.baud')
     require(bus['poll_timeout_ms'] >= (532 * 10000 + bus['baud'] - 1) // bus['baud'] + 10, 'poll timeout too short for bus baud rate')

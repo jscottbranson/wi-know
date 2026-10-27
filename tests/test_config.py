@@ -38,6 +38,18 @@ class ConfigTests(unittest.TestCase):
             generate.validate(self.settings, 'child', 0)
         settings, _ = generate.validate(self.settings, 'child', 3)
         self.assertEqual(settings['node']['id'], 3)
+    def test_worker_id_must_be_discoverable(self):
+        self.settings['bus'].update(first_node_id=3, last_node_id=5)
+        for role in ('child', 'follower'):
+            for node_id in (2, 6):
+                with self.assertRaisesRegex(ValueError, 'discovery range'):
+                    generate.validate(copy.deepcopy(self.settings), role, node_id)
+            for node_id in (3, 5):
+                settings, _ = generate.validate(copy.deepcopy(self.settings), role, node_id)
+                self.assertEqual(settings['node']['id'], node_id)
+        generate.validate(copy.deepcopy(self.settings), 'parent', 0)
+        self.settings['bus']['enabled'] = False
+        generate.validate(self.settings, 'child', 2)
     def test_unwired_peripheral(self):
         self.settings['gps']['enabled'] = True
         with self.assertRaises(ValueError):

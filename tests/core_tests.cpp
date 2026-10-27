@@ -130,6 +130,18 @@ static void gps_test() {
     CHECK(!g.nearest(3000, 100).valid);
     CHECK(!feed(g, "$" + std::string(300, 'x') + "\n", 4000));
     CHECK(feed(g, valid, 5000));
+    // Finite but unrepresentable coordinates must be rejected before integer conversion.
+    for (const auto &coordinates : {"1e100,N,08300.000,W", "4200.000,N,1e100,W",
+                                    "9000.001,N,08300.000,W", "4200.000,N,18000.001,W"}) {
+        Gps malformed;
+        CHECK(feed(malformed,
+                   nmea(std::string("GNRMC,120000.000,A,") + coordinates + ",0,0,271026,,,A"),
+                   1000));
+        CHECK(!malformed.nearest(1000, 100).valid);
+    }
+    Gps boundary;
+    CHECK(feed(boundary, nmea("GNRMC,120000.000,A,9000.000,N,18000.000,W,0,0,271026,,,A"), 1000));
+    CHECK(boundary.nearest(1000, 0).valid);
 }
 static void gps_tagging_test() {
     Gps gps;
@@ -232,6 +244,15 @@ static void busy_trend_test() {
     CHECK(track.rssi_histogram[87] == 1);
 }
 static void protocol_test() {
+    CHECK(sequence_newer(1, 0));
+    CHECK(sequence_newer(UINT32_MAX, UINT32_MAX - 1));
+    CHECK(sequence_newer(0, UINT32_MAX));
+    CHECK(sequence_newer(4, UINT32_MAX - 10));
+    CHECK(!sequence_newer(0, 0));
+    CHECK(!sequence_newer(UINT32_MAX, 0));
+    CHECK(!sequence_newer(UINT32_MAX - 10, 4));
+    CHECK(!sequence_newer(0x80000000u, 0));
+    CHECK(!sequence_newer(0, 0x80000000u));
     Command c{};
     c.count = 2;
     c.channels[0] = {1};
@@ -306,6 +327,25 @@ static void json_test() {
     CHECK(std::strstr(json, "quote\\\"\\\\"));
     std::fputs(json, stdout);
     CHECK(!observation_json(o, t, {}, {}, gps, json, 10));
+    // Public Observation values may not have passed through a radio parser.
+    o.ssid.fill('S');
+    o.name.fill('N');
+    Rule rule{};
+    rule.enabled = true;
+    rule.radio = Radio::wifi;
+    rule.predicate_count = 1;
+    rule.predicates[0] = {Field::ssid_prefix, "SSS"};
+    CHECK(matches(rule, o));
+    rule.radio = o.radio = Radio::ble;
+    rule.predicates[0] = {Field::name_prefix, "NNN"};
+    CHECK(matches(rule, o));
+    CHECK(observation_json(o, t, {}, {}, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, ("\"ssid\":\"" + std::string(33, 'S') + "\"").c_str()));
+    CHECK(std::strstr(json, ("\"name\":\"" + std::string(33, 'N') + "\"").c_str()));
+    rule.predicates[0] = {Field::manufacturer_prefix, "AA"};
+    o.payload.fill(1);
+    o.payload_size = 1000;
+    CHECK(!matches(rule, o));
 }
 static void following_test() {
     DeviceIdentity ignored{Radio::ble, 1, {{1, 2, 3, 4, 5, 6}}};

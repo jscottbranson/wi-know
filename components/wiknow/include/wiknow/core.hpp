@@ -9,6 +9,11 @@ namespace wiknow {
 constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 64;
 constexpr size_t max_tracks = 64, max_payload = 255;
 constexpr size_t log_line_capacity = 2048;
+// Serial numbers advance modulo 2^32; jumps of half the range are ambiguous.
+constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
+    const uint32_t distance = candidate - previous;
+    return distance != 0 && distance < 0x80000000u;
+}
 enum class Role : uint8_t { parent, child, follower };
 enum class Radio : uint8_t { wifi, ble };
 enum class Trend : uint8_t { unknown, increasing, decreasing, steady };
