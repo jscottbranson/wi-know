@@ -20,7 +20,7 @@ namespace platform {
 namespace c = wiknow::config;
 static i2c_master_dev_handle_t lcd{};
 static uint64_t beep_until{};
-static QueueHandle_t log_queue{};
+static QueueHandle_t log_queue{}, console_queue{};
 static std::atomic<bool> sd_ready{};
 struct LogLine {
     char data[wiknow::log_line_capacity];
@@ -56,15 +56,22 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
     if (!c::bus_enabled)
         return false;
     static wiknow::Decoder decoder;
+    static uint64_t last_byte{};
+    // Reset only after an inter-byte idle gap, never at a caller's polling deadline.
+    constexpr uint32_t idle_ms = 20;
     uint64_t until = now_ms() + timeout;
     do {
         uint8_t byte{};
         int n = uart_read_bytes(uart_port_t(c::bus_uart), &byte, 1, ticks(1));
-        if (n == 1 && decoder.feed(byte, packet))
-            return true;
+        uint64_t now = now_ms();
+        if (n == 0 && now - last_byte >= idle_ms)
+            decoder.reset();
+        if (n == 1) {
+            last_byte = now;
+            if (decoder.feed(byte, packet))
+                return true;
+        }
     } while (now_ms() < until);
-    // Clear a partial frame after an idle timeout so a damaged length cannot eat future polls.
-    decoder.reset();
     return false;
 }
 static bool lcd_write(uint8_t byte) {
@@ -265,11 +272,14 @@ static void logger(void *) {
         }
     }
 }
+static void console_writer(void *) {
+    LogLine line{};
+    for (;;)
+        if (xQueueReceive(console_queue, &line, portMAX_DELAY) == pdTRUE)
+            std::fputs(line.data, stdout);
+}
 void write_log(const char *json) {
-    // Always available over the serial console; SD writes are isolated in a task.
-    std::fputs(json, stdout);
-    if (!log_queue)
-        return;
+    // Both output paths are bounded and independent of the parent polling task.
     LogLine line{};
     size_t n = std::strlen(json);
     if (n >= sizeof(line.data)) {
@@ -277,7 +287,9 @@ void write_log(const char *json) {
         return;
     }
     std::memcpy(line.data, json, n + 1);
-    if (xQueueSend(log_queue, &line, 0) != pdTRUE)
+    if (console_queue && xQueueSend(console_queue, &line, 0) != pdTRUE)
+        ++dropped;
+    if (log_queue && xQueueSend(log_queue, &line, 0) != pdTRUE)
         ++dropped;
 }
 void storage_tick() {}
@@ -287,6 +299,9 @@ bool storage_ready() {
 void start_peripherals() {
     if (c::role != wiknow::Role::parent)
         return;
+    console_queue = xQueueCreate(8, sizeof(LogLine));
+    configASSERT(console_queue);
+    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) == pdPASS);
     if (c::gps_enabled)
         uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
     if (c::signal_trend_enabled) {

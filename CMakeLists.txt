@@ -3,7 +3,10 @@ project(wi_know_host LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-file(GLOB RULE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/rules/*.json")
+file(READ "${CMAKE_SOURCE_DIR}/config/settings.json" SETTINGS_JSON)
+string(JSON RULE_DIRECTORY GET "${SETTINGS_JSON}" detection rules_directory)
+get_filename_component(RULE_DIRECTORY "${RULE_DIRECTORY}" ABSOLUTE BASE_DIR "${CMAKE_SOURCE_DIR}")
+file(GLOB RULE_FILES CONFIGURE_DEPENDS "${RULE_DIRECTORY}/*.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/config/settings.json" "${CMAKE_SOURCE_DIR}/tools/generate_config.py" ${RULE_FILES})
 execute_process(COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/generate_config.py
@@ -19,3 +22,5 @@ enable_testing()
 add_test(NAME core COMMAND core_tests)
 add_test(NAME config COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_config.py)
 add_test(NAME flash_tool COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_flash.py)
+
+add_test(NAME build_regeneration COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_build.py)

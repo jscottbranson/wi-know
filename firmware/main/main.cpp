@@ -105,6 +105,11 @@ static void consume(Observation o) {
 static void parent_loop() {
     uint16_t next_node = c::bus_first_node_id;
     uint32_t sequence = 0;
+    unsigned burst = 0;
+    uint64_t burst_started = 0;
+    constexpr uint32_t node_count = c::bus_last_node_id - c::bus_first_node_id + 1;
+    // Spend only lease slack on extra polls, preserving the validated sweep bound.
+    constexpr uint32_t node_budget_ms = c::bus_membership_lease_ms / (2 * node_count);
     uint64_t last_display = 0, last_status = 0;
     for (;;) {
         platform::gps_update(gps);
@@ -115,6 +120,9 @@ static void parent_loop() {
             target_trend = Trend::unknown;
         }
         if (c::bus_enabled) {
+            bool more = false;
+            if (!burst)
+                burst_started = platform::now_ms();
             auto plan = members.plan(c::channels.data(), c::channels.size());
             Command command{};
             command.dwell_ms = c::wifi_dwell_ms;
@@ -153,6 +161,7 @@ static void parent_loop() {
                                       report.band5, true, received},
                                  received);
                     if (report.has_observation) {
+                        more = true;
                         auto &o = report.observation;
                         uint64_t delay = received - sent;
                         o.at_ms = report.capture_age_ms <= received
@@ -163,8 +172,13 @@ static void parent_loop() {
                     }
                 }
             }
-            if (++next_node > c::bus_last_node_id)
-                next_node = c::bus_first_node_id;
+            // Drain busy workers in bounded bursts; still service local input each iteration.
+            if (!more || ++burst >= 8 ||
+                platform::now_ms() - burst_started + c::bus_poll_timeout_ms + 5 >= node_budget_ms) {
+                burst = 0;
+                if (++next_node > c::bus_last_node_id)
+                    next_node = c::bus_first_node_id;
+            }
         }
         Observation o{};
         for (int i = 0; i < 16 && xQueueReceive(platform::observations, &o, 0) == pdTRUE; ++i)
@@ -279,6 +293,8 @@ static void worker_loop() {
         if (now >= expires) {
             assignment.count = 0;
             assignment.follow = false;
+            platform::pause_wifi();
+            tuned = 0;
             Observation ignored{};
             for (int i = 0; i < 32 && xQueueReceive(platform::observations, &ignored, 0) == pdTRUE;
                  ++i) {
@@ -301,6 +317,7 @@ static void worker_loop() {
                 if (platform::tune(channel))
                     tuned = channel;
                 else {
+                    platform::pause_wifi();
                     tuned = 0;
                     assignment.count = 0;
                     assignment.follow = false;
