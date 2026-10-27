@@ -36,11 +36,14 @@ def load(path):
 def validate(settings, role_override=None, node_override=None, base=ROOT):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
+    # Optional section keeps existing schema-v1 configurations compatible.
+    settings.setdefault('standalone', {'enabled': False, 'ble_dwell_ms': 120})
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
         'wifi': {'country': str, 'channels': list, 'dwell_ms': int},
         'ble': {'enabled': bool},
+        'standalone': {'enabled': bool, 'ble_dwell_ms': int},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
         'detection': {'rules_directory': str, 'enabled_categories': list},
         'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list},
@@ -80,6 +83,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         require(channel in allowed, f'channel {channel} outside implemented passive policy')
     require(len(set(wifi['channels'])) == len(wifi['channels']), 'channels must be unique')
     integer(wifi['dwell_ms'], 10, 60000, 'wifi.dwell_ms')
+    standalone = settings['standalone']
+    integer(standalone['ble_dwell_ms'], 100, 60000, 'standalone.ble_dwell_ms')
+    require(not standalone['enabled'] or node['role'] == 'parent',
+            'standalone mode requires the parent role')
+    require(not standalone['enabled'] or not settings['bus']['enabled'],
+            'disable the bus for standalone mode')
     bus = settings['bus']
     for field in ('first_node_id', 'last_node_id'):
         integer(bus[field], 1, 16, f'bus.{field}')

@@ -31,6 +31,31 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate.validate(invalid)
 
+    def test_standalone(self):
+        self.settings['standalone']['enabled'] = True
+        with self.assertRaisesRegex(ValueError, 'disable the bus'):
+            generate.validate(self.settings)
+        self.settings['bus']['enabled'] = False
+        settings, rules = generate.validate(self.settings)
+        self.assertIn('standalone_enabled = true', generate.emit(settings, rules))
+        for role in ('child', 'follower'):
+            with self.assertRaisesRegex(ValueError, 'parent role'):
+                generate.validate(self.settings, role, 1)
+        for value in (0, 99, 60001, True):
+            self.settings['standalone']['ble_dwell_ms'] = value
+            with self.assertRaises(ValueError):
+                generate.validate(self.settings)
+
+    def test_legacy_config_defaults_to_distributed(self):
+        del self.settings['standalone']
+        settings, _ = generate.validate(self.settings)
+        self.assertFalse(settings['standalone']['enabled'])
+
+    def test_standalone_example(self):
+        settings, _ = generate.validate(generate.load(ROOT/'config/settings.standalone.example.json'))
+        self.assertTrue(settings['standalone']['enabled'])
+        self.assertFalse(settings['bus']['enabled'])
+
     def test_defaults(self):
         settings, rules = generate.validate(self.settings)
         self.assertEqual(settings['node']['role'], 'parent')

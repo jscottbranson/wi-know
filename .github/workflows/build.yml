@@ -16,6 +16,9 @@ jobs:
         include:
           - role: parent
             id: 0
+          - role: parent
+            id: 0
+            config: settings.standalone.example.json
           - role: child
             id: 1
           - role: follower
@@ -25,4 +28,4 @@ jobs:
       - shell: bash
         run: |
           . /opt/esp/idf/export.sh
-          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} build
+          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build

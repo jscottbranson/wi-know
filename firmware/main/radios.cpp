@@ -10,6 +10,7 @@
 #include "platform.hpp"
 #include "wiknow/capture_policy.hpp"
 #include "wiknow/observation_queue.hpp"
+#include "wiknow/standalone_scan.hpp"
 #include "wiknow/remote_id.hpp"
 #include <algorithm>
 #include <cstring>
@@ -133,6 +134,15 @@ void pause_wifi() {
         wifi_receiving = false;
     }
 }
+// Standalone transitions run on the NimBLE host queue, serializing them with
+// sync/reset/discovery callbacks. With BLE disabled a dedicated task drives them.
+static std::atomic<int> standalone_channel{-2}; // -2 starting, -1 error, 0 BLE
+int standalone_scan_channel() {
+    return standalone_channel.load();
+}
+static wiknow::StandaloneScan standalone_scan;
+static ble_npl_callout standalone_timer;
+static bool ble_ready{};
 static uint8_t own_type{};
 static void scan_ble();
 static int gap_event(struct ble_gap_event *event, void *) {
@@ -159,10 +169,10 @@ static int gap_event(struct ble_gap_event *event, void *) {
         if (wiknow::parse_ble(d.data, d.length_data, o))
             submit(o);
     }
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE)
+    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !wiknow::config::standalone_enabled)
         scan_ble();
 #else
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE)
+    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !wiknow::config::standalone_enabled)
         scan_ble();
 #endif
     return 0;
@@ -185,11 +195,56 @@ static void scan_ble() {
     if (rc)
         ESP_LOGE("ble", "Scan start failed: %d", rc);
 }
+static void standalone_step() {
+    namespace c = wiknow::config;
+    const auto now = now_ms();
+    if (!standalone_scan.due(now))
+        return;
+    // Do not tune Wi-Fi until cancellation has succeeded. A failed cancellation
+    // leaves the current phase intact and is retried on the next timer tick.
+    if (c::ble_enabled && ble_gap_disc_active()) {
+        if (ble_gap_disc_cancel() != 0) {
+            standalone_channel = -1;
+            return;
+        }
+    }
+    pause_wifi();
+    if (standalone_scan.has_started())
+        standalone_scan.advance(c::ble_enabled, c::channels.size());
+    if (standalone_scan.ble()) {
+        if (ble_ready)
+            scan_ble();
+        standalone_channel = ble_ready && ble_gap_disc_active() ? 0 : -1;
+    } else {
+        const auto channel = c::channels[standalone_scan.channel_index()].number;
+        const bool ok = tune(channel);
+        if (!ok)
+            pause_wifi();
+        standalone_channel = ok ? int(channel) : -1;
+    }
+    // Failed phases also get a bounded dwell before moving on; one bad channel
+    // must not starve the other channels or BLE.
+    standalone_scan.started(now_ms(), c::wifi_dwell_ms, c::standalone_ble_dwell_ms);
+}
+static void standalone_tick(struct ble_npl_event *) {
+    standalone_step();
+    ble_npl_callout_reset(&standalone_timer, ble_npl_time_ms_to_ticks32(10));
+}
+static void standalone_wifi_task(void *) {
+    for (;;) {
+        standalone_step();
+        vTaskDelay(ticks(10));
+    }
+}
 static void ble_sync() {
-    if (ble_hs_id_infer_auto(0, &own_type) == 0)
+    ble_ready = ble_hs_id_infer_auto(0, &own_type) == 0;
+    if (ble_ready && !wiknow::config::standalone_enabled)
         scan_ble();
 }
 static void ble_reset(int reason) {
+    ble_ready = false;
+    if (wiknow::config::standalone_enabled && standalone_channel == 0)
+        standalone_channel = -1;
     ESP_LOGW("ble", "Host reset: %d", reason);
 }
 static void ble_task(void *) {
@@ -197,7 +252,7 @@ static void ble_task(void *) {
     nimble_port_freertos_deinit();
 }
 void start_radios() {
-    if (wiknow::config::role != wiknow::Role::parent) {
+    if (wiknow::config::role != wiknow::Role::parent || wiknow::config::standalone_enabled) {
         ESP_ERROR_CHECK(esp_netif_init());
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
@@ -221,7 +276,15 @@ void start_radios() {
         ESP_ERROR_CHECK(nimble_port_init());
         ble_hs_cfg.sync_cb = ble_sync;
         ble_hs_cfg.reset_cb = ble_reset;
+        if (wiknow::config::standalone_enabled) {
+            ble_npl_callout_init(&standalone_timer, nimble_port_get_dflt_eventq(), standalone_tick,
+                                 nullptr);
+            ble_npl_callout_reset(&standalone_timer, ble_npl_time_ms_to_ticks32(10));
+        }
         nimble_port_freertos_init(ble_task);
     }
+    if (wiknow::config::standalone_enabled && !wiknow::config::ble_enabled)
+        configASSERT(xTaskCreate(standalone_wifi_task, "local_scan", 4096, nullptr, 4, nullptr) ==
+                     pdPASS);
 }
 } // namespace platform
