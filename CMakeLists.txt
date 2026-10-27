@@ -11,7 +11,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     "${CMAKE_SOURCE_DIR}/config/settings.json" "${CMAKE_SOURCE_DIR}/tools/generate_config.py" ${RULE_FILES})
 execute_process(COMMAND ${Python3_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/generate_config.py
     --output ${CMAKE_BINARY_DIR}/generated/settings.hpp COMMAND_ERROR_IS_FATAL ANY)
-add_library(wiknow components/wiknow/src/core.cpp)
+add_library(wiknow components/wiknow/src/core.cpp components/wiknow/src/remote_id.cpp)
 target_include_directories(wiknow PUBLIC components/wiknow/include)
 target_compile_options(wiknow PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_executable(core_tests tests/core_tests.cpp)
@@ -51,3 +51,8 @@ target_link_libraries(storage_tests PRIVATE wiknow)
 target_include_directories(storage_tests PRIVATE firmware/main)
 target_compile_options(storage_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME storage COMMAND storage_tests)
+
+add_executable(remote_id_tests tests/remote_id_tests.cpp)
+target_link_libraries(remote_id_tests PRIVATE wiknow)
+target_compile_options(remote_id_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME remote_id COMMAND remote_id_tests)

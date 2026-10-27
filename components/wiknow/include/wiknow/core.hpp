@@ -8,7 +8,7 @@
 namespace wiknow {
 constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 64;
 constexpr size_t max_tracks = 64, max_payload = 255;
-constexpr size_t log_line_capacity = 2048;
+constexpr size_t log_line_capacity = 2304;
 // Serial numbers advance modulo 2^32; jumps of half the range are ambiguous.
 constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
     const uint32_t distance = candidate - previous;
@@ -40,7 +40,7 @@ struct Observation {
     uint64_t at_ms{}; // capture time mapped to parent's monotonic clock
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
-    std::array<uint8_t, max_payload> payload{}; // BLE advertising data
+    std::array<uint8_t, max_payload> payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE body
     uint16_t payload_size{};
 };
 struct Predicate {

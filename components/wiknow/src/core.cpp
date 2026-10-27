@@ -1,4 +1,5 @@
 #include "wiknow/core.hpp"
+#include "wiknow/remote_id.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdarg>
@@ -296,6 +297,7 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
     out.address_type = 0;
     std::copy(frame + 10, frame + 16, out.address.begin());
     out.ssid.fill(0);
+    out.payload_size = 0;
     for (size_t at = 36; at < length;) {
         if (at + 2 > length)
             return false;
@@ -306,6 +308,14 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
             if (n > 32)
                 return false;
             text_copy(out.ssid, frame + at + 2, n);
+        }
+        if (frame[at] == 221 && n >= 4 && frame[at + 2] == 0xfa && frame[at + 3] == 0x0b &&
+            frame[at + 4] == 0xbc && frame[at + 5] == 0x0d) {
+            // A single complete Remote ID vendor IE fits the existing wire payload.
+            if (out.payload_size)
+                return false;
+            std::copy(frame + at + 2, frame + at + 2 + n, out.payload.begin());
+            out.payload_size = uint16_t(n);
         }
         at += 2 + n;
     }
@@ -919,6 +929,11 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
             j.add("%02x", unsigned(o.payload[i]));
     j.add("\"");
+    j.add(",\"wifi_remote_id_hex\":\"");
+    if (o.radio == Radio::wifi)
+        for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
+            j.add("%02x", unsigned(o.payload[i]));
+    j.add("\"");
     j.add(",\"location_role\":\"receiver\",\"receiver_fix\":");
     j.fix(fix);
     j.add(",\"peak_dbm\":%d,\"peak_capture_ms\":%llu,\"peak_receiver_fix\":", int(t.peak.rssi),
@@ -934,6 +949,138 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
           "\n",
           (unsigned long long)t.first_seen, (unsigned long long)t.latest.at_ms,
           t.peak_changed ? "true" : "false", (unsigned long long)t.count);
+    return j.ok;
+}
+bool drone_detection_json(const Observation &o, size_t index, Fix receiver, const Gps &gps,
+                          char *out, size_t capacity) {
+    const auto messages = remote_id_messages(o);
+    if (!out || !capacity || index >= messages.count)
+        return false;
+    const uint8_t *m = messages.messages[index];
+    const unsigned type = m[0] >> 4;
+    Json j{out, capacity};
+    j.add("{\"schema_version\":1,\"event\":\"drone_detection\",\"protocol\":\"remote_id\","
+          "\"protocol_version\":2,\"authenticated\":false,\"node\":%u,\"boot\":%u,"
+          "\"receiver_boot\":%u,\"sequence\":%u,\"capture_ms\":%llu,\"utc_ms\":",
+          unsigned(o.node), unsigned(o.boot), unsigned(o.receiver_boot), unsigned(o.sequence),
+          (unsigned long long)o.at_ms);
+    int64_t utc{};
+    if (gps.utc(o.at_ms, utc))
+        j.add("%lld", (long long)utc);
+    else
+        j.add("null");
+    j.add(",\"timing_uncertainty_ms\":%u,\"radio\":\"%s\",\"channel\":%u,"
+          "\"address_type\":%u,\"address\":\"",
+          unsigned(o.timing_uncertainty_ms), o.radio == Radio::wifi ? "wifi" : "ble",
+          unsigned(o.channel), unsigned(o.address_type));
+    for (size_t i = 0; i < 6; ++i)
+        j.add("%s%02x", i ? ":" : "", unsigned(o.address[i]));
+    j.add("\",\"rssi_dbm\":%d,\"receiver_fix\":", int(o.rssi));
+    j.fix(receiver);
+    j.add(",\"message_index\":%u,\"message_counter\":%u,\"message_type\":%u,\"raw_hex\":\"",
+          unsigned(index), unsigned(messages.counters[index]), type);
+    for (size_t i = 0; i < 25; ++i)
+        j.add("%02x", unsigned(m[i]));
+    j.add("\",\"data\":{");
+    auto number = [&](const char *key, double value, bool valid) {
+        j.add("\"%s\":", key);
+        if (valid)
+            j.add("%.7f", value);
+        else
+            j.add("null");
+    };
+    auto altitude = [&](const char *key, size_t offset) {
+        auto raw = get16(m + offset);
+        number(key, raw * 0.5 - 1000, raw != 0);
+    };
+    auto position = [&](size_t offset) {
+        // Avoid implementation-defined unsigned-to-signed conversions.
+        auto coordinate = [&](size_t at) {
+            uint32_t raw = get32(m + at);
+            return (raw <= 0x7fffffffu ? int64_t(raw) : int64_t(raw) - 0x100000000ll) / 1e7;
+        };
+        double lat = coordinate(offset), lon = coordinate(offset + 4);
+        bool valid = std::abs(lat) <= 90 && std::abs(lon) <= 180 && (lat != 0 || lon != 0);
+        number("latitude", lat, valid);
+        j.add(",");
+        number("longitude", lon, valid);
+    };
+    auto string = [&](const char *key, size_t offset, size_t size) {
+        size_t n = 0;
+        while (n < size && m[offset + n])
+            ++n;
+        j.add("\"%s\":", key);
+        j.string(std::string_view(reinterpret_cast<const char *>(m + offset), n));
+    };
+    switch (type) {
+    case 0:
+        j.add("\"id_type\":%u,\"ua_type\":%u,\"uas_id_hex\":\"", m[1] >> 4, m[1] & 15);
+        for (size_t i = 2; i < 22; ++i)
+            j.add("%02x", unsigned(m[i]));
+        j.add("\",\"uas_id\":");
+        if ((m[1] >> 4) == 1 || (m[1] >> 4) == 2) {
+            size_t n = 0;
+            while (n < 20 && m[2 + n])
+                ++n;
+            j.string(std::string_view(reinterpret_cast<const char *>(m + 2), n));
+        } else
+            j.add("null");
+        break;
+    case 1: {
+        j.add("\"status\":%u,", m[1] >> 4);
+        position(5);
+        j.add(",");
+        unsigned direction = m[2] + ((m[1] & 2) ? 180 : 0);
+        number("direction_deg", direction, direction <= 359);
+        j.add(",");
+        double speed = (m[1] & 1) ? m[3] * 0.75 + 63.75 : m[3] * 0.25;
+        number("speed_horizontal_mps", speed, speed <= 254.25);
+        j.add(",");
+        int vertical = m[4] < 128 ? m[4] : int(m[4]) - 256;
+        number("speed_vertical_mps", vertical * 0.5, std::abs(vertical) <= 124);
+        j.add(",");
+        altitude("altitude_baro_m", 13);
+        j.add(",");
+        altitude("altitude_geodetic_m", 15);
+        j.add(",");
+        altitude("height_m", 17);
+        j.add(",\"height_reference\":%u,\"horizontal_accuracy_code\":%u,"
+              "\"vertical_accuracy_code\":%u,\"baro_accuracy_code\":%u,"
+              "\"speed_accuracy_code\":%u,\"timestamp_accuracy_code\":%u,",
+              (m[1] >> 2) & 1, m[19] & 15, m[19] >> 4, m[20] >> 4, m[20] & 15, m[23] & 15);
+        auto timestamp = get16(m + 21);
+        number("seconds_after_hour", timestamp / 10.0, timestamp <= 36000);
+        break;
+    }
+    case 2:
+        // Authentication pages are retained, not verified or reassembled.
+        j.add("\"auth_type\":%u,\"page\":%u", m[1] >> 4, m[1] & 15);
+        break;
+    case 3:
+        j.add("\"description_type\":%u,", unsigned(m[1]));
+        string("description", 2, 23);
+        break;
+    case 4:
+        j.add("\"operator_location_type\":%u,\"classification_type\":%u,"
+              "\"operator_position\":{",
+              m[1] & 3, (m[1] >> 2) & 7);
+        position(2);
+        j.add("},\"area_count\":%u,\"area_radius_m\":%u,", unsigned(get16(m + 10)),
+              unsigned(m[12]) * 10);
+        altitude("area_ceiling_m", 13);
+        j.add(",");
+        altitude("area_floor_m", 15);
+        j.add(",");
+        altitude("operator_altitude_geodetic_m", 18);
+        j.add(",\"category_eu\":%u,\"class_eu\":%u,\"timestamp_since_2019_s\":%u", m[17] >> 4,
+              m[17] & 15, unsigned(get32(m + 20)));
+        break;
+    case 5:
+        j.add("\"operator_id_type\":%u,", unsigned(m[1]));
+        string("operator_id", 2, 20);
+        break;
+    }
+    j.add("}}\n");
     return j.ok;
 }
 } // namespace wiknow
