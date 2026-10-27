@@ -3,6 +3,9 @@
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "wiknow/report_delivery.hpp"
+#include "wiknow/scan_status.hpp"
+#include "wiknow/worker_counters.hpp"
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
@@ -11,6 +14,9 @@ namespace {
 using namespace wiknow;
 namespace c = wiknow::config;
 static Membership members;
+static std::array<ReportReceipt, max_nodes> report_receipts;
+static WorkerLossCounters worker_losses;
+static ScanCoverage scan_coverage;
 static Tracker tracker(c::trend_config);
 static Gps gps;
 static FollowingDetector following(c::following_config, c::following_ignore.data(),
@@ -26,6 +32,35 @@ static int target_peak{};
 static Trend target_trend{Trend::unknown};
 static bool same_target(const Observation &a, const Observation &b) {
     return a.radio == b.radio && a.address_type == b.address_type && a.address == b.address;
+}
+static void log_worker_losses(uint16_t node, uint64_t now) {
+    const auto *worker = worker_losses.get(node);
+    if (!worker)
+        return;
+    char event[384];
+    std::snprintf(event, sizeof(event),
+                  "{\"event\":\"worker_status\",\"node\":%u,\"boot\":%u,\"online\":%s,"
+                  "\"reported_drops\":%u,\"worker_lifetime_drops\":%llu,"
+                  "\"worker_drops_total\":%llu,\"at_ms\":%llu}\n",
+                  unsigned(node), unsigned(worker->boot), worker->online ? "true" : "false",
+                  unsigned(worker->reported), static_cast<unsigned long long>(worker->total),
+                  static_cast<unsigned long long>(worker_losses.total()),
+                  static_cast<unsigned long long>(now));
+    platform::write_log(event);
+}
+static void log_worker_scan(uint16_t node, uint64_t now) {
+    const auto *worker = scan_coverage.get(node);
+    if (!worker || !worker->received)
+        return;
+    char event[384];
+    std::snprintf(event, sizeof(event),
+                  "{\"event\":\"worker_scan\",\"node\":%u,\"boot\":%u,"
+                  "\"assignment_id\":%u,\"scan_state\":\"%s\",\"confirmed_channel_bits\":%u,"
+                  "\"failed_channel\":%u,\"at_ms\":%llu}\n",
+                  unsigned(node), unsigned(worker->boot), unsigned(worker->scan.assignment_id),
+                  scan_state_name(worker->scan.state), unsigned(worker->scan.confirmed_channels),
+                  unsigned(worker->scan.failed_channel), static_cast<unsigned long long>(now));
+    platform::write_log(event);
 }
 static void consume(Observation o) {
     o.receiver_boot = platform::boot_id;
@@ -126,7 +161,12 @@ static void parent_loop() {
     for (;;) {
         platform::gps_update(gps);
         uint64_t now = platform::now_ms();
-        members.expire(now, c::bus_membership_lease_ms);
+        if (members.expire(now, c::bus_membership_lease_ms))
+            for (const auto &node : members.nodes())
+                if (!node.online && worker_losses.offline(node.id)) {
+                    scan_coverage.offline(node.id);
+                    log_worker_losses(node.id, now);
+                }
         if (target_rule && now - target_seen >= uint64_t(c::follower_release_after_ms)) {
             target_rule = nullptr;
             target_trend = Trend::unknown;
@@ -137,6 +177,7 @@ static void parent_loop() {
                 burst_started = platform::now_ms();
             auto plan = members.plan(c::channels.data(), c::channels.size());
             Command command{};
+            command.ack = report_receipts[next_node - 1].acknowledgement();
             command.dwell_ms = c::wifi_dwell_ms;
             command.lease_ms = c::bus_assignment_lease_ms;
             for (size_t i = 0; i < plan.count; ++i)
@@ -156,6 +197,7 @@ static void parent_loop() {
                 command.target_channel = target.channel;
                 command.target_address_type = target.address_type;
             }
+            scan_coverage.prepare(next_node, command);
             Packet request{};
             request.node = next_node;
             request.boot = platform::boot_id;
@@ -172,6 +214,10 @@ static void parent_loop() {
                     members.seen(Node{next_node, response.boot, report.role, report.band24,
                                       report.band5, true, received},
                                  received);
+                    if (worker_losses.update(next_node, response.boot, report.dropped))
+                        log_worker_losses(next_node, received);
+                    if (scan_coverage.observe(next_node, response.boot, report.scan, received))
+                        log_worker_scan(next_node, received);
                     if (report.has_observation) {
                         more = true;
                         auto &o = report.observation;
@@ -180,7 +226,8 @@ static void parent_loop() {
                                       ? received - report.capture_age_ms
                                       : 0;
                         o.timing_uncertainty_ms = uint32_t(std::min<uint64_t>(UINT32_MAX, delay));
-                        consume(o);
+                        if (report_receipts[next_node - 1].accept(o))
+                            consume(o);
                     }
                 }
             }
@@ -193,7 +240,7 @@ static void parent_loop() {
             }
         }
         Observation o{};
-        for (int i = 0; i < 16 && xQueueReceive(platform::observations, &o, 0) == pdTRUE; ++i)
+        for (int i = 0; i < 16 && platform::take_observation(o); ++i)
             consume(o);
         now = platform::now_ms();
         Trend visible = target_rule && now >= target.at_ms &&
@@ -203,15 +250,16 @@ static void parent_loop() {
         platform::indicators(visible, false);
         if (now - last_display >= 250) {
             char line1[32]{}, line2[32]{};
-            size_t page = (now / c::display_page_interval_ms) % 3;
+            size_t page = (now / c::display_page_interval_ms) % 5;
             if (following_visible && now - following_alert_at < 30000) {
                 std::snprintf(line1, sizeof(line1), "Following alert");
                 std::snprintf(line2, sizeof(line2), "%.16s", following_address);
             } else if (page == 0) {
                 auto plan = members.plan(c::channels.data(), c::channels.size());
                 std::snprintf(line1, sizeof(line1), "Children:%u", unsigned(plan.count));
-                std::snprintf(line2, sizeof(line2), "Gap:%u SD:%s", unsigned(plan.uncovered_count),
-                              platform::storage_ready() ? "OK" : "OFF");
+                auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
+                std::snprintf(line2, sizeof(line2), "Tuned:%u/%u", unsigned(coverage.confirmed),
+                              unsigned(c::channels.size()));
             } else if (page == 1) {
                 std::snprintf(line1, sizeof(line1), "%.16s",
                               target_rule ? target_rule->id.data() : "No matching rule");
@@ -222,19 +270,39 @@ static void parent_loop() {
                                   target_peak, trend_name(visible));
                 else
                     std::snprintf(line2, sizeof(line2), "Add rules/*.json");
-            } else {
+            } else if (page == 2) {
                 bool fresh = gps.nearest(now, c::gps_max_fix_age_ms).valid;
                 std::snprintf(line1, sizeof(line1), "GPS:%s", fresh ? "FIX" : "NO FIX");
-                std::snprintf(line2, sizeof(line2), "UTC:%s D:%u", gps.has_time() ? "GPS" : "?",
-                              unsigned(platform::dropped.load()));
+                std::snprintf(line2, sizeof(line2), "UTC:%s", gps.has_time() ? "GPS" : "?");
+            } else if (page == 3) {
+                std::snprintf(line1, sizeof(line1), "Local:%u", unsigned(platform::dropped.load()));
+                if (worker_losses.total() > 999999999)
+                    std::snprintf(line2, sizeof(line2), "Worker:>=1B");
+                else
+                    std::snprintf(line2, sizeof(line2), "Worker:%llu",
+                                  static_cast<unsigned long long>(worker_losses.total()));
+            }
+            if (page == 4 && !(following_visible && now - following_alert_at < 30000)) {
+                auto plan = members.plan(c::channels.data(), c::channels.size());
+                auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
+                std::snprintf(line1, sizeof(line1), "Plan:%u Err:%u", unsigned(coverage.planned),
+                              unsigned(coverage.errors));
+                std::snprintf(line2, sizeof(line2), "Gap:%u SD:%s", unsigned(plan.uncovered_count),
+                              platform::storage_ready() ? "OK" : "OFF");
             }
             platform::screen(line1, line2);
             last_display = now;
         }
         if (now - last_status >= 5000) {
             auto plan = members.plan(c::channels.data(), c::channels.size());
-            ESP_LOGI("parent", "children=%u uncovered=%u drops=%u SD=%s", unsigned(plan.count),
-                     unsigned(plan.uncovered_count), unsigned(platform::dropped.load()),
+            auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
+            ESP_LOGI("parent",
+                     "children=%u planned=%u tuned=%u scan_errors=%u uncovered=%u local_drops=%u "
+                     "worker_drops=%llu SD=%s",
+                     unsigned(plan.count), unsigned(coverage.planned), unsigned(coverage.confirmed),
+                     unsigned(coverage.errors), unsigned(plan.uncovered_count),
+                     unsigned(platform::dropped.load()),
+                     static_cast<unsigned long long>(worker_losses.total()),
                      platform::storage_ready() ? "ready" : "off");
             last_status = now;
         }
@@ -243,78 +311,23 @@ static void parent_loop() {
 }
 static void worker_loop() {
     Command assignment{};
+    RetainedObservation pending;
+    WorkerScanProgress scan;
     uint64_t expires = 0, last_tune = 0, last_target = 0;
     size_t cursor = 0;
     uint8_t tuned = 0;
     uint32_t parent_boot = 0, last_command_sequence = 0;
     bool have_parent = false;
-    for (;;) {
-        Packet request{};
-        if (c::bus_enabled && platform::bus_receive(request, 10) && request.node == c::node_id) {
-            Command command{};
-            if (unpack_command(request, command) &&
-                (!have_parent || request.boot != parent_boot ||
-                 sequence_newer(request.sequence, last_command_sequence))) {
-                have_parent = true;
-                parent_boot = request.boot;
-                last_command_sequence = request.sequence;
-                bool changed = command.count != assignment.count ||
-                               command.follow != assignment.follow ||
-                               command.target != assignment.target ||
-                               command.target_radio != assignment.target_radio ||
-                               command.target_channel != assignment.target_channel ||
-                               command.target_address_type != assignment.target_address_type;
-                for (size_t i = 0; i < command.count && !changed; ++i)
-                    changed = !(command.channels[i] == assignment.channels[i]);
-                assignment = command;
-                expires = platform::now_ms() + command.lease_ms;
-                if (changed) {
-                    cursor = 0;
-                    last_tune = 0;
-                    last_target = platform::now_ms();
-                    xQueueReset(platform::observations);
-                }
-                Report report{};
-                report.role = c::role;
-                report.dropped = platform::dropped;
-                Observation o{};
-                uint64_t now = platform::now_ms();
-                for (int i = 0; i < 32 && xQueueReceive(platform::observations, &o, 0) == pdTRUE;
-                     ++i) {
-                    bool wanted = c::role == Role::child && assignment.count;
-                    if (c::role == Role::follower && assignment.follow)
-                        wanted = o.radio == assignment.target_radio &&
-                                 o.address == assignment.target &&
-                                 o.address_type == assignment.target_address_type;
-                    if (wanted && o.at_ms <= now) {
-                        report.has_observation = true;
-                        report.observation = o;
-                        report.capture_age_ms =
-                            uint32_t(std::min<uint64_t>(UINT32_MAX, now - o.at_ms));
-                        if (c::role == Role::follower)
-                            last_target = o.at_ms;
-                        break;
-                    }
-                }
-                Packet response{};
-                response.node = c::node_id;
-                response.boot = platform::boot_id;
-                response.sequence = request.sequence;
-                pack_report(report, response);
-                platform::bus_send(response);
-            }
-        }
-        uint64_t now = platform::now_ms();
+    auto update_radio = [&](uint64_t now) {
         if (now >= expires) {
-            assignment.count = 0;
-            assignment.follow = false;
             platform::pause_wifi();
+            platform::set_capture_assignment(assignment, 0);
             tuned = 0;
-            Observation ignored{};
-            for (int i = 0; i < 32 && xQueueReceive(platform::observations, &ignored, 0) == pdTRUE;
-                 ++i) {
-            }
+            scan.expire();
+            return;
         }
+        if (scan.status().state == ScanState::error)
+            return; // Retry on the next accepted poll; expose this failure first.
         if (now - last_tune >= assignment.dwell_ms || !last_tune) {
             uint8_t channel = 0;
             if (c::role == Role::child && assignment.count)
@@ -328,18 +341,63 @@ static void worker_loop() {
             if (!channel) {
                 platform::pause_wifi();
                 tuned = 0;
-            } else if (channel != tuned) {
-                if (platform::tune(channel))
-                    tuned = channel;
-                else {
-                    platform::pause_wifi();
-                    tuned = 0;
-                    assignment.count = 0;
-                    assignment.follow = false;
-                }
+            } else if (channel == tuned || platform::tune(channel)) {
+                tuned = channel;
+                scan.tuned(channel);
+            } else {
+                platform::pause_wifi();
+                tuned = 0;
+                scan.failed(channel);
+                platform::set_capture_assignment(assignment, 0);
             }
             last_tune = now;
         }
+    };
+    for (;;) {
+        Packet request{};
+        if (c::bus_enabled && platform::bus_receive(request, 10) && request.node == c::node_id) {
+            Command command{};
+            if (unpack_command(request, command) &&
+                (!have_parent || request.boot != parent_boot ||
+                 sequence_newer(request.sequence, last_command_sequence))) {
+                pending.acknowledge(command.ack);
+                const bool parent_changed = !have_parent || request.boot != parent_boot;
+                const bool changed = scan.apply(command, parent_changed);
+                have_parent = true;
+                parent_boot = request.boot;
+                last_command_sequence = request.sequence;
+                assignment = command;
+                expires = platform::now_ms() + command.lease_ms;
+                platform::set_capture_assignment(assignment, expires);
+                if (changed) {
+                    cursor = 0;
+                    last_tune = 0;
+                    last_target = platform::now_ms();
+                }
+                update_radio(platform::now_ms());
+                Report report{};
+                report.scan = scan.report();
+                report.role = c::role;
+                report.dropped = platform::dropped;
+                Observation o{};
+                if (retain_next_observation(pending, o, platform::take_observation)) {
+                    // Admission happened at capture time. Reassignment or lease
+                    // expiry must not discard observations already accepted.
+                    if (c::role == Role::follower && assignment.follow &&
+                        o.radio == assignment.target_radio && o.address == assignment.target &&
+                        o.address_type == assignment.target_address_type && o.at_ms > last_target)
+                        last_target = o.at_ms;
+                }
+                pending.report(report, platform::now_ms());
+                Packet response{};
+                response.node = c::node_id;
+                response.boot = platform::boot_id;
+                response.sequence = request.sequence;
+                pack_report(report, response);
+                platform::bus_send(response);
+            }
+        }
+        update_radio(platform::now_ms());
         vTaskDelay(platform::ticks(5));
     }
 }
@@ -348,8 +406,7 @@ extern "C" void app_main() {
     // An NVS error is surfaced instead of silently erasing stored state.
     ESP_ERROR_CHECK(nvs_flash_init());
     platform::boot_id = esp_random();
-    platform::observations = xQueueCreate(32, sizeof(wiknow::Observation));
-    configASSERT(platform::observations);
+    platform::init_observation_queues();
     ESP_LOGI("wi-know", "role=%s node=%d enabled rules=%u", wiknow::config::node_role,
              wiknow::config::node_id,
              unsigned(std::count_if(wiknow::config::rules.begin(), wiknow::config::rules.end(),

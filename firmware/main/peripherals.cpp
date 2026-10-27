@@ -10,6 +10,7 @@
 #include "log_helpers.hpp"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
+#include "wiknow/bus_timing.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -50,7 +51,9 @@ void bus_send(const wiknow::Packet &p) {
     if (!n || !c::bus_enabled)
         return;
     int written = uart_write_bytes(uart_port_t(c::bus_uart), frame, n);
-    if (written != int(n) || uart_wait_tx_done(uart_port_t(c::bus_uart), ticks(100)) != ESP_OK)
+    if (written != int(n) ||
+        uart_wait_tx_done(uart_port_t(c::bus_uart),
+                          ticks(wiknow::bus_tx_wait_ms(uint16_t(n), c::bus_baud))) != ESP_OK)
         ++dropped;
 }
 bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {

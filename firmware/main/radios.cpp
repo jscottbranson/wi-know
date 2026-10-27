@@ -8,16 +8,52 @@
 #include "nimble/nimble_port_freertos.h"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "wiknow/capture_policy.hpp"
+#include "wiknow/observation_queue.hpp"
 #include <algorithm>
 #include <cstring>
 
 namespace platform {
-QueueHandle_t observations{};
 std::atomic<uint32_t> dropped{};
 uint32_t boot_id{};
 static std::atomic<uint32_t> sequence{};
 static bool wifi_started{};
 static bool wifi_receiving{};
+static wiknow::ObservationQueue observation_queue;
+static portMUX_TYPE observation_lock = portMUX_INITIALIZER_UNLOCKED;
+static wiknow::CapturePolicy capture_policy{wiknow::config::role};
+static portMUX_TYPE capture_lock = portMUX_INITIALIZER_UNLOCKED;
+void set_capture_assignment(const wiknow::Command &assignment, uint64_t expires) {
+    portENTER_CRITICAL(&capture_lock);
+    capture_policy.assignment = assignment;
+    capture_policy.expires = expires;
+    portEXIT_CRITICAL(&capture_lock);
+}
+static wiknow::CapturePolicy capture_snapshot() {
+    portENTER_CRITICAL(&capture_lock);
+    const auto snapshot = capture_policy;
+    portEXIT_CRITICAL(&capture_lock);
+    return snapshot;
+}
+void init_observation_queues() {
+    // Storage is statically initialized before app_main starts the radios.
+}
+bool take_observation(wiknow::Observation &o) {
+    portENTER_CRITICAL(&observation_lock);
+    const bool available = observation_queue.pop(o);
+    portEXIT_CRITICAL(&observation_lock);
+    return available;
+}
+static void enqueue_observation(const wiknow::Observation &o) {
+    // Match outside the radio driver's raw callback and outside the queue lock.
+    const bool matching =
+        wiknow::best_match(wiknow::config::rules.data(), wiknow::config::rules.size(), o).rule;
+    portENTER_CRITICAL(&observation_lock);
+    const bool queued = observation_queue.push(o, matching);
+    portEXIT_CRITICAL(&observation_lock);
+    if (!queued)
+        ++dropped;
+}
 uint64_t now_ms() {
     return uint64_t(esp_timer_get_time() / 1000);
 }
@@ -28,11 +64,12 @@ void submit(wiknow::Observation &o) {
     o.boot = boot_id;
     o.sequence = ++sequence;
     o.at_ms = now_ms();
-    if (xQueueSend(observations, &o, 0) != pdTRUE)
-        ++dropped;
+    if (capture_snapshot().accepts(o))
+        enqueue_observation(o);
 }
 // Driver callback copies bounded packets only; parsing happens in a worker task.
 struct RawWifi {
+    wiknow::CapturePolicy policy;
     uint64_t at;
     int8_t rssi;
     uint8_t channel;
@@ -51,6 +88,7 @@ static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
         return;
     RawWifi raw{};
     raw.at = now_ms();
+    raw.policy = capture_snapshot();
     raw.rssi = packet->rx_ctrl.rssi;
     raw.channel = packet->rx_ctrl.channel;
     raw.size = uint16_t(size - 4);
@@ -70,8 +108,8 @@ static void wifi_worker(void *) {
                 o.boot = boot_id;
                 o.sequence = ++sequence;
                 o.at_ms = raw.at;
-                if (xQueueSend(observations, &o, 0) != pdTRUE)
-                    ++dropped;
+                if (o.rssi <= 0 && o.rssi != -128 && raw.policy.accepts(o))
+                    enqueue_observation(o);
             }
         }
 }

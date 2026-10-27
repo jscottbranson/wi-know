@@ -657,7 +657,7 @@ size_t encode_packet(const Packet &p, uint8_t *out, size_t cap) {
         return 0;
     out[0] = 0x57;
     out[1] = 0x4b;
-    out[2] = 1;
+    out[2] = protocol_version;
     out[3] = uint8_t(p.type);
     put16(out + 4, p.node);
     put32(out + 6, p.boot);
@@ -678,7 +678,7 @@ bool Decoder::feed(uint8_t byte, Packet &out) {
     if (size_ < 16)
         return false;
     size_t payload = get16(data_.data() + 14);
-    if (data_[2] != 1 || data_[3] < 1 || data_[3] > 2 || payload > 512) {
+    if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 2 || payload > 512) {
         ++errors_;
         size_ = 0;
         return false;
@@ -698,11 +698,39 @@ bool Decoder::feed(uint8_t byte, Packet &out) {
     std::copy(data_.begin() + 16, data_.begin() + 16 + payload, out.payload.begin());
     return true;
 }
+bool RetainedObservation::retain(const Observation &observation) {
+    if (pending_)
+        return false;
+    observation_ = observation;
+    pending_ = true;
+    return true;
+}
+bool RetainedObservation::acknowledge(ObservationAck ack) {
+    if (!pending_ || !ack.valid || ack.boot != observation_.boot ||
+        ack.sequence != observation_.sequence)
+        return false;
+    pending_ = false;
+    return true;
+}
+void RetainedObservation::report(Report &out, uint64_t now) const {
+    out.has_observation = pending_;
+    if (pending_) {
+        out.observation = observation_;
+        out.capture_age_ms = uint32_t(std::min<uint64_t>(
+            UINT32_MAX, now >= observation_.at_ms ? now - observation_.at_ms : 0));
+    }
+}
+bool ReportReceipt::accept(const Observation &observation) {
+    if (ack_.valid && ack_.boot == observation.boot && ack_.sequence == observation.sequence)
+        return false;
+    ack_ = {true, observation.boot, observation.sequence};
+    return true;
+}
 bool pack_command(const Command &c, Packet &p) {
     if (c.count > max_channels)
         return false;
     p.type = MessageType::poll;
-    p.size = uint16_t(19 + c.count);
+    p.size = uint16_t(32 + c.count);
     auto *b = p.payload.data();
     put32(b, c.lease_ms);
     put32(b + 4, c.dwell_ms);
@@ -715,14 +743,19 @@ bool pack_command(const Command &c, Packet &p) {
     b[at++] = c.target_channel;
     b[at++] = c.target_address_type;
     std::copy(c.target.begin(), c.target.end(), b + at);
+    at += c.target.size();
+    b[at++] = c.ack.valid;
+    put32(b + at, c.ack.boot);
+    put32(b + at + 4, c.ack.sequence);
+    put32(b + at + 8, c.assignment_id);
     return true;
 }
 bool unpack_command(const Packet &p, Command &c) {
-    if (p.type != MessageType::poll || p.size < 19)
+    if (p.type != MessageType::poll || p.size < 32)
         return false;
     const auto *b = p.payload.data();
     uint8_t n = b[8];
-    if (n > max_channels || p.size != 19 + n || get32(b) < 100 || get32(b) > 60000 ||
+    if (n > max_channels || p.size != 32 + n || get32(b) < 100 || get32(b) > 60000 ||
         get32(b + 4) < 10 || get32(b + 4) > 60000)
         return false;
     c = {};
@@ -742,10 +775,20 @@ bool unpack_command(const Packet &p, Command &c) {
     c.target_channel = b[at++];
     c.target_address_type = b[at++];
     std::copy(b + at, b + at + 6, c.target.begin());
+    at += c.target.size();
+    if (b[at] > 1)
+        return false;
+    c.ack.valid = b[at++];
+    c.ack.boot = get32(b + at);
+    c.ack.sequence = get32(b + at + 4);
+    c.assignment_id = get32(b + at + 8);
     return true;
 }
 bool pack_report(const Report &r, Packet &p) {
-    if (r.observation.payload_size > max_payload)
+    if (r.observation.payload_size > max_payload ||
+        uint8_t(r.scan.state) > uint8_t(ScanState::expired) ||
+        (r.scan.state != ScanState::scanning && r.scan.confirmed_channels) ||
+        ((r.scan.state == ScanState::error) != (r.scan.failed_channel != 0)))
         return false;
     p.type = MessageType::report;
     auto *b = p.payload.data();
@@ -754,29 +797,34 @@ bool pack_report(const Report &r, Packet &p) {
     b[2] = r.band5;
     b[3] = r.has_observation;
     put32(b + 4, r.dropped);
-    p.size = 8;
+    put32(b + 8, r.scan.assignment_id);
+    put32(b + 12, r.scan.confirmed_channels);
+    b[16] = uint8_t(r.scan.state);
+    b[17] = r.scan.failed_channel;
+    p.size = 18;
     if (!r.has_observation)
         return true;
     const auto &o = r.observation;
-    put32(b + 8, r.capture_age_ms);
-    put32(b + 12, o.sequence);
-    b[16] = uint8_t(o.radio);
-    b[17] = o.address_type;
-    b[18] = o.channel;
-    b[19] = uint8_t(o.rssi);
-    std::copy(o.address.begin(), o.address.end(), b + 20);
-    std::memcpy(b + 26, o.ssid.data(), 33);
-    std::memcpy(b + 59, o.name.data(), 33);
-    put16(b + 92, o.payload_size);
-    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 94);
-    p.size = uint16_t(94 + o.payload_size);
+    put32(b + 18, r.capture_age_ms);
+    put32(b + 22, o.sequence);
+    b[26] = uint8_t(o.radio);
+    b[27] = o.address_type;
+    b[28] = o.channel;
+    b[29] = uint8_t(o.rssi);
+    std::copy(o.address.begin(), o.address.end(), b + 30);
+    std::memcpy(b + 36, o.ssid.data(), 33);
+    std::memcpy(b + 69, o.name.data(), 33);
+    put16(b + 102, o.payload_size);
+    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 104);
+    p.size = uint16_t(104 + o.payload_size);
     return true;
 }
 bool unpack_report(const Packet &p, Report &r) {
-    if (p.type != MessageType::report || p.size < 8)
+    if (p.type != MessageType::report || p.size < 18)
         return false;
     const auto *b = p.payload.data();
-    if (b[0] < 1 || b[0] > 2 || b[1] > 1 || b[2] > 1 || b[3] > 1)
+    if (b[0] < 1 || b[0] > 2 || b[1] > 1 || b[2] > 1 || b[3] > 1 ||
+        b[16] > uint8_t(ScanState::expired))
         return false;
     r = {};
     r.role = Role(b[0]);
@@ -784,27 +832,34 @@ bool unpack_report(const Packet &p, Report &r) {
     r.band5 = b[2];
     r.has_observation = b[3];
     r.dropped = get32(b + 4);
+    r.scan.assignment_id = get32(b + 8);
+    r.scan.confirmed_channels = get32(b + 12);
+    r.scan.state = ScanState(b[16]);
+    r.scan.failed_channel = b[17];
+    if ((r.scan.state != ScanState::scanning && r.scan.confirmed_channels) ||
+        ((r.scan.state == ScanState::error) != (r.scan.failed_channel != 0)))
+        return false;
     if (!r.has_observation)
-        return p.size == 8;
-    if (p.size < 94 || get16(b + 92) > max_payload || p.size != 94 + get16(b + 92) || b[16] > 1 ||
-        b[17] > 1 || b[58] != 0 || b[91] != 0)
+        return p.size == 18;
+    if (p.size < 104 || get16(b + 102) > max_payload || p.size != 104 + get16(b + 102) ||
+        b[26] > 1 || b[27] > 1 || b[68] != 0 || b[101] != 0)
         return false;
     auto &o = r.observation;
     o.node = p.node;
     o.boot = p.boot;
-    r.capture_age_ms = get32(b + 8);
-    o.sequence = get32(b + 12);
-    o.radio = Radio(b[16]);
-    o.address_type = b[17];
-    o.channel = b[18];
-    o.rssi = int8_t(b[19]);
+    r.capture_age_ms = get32(b + 18);
+    o.sequence = get32(b + 22);
+    o.radio = Radio(b[26]);
+    o.address_type = b[27];
+    o.channel = b[28];
+    o.rssi = int8_t(b[29]);
     if (o.rssi > 0 || o.rssi < -127)
         return false;
-    std::copy(b + 20, b + 26, o.address.begin());
-    std::memcpy(o.ssid.data(), b + 26, 33);
-    std::memcpy(o.name.data(), b + 59, 33);
-    o.payload_size = get16(b + 92);
-    std::copy(b + 94, b + 94 + o.payload_size, o.payload.begin());
+    std::copy(b + 30, b + 36, o.address.begin());
+    std::memcpy(o.ssid.data(), b + 36, 33);
+    std::memcpy(o.name.data(), b + 69, 33);
+    o.payload_size = get16(b + 102);
+    std::copy(b + 104, b + 104 + o.payload_size, o.payload.begin());
     return true;
 }
 bool observation_json(const Observation &o, const Track &t, Match match, Fix fix, const Gps &gps,
