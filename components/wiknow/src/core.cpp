@@ -98,14 +98,17 @@ void text_copy(std::array<char, 33> &out, const uint8_t *src, size_t n) {
 bool starts(std::string_view a, std::string_view b) {
     return !b.empty() && a.size() >= b.size() && a.substr(0, b.size()) == b;
 }
+std::string_view text_view(const std::array<char, 33> &text) {
+    return {text.data(), size_t(std::find(text.begin(), text.end(), '\0') - text.begin())};
+}
 bool predicate(const Predicate &p, const Observation &o) {
     uint8_t bytes[32]{};
     size_t size{};
     switch (p.field) {
     case Field::ssid_prefix:
-        return starts(o.ssid.data(), p.value);
+        return starts(text_view(o.ssid), p.value);
     case Field::name_prefix:
-        return starts(o.name.data(), p.value);
+        return starts(text_view(o.name), p.value);
     case Field::oui:
         if ((o.radio == Radio::ble && o.address_type != 0) ||
             (o.radio == Radio::wifi && (o.address[0] & 2)))
@@ -175,7 +178,8 @@ bool number(const char *s, double &value) {
 }
 bool coordinate(const char *s, const char *direction, bool latitude, double &out) {
     double raw{};
-    if (!number(s, raw) || raw < 0 || std::strlen(direction) != 1)
+    if (!number(s, raw) || raw < 0 || raw > (latitude ? 9000 : 18000) ||
+        std::strlen(direction) != 1)
         return false;
     int degrees = int(raw / 100);
     double minutes = raw - degrees * 100;
@@ -307,8 +311,8 @@ bool parse_ble(const uint8_t *data, size_t length, Observation &out) {
     return true;
 }
 bool matches(const Rule &r, const Observation &o) {
-    if (!r.enabled || r.radio != o.radio || !r.predicate_count ||
-        r.predicate_count > r.predicates.size())
+    if (o.payload_size > o.payload.size() || !r.enabled || r.radio != o.radio ||
+        !r.predicate_count || r.predicate_count > r.predicates.size())
         return false;
     for (size_t i = 0; i < r.predicate_count; ++i) {
         bool hit = predicate(r.predicates[i], o);
@@ -803,9 +807,9 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
     for (size_t i = 0; i < 6; ++i)
         j.add("%s%02x", i ? ":" : "", unsigned(o.address[i]));
     j.add("\",\"rssi_dbm\":%d,\"ssid\":", int(o.rssi));
-    j.string(o.ssid.data());
+    j.string(text_view(o.ssid));
     j.add(",\"name\":");
-    j.string(o.name.data());
+    j.string(text_view(o.name));
     j.add(",\"rule_id\":");
     if (match.rule)
         j.string(match.rule->id);

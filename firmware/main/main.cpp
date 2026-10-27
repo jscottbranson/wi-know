@@ -235,12 +235,15 @@ static void worker_loop() {
     size_t cursor = 0;
     uint8_t tuned = 0;
     uint32_t parent_boot = 0, last_command_sequence = 0;
+    bool have_parent = false;
     for (;;) {
         Packet request{};
         if (c::bus_enabled && platform::bus_receive(request, 10) && request.node == c::node_id) {
             Command command{};
             if (unpack_command(request, command) &&
-                (request.boot != parent_boot || request.sequence > last_command_sequence)) {
+                (!have_parent || request.boot != parent_boot ||
+                 sequence_newer(request.sequence, last_command_sequence))) {
+                have_parent = true;
                 parent_boot = request.boot;
                 last_command_sequence = request.sequence;
                 bool changed = command.count != assignment.count ||
