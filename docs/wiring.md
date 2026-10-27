@@ -1,18 +1,133 @@
 # Wiring diagrams
 
-The parent is a **full-size development board with an ESP32-C5-WROOM-1 module**.
+The parent is the **ESP32-C5 WiFi6 Dev Board N32R8**, with 32 MB flash and 8 MB
+PSRAM. The supplied product pinout matches the Waveshare WIFI6-KIT header layout.
 The children and dedicated follower are **mini Seeed XIAO ESP32-C5 boards**.
-These are logical connection diagrams, not physical header-position drawings.
-The parent's exact development-board model/header layout is still unconfirmed;
-no physical header positions or parent VIN/5V pin are assigned here.
+The peripheral drawing shows circuit connections; the separate parent header map
+shows positions viewed from the component side, antenna up and USB connectors down.
+Compare silkscreen against your board revision before connecting.
 
 The existing firmware targets the C5 chip family used by both boards. Current
 `config/settings.json` assigns UART1 TX **GPIO11**, RX **GPIO12**, and RTS **GPIO7**.
-On the parent, locate these by **GPIO number** after checking its board pinout;
-XIAO D-number labels do not identify positions on the full-size board. GPIO11/12
-may also be labeled TX0/RX0, but the firmware routes UART1 to these GPIOs. Use
-USB Serial/JTAG for the console as configured, and verify the parent's USB connection
-supports that interface rather than assuming an onboard USB-UART bridge is equivalent.
+Those defaults suit the XIAO workers. **Use the separate parent example config**:
+UART1 TX **GPIO11**, RX **GPIO3**, RTS **GPIO7**. Parent GPIO12 is connected to the
+USB-UART bridge's TX output; connecting a transceiver RO there would join two
+outputs. GPIO11 feeds the bridge RX input, so it remains usable as bus TX. Use the
+left **USB** connector for native USB Serial/JTAG console/flashing, not the right
+**UART** connector. XIAO D-number labels do not identify parent header positions.
+
+## Parent LEDs, buzzer, screen and GPS
+
+![Parent peripheral wiring with resistors, transistor and level shifting](images/parent-peripherals.png)
+
+[Editable SVG](images/parent-peripherals.svg) ·
+[Matching example configuration](../config/settings.parent-wiring.example.json)
+
+![Parent header positions and peripheral assignments](images/parent-headers.png)
+
+[Editable header SVG](images/parent-headers.svg)
+
+P1 is the left header and P2 the right, with pin 1 at the antenna end. Pin names
+and onboard connections were checked against the supplied product image and
+[Waveshare schematic](https://files.waveshare.com/wiki/ESP32-C5-WIFI6-KIT-NXRX/ESP32-C5-WIFI6-KIT-NXRX-Schematic.pdf).
+GPIO6 is battery sensing, GPIO15 is unavailable with this PSRAM variant, GPIO27
+drives the onboard RGB LED, and GPIO28 is BOOT. They are excluded from this plan.
+GPIO0/1 require the optional 32 kHz crystal to remain unpopulated; GPIO4/5 are
+used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
+[Espressif module datasheet](https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html).
+
+| Parent connection | Peripheral connection / components |
+| --- | --- |
+| GPIO0 | 470 Ω resistor → green LED anode; cathode → GND (increasing) |
+| GPIO1 | 470 Ω resistor → red LED anode; cathode → GND (decreasing) |
+| GPIO8 | 470 Ω resistor → amber LED anode; cathode → GND (steady) |
+| GPIO9 / P1.10 | 1 kΩ → Q1 base; 10 kΩ base-to-GND; Q1 emitter → GND |
+| Q1 collector | Buzzer negative; buzzer positive → regulated +5 V |
+| GPIO4 / GPIO5 | SDA / SCL → level shifter LV side → HV side → LCD SDA / SCL |
+| GPIO10, UART0 RX | GPS TX; GPS RX left disconnected |
+| GPIO23 / P2.5 | microSD SCK / CLK |
+| GPIO24 / P2.4 | microSD MOSI / DI / CMD |
+| GPIO2 / P1.3 | microSD MISO / DO / DAT0 |
+| GPIO25 / P1.13 | microSD CS / DAT3 |
+| Parent 3V3 | GPS VCC, level shifter LV supply, native 3.3 V microSD breakout |
+| External regulated +5 V | LCD VCC, buzzer positive and level shifter HV supply |
+| Common GND | Parent, external supply, GPS, LCD, microSD, level shifter and Q1 emitter |
+
+For the parent transceiver: P2.2 / GPIO11 → DI, P1.4 / GPIO3 ← RO,
+P1.8 / GPIO7 → tied DE and `/RE`. The XIAO workers retain GPIO12 as RX.
+
+Use one 470 Ω resistor per efficient red/green/amber LED (approximately 2–3 mA;
+actual current depends on forward voltage). Anode is usually the long lead;
+cathode is usually the short lead/flat edge. All LEDs turn off for unknown or stale
+signal strength. These indicate changes in strength, not transmitter direction.
+
+The buzzer circuit is designed for a **5 V passive magnetic buzzer drawing no more
+than 20 mA**, driven by the configured PWM frequency. Q1 is a 2N3904 NPN; check its
+actual package lead order against the
+[manufacturer datasheet](https://www.onsemi.com/pdf/datasheet/2n3904-d.pdf).
+The 1 kΩ resistor limits base current; the 10 kΩ resistor holds Q1 off during reset.
+D1 is a 1N4148 across the buzzer: **banded cathode to +5 V, anode to the collector**.
+It suppresses the magnetic load's turn-off transient. Select a different driver
+for a higher-current buzzer; an active buzzer or bare piezo is a different load
+and should not be substituted without checking its drive requirements.
+
+The LCD circuit assumes a **5 V 1602A with PCF8574 backpack**, at `0x27` with the
+driver's documented pin mapping. Use a two-channel **bidirectional I²C level
+shifter**, with each BSS138 gate at 3.3 V, source on the LV bus, and drain on the
+HV bus. Each SDA/SCL line needs a pull-up on each side: 4.7 kΩ to 3.3 V on LV and
+4.7 kΩ to 5 V on HV. The drawing shows the intended total pull-ups; check resistors
+already on the backpack/shifter before adding more. This follows
+[Nexperia's I²C level shifting circuit](https://assets.nexperia.com/documents/application-note/AN10441.pdf).
+Do not connect the 5 V bus directly to ESP32 GPIOs. Adjust the backpack contrast
+trimmer and verify its address and mapping; a bare parallel LCD needs different wiring.
+
+Power the Grove Air530 from 3.3 V and connect its **TX to parent RX**, using the
+connector signal labels to establish orientation. Seeed lists a 3.3 V/5 V supply
+and up to 60 mA working current for the
+[Grove Air530](https://wiki.seeedstudio.com/Grove-GPS-Air530/); allow sufficient
+headroom on the parent's 3V3 regulator. No parent TX connection is needed for NMEA
+reception. Coordinates identify the receiver's location.
+
+Use a **native 3.3 V SPI microSD breakout** for the shown card circuit. VDD goes
+to 3V3, VSS to common ground. Card contact numbers are CLK=5, CMD=3, DAT0=7,
+DAT3/CS=2, VDD=4 and VSS=6; these are not the adapter header order. Fit 10 kΩ
+pull-ups to 3.3 V on CMD and DAT0–DAT3, including unused DAT1 (contact 8) and DAT2
+(contact 1), accounting for resistors already on the breakout. No pull-up goes on
+CLK. See [Espressif's SD pull-up requirements](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/sd_pullup_requirements.html).
+GPIO25's pull-up affects an SDIO clock-edge strap; this firmware uses normal SPI
+boot and SPI2 for the card, with no SDIO slave interface. GPIO2/3 also serve pad
+JTAG/SDIO strap functions; this plan uses native USB JTAG and no SDIO interface.
+Keep wires short; the example uses a conservative 4 MHz SPI clock.
+
+The previously proposed **HW-125 is still unconfirmed**. Some adapter variants
+have an onboard regulator or different logic circuitry. Verify the actual module
+before choosing its input supply: feeding 3.3 V through a regulator intended for
+5 V can undervolt the card. Any module used must present 3.3 V SPI logic to the
+ESP32. The drawing does not assume a particular HW-125 supply pin.
+
+Fit 100 nF decoupling across VCC/GND near each GPS/LCD module, plus 10 µF across
+the local 5 V load rail; fit 100 nF plus 10 µF near microSD VDD/VSS as well (observe
+polarity for polarized capacitors). Power the parent through its native USB port;
+supply LCD/buzzer from a regulated 5 V rail with common ground. Leave P1.14 / 5V
+unconnected in this arrangement; do not join independently powered 5 V rails or
+backfeed USB. VBAT is the battery rail, not a 5 V peripheral supply.
+
+The example enables GPS, LCD, buzzer, LEDs and microSD with these assignments and
+changes parent bus RX to GPIO3. Default `settings.json` is unchanged. Build
+from the repository root with this example, or copy its peripheral settings into
+your chosen config:
+
+```sh
+python3 tools/generate_config.py --config config/settings.parent-wiring.example.json
+idf.py -C firmware -B build-parent-wiring -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 -DWIKNOW_CONFIG="$PWD/config/settings.parent-wiring.example.json" build
+```
+
+N32R8 identifies memory capacity; this example retains the existing conservative
+firmware flash/partition settings and does not enable PSRAM. The application does
+not need all 32 MB flash or PSRAM to operate.
+
+The buzzer sounds only for a matching enabled rule with its `buzzer` action set;
+the default ruleset is empty. Hardware operation is still unverified.
 
 ## Each mini child and follower
 
@@ -70,16 +185,16 @@ parallel, or power each board via USB. Their `3V3` header pin is documented as
 different boards' 3V3 outputs together or feed external power into those outputs.
 See the [Seeed power/pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/).
 
-For the full-size parent, use its documented USB power input for now. Its exact
-external 5V/VIN input and connector arrangement must be checked against the actual
-board. The ESP32-C5-WROOM-1 module itself is a 3.3 V device; a module supply pin must
+For the N32R8 parent, use its native USB power input. The diagram deliberately
+leaves its 5V header unconnected while an external 5 V rail supplies the LCD/buzzer.
+The ESP32-C5-WROOM-1 module itself is a 3.3 V device; a module supply pin must
 not be mistaken for a development board's regulated 5 V input. See the
 [Espressif module datasheet](https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html).
 
 Budget supply current for all boards, their transceivers and the parent's peripherals.
 Do not assume the LCD backpack or probable HW-125 accepts a particular supply voltage
-until identified. Parent GPS, LCD, SD, buzzer and LED pin wiring will be added after
-its header layout and peripheral electrical requirements are confirmed.
+until identified. Parent GPS, LCD, buzzer and LED connections are shown above;
+the separate header map includes microSD. The HW-125 variant still needs identification.
 
 ## Image sources
 

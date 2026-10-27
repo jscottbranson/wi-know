@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title description">
 <title id="title">Power distribution</title>
-<desc id="description">XIAO boards receive regulated 5 V in parallel. Parent input wiring remains provisional until its board layout is confirmed.</desc>
+<desc id="description">XIAO boards receive regulated 5 V in parallel. N32R8 parent uses its native USB power input.</desc>
 <defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0,0 L0,6 L6,3 z" fill="#176aa5"/></marker></defs>
 <rect width="1440" height="1040" fill="#f6f8fb"/>
 <text x="48" y="50" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">wi-know / wiring</text>
 <text x="48" y="99" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="34" font-weight="700" text-anchor="start">Power distribution</text>
-<text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO boards receive regulated 5 V in parallel. Parent input wiring remains provisional until its board layout is confirmed.</text>
+<text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO boards receive regulated 5 V in parallel. N32R8 parent uses its native USB power input.</text>
 <polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="70" y="195" width="1300" height="105" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="100" y="235" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">REGULATED 5 V SUPPLY / USB POWER BANK</text>
@@ -69,8 +69,8 @@
 <text x="1210" y="656" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Local 3.3 V transceiver</text>
 <text x="1210" y="682" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="400" text-anchor="middle">VCC from this XIAO only</text>
 <rect x="48" y="730" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="763" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Full-size ESP32-C5-WROOM-1 parent: power connector / header positions TBD</text>
-<text x="70" y="796" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use the parent board’s documented USB power input for now. No parent VIN / 5V pin is assigned here.</text>
+<text x="70" y="763" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent: native USB input; see parent header and peripheral diagrams</text>
+<text x="70" y="796" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer supply.</text>
 <text x="70" y="824" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">For this non-isolated RS-485 bus, connect parent GND to the same common ground.</text>
 <rect x="48" y="868" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="901" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Keep the voltage rails separate</text>

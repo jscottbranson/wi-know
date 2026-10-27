@@ -5,6 +5,12 @@
 settings are relative to the repository root unless absolute. Detection rules
 live separately in `../rules/`.
 
+`settings.parent-wiring.example.json` is a separate N32R8 parent peripheral
+profile matching the [LED/buzzer/LCD/GPS/microSD wiring diagram](../docs/wiring.md#parent-leds-buzzer-screen-and-gps).
+It enables those peripherals and changes parent bus RX to GPIO3, avoiding the
+onboard USB-UART TX connected to GPIO12. Check the board revision before using it with
+`-DWIKNOW_CONFIG=/absolute/path/settings.parent-wiring.example.json`.
+
 Validate without an ESP32 toolchain:
 
 ```sh

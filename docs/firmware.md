@@ -61,7 +61,9 @@ CI runs the host tests and builds all three firmware roles with the pinned SDK.
 
 ## Initial hardware setup
 
-1. Select/verify the parent board. The current platform implementation targets C5.
+1. Parent: ESP32-C5 WiFi6 Dev Board N32R8. Use the separate
+   [parent wiring example](wiring.md#parent-leds-buzzer-screen-and-gps) for peripheral
+   pins and bus RX on GPIO3; default GPIO12 conflicts with its USB-UART output.
 2. Assign pins in `config/settings.json` using the board's SoC GPIO map. Enable
    one peripheral at a time. See `config/README.md` for electrical assumptions.
 3. For the distributed scanner, fit RS-485 transceivers and configure bus TX/RX/RTS
@@ -117,7 +119,8 @@ there is no autonomous fallback that silently changes coverage.
 
 The firmware must be exercised on physical hardware; compilation does not validate
 RF sensitivity, pin wiring, SD power, Air530 battery retention, LCD mapping or the
-bus. The parent uses ESP32-C5-WROOM-1; its development-board header layout and final wiring remain unconfirmed. SD mount/write failures
+bus. The N32R8 parent now has a header map and peripheral wiring example;
+the actual HW-125 and LCD backpack variants still require confirmation. SD mount/write failures
 surface on the console and LCD status; recovery currently requires reboot. There
 is no runtime configuration reload, external RTC driver, automatic signature import,
 Remote ID payload decoder, drone GPS/velocity decoder, RFID reader, Bluetooth Classic

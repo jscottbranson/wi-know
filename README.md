@@ -17,7 +17,7 @@ Remote ID telemetry decoding are not yet included.
 
 | Role / peripheral | Purpose |
 | --- | --- |
-| Full-size ESP32-C5-WROOM-1 parent, header layout TBD | Coordination, BLE reception, matching, storage, UI and time |
+| ESP32-C5 WiFi6 Dev Board N32R8 parent | Coordination, BLE reception, matching, storage, UI and time |
 | Seeed Studio XIAO ESP32-C5 children | Passive Wi-Fi observation across assigned channels |
 | Dedicated XIAO ESP32-C5 follower | Focused observation and target reacquisition |
 | Parent microSD adapter, probably HW-125 (unconfirmed) | SPI storage; matching observations or all observations, selectable |
@@ -47,7 +47,9 @@ GPS association, peak RSSI, LED behavior, clock fallback, and implementation sta
 **Store matching rules in [rules/](rules/README.md)** as JSON documents.
 See [configuration help](config/README.md) and [build/run instructions](docs/firmware.md).
 Settings and rules are validated and compiled into firmware; rebuild after changes.
-Parent peripheral pins and physical header positions remain unassigned. Nodes are
+An optional [parent peripheral wiring plan](docs/wiring.md#parent-leds-buzzer-screen-and-gps)
+includes LED resistors, buzzer transistor, LCD level shifting, GPS and microSD connections,
+with a matching example config. Default peripheral pins remain unassigned; use the matching parent example config. Nodes are
 assumed to travel together when sharing the parent's GPS.
 
 ## Wiring
@@ -55,9 +57,9 @@ assumed to travel together when sharing the parent's GPS.
 ![Parent, children and follower on the shared RS-485 bus](docs/images/rs485-network.png)
 
 See the [wiring guide](docs/wiring.md) for child/follower pin connections and parallel
-power distribution, with editable SVGs and PNG copies. The full-size parent uses
-an ESP32-C5-WROOM-1 module; its physical header layout and power-input pin remain
-provisional until the specific development board is identified.
+power distribution, with editable SVGs and PNG copies. The N32R8 parent has a
+separate header map and peripheral wiring plan; its example moves bus RX to GPIO3
+to avoid the onboard USB-UART output on GPIO12.
 
 ## Quick start
 
@@ -84,6 +86,9 @@ The RS-485 bus is enabled on TX GPIO11 (D6), RX GPIO12 (D7), and RTS GPIO7 (D3).
 Unassigned peripherals remain disabled. The default
 ruleset is empty; a disabled test template is in `rules/examples/`. See the build
 instructions for child/follower builds, flashing, and current implementation limits.
+For the N32R8 parent, use `config/settings.parent-wiring.example.json` as described
+in the wiring guide: it enables the peripherals and moves parent bus RX to GPIO3
+to avoid the onboard USB-UART output connected to GPIO12.
 
 ## Primary references
 

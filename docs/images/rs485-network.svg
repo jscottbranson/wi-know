@@ -10,7 +10,7 @@
 <rect x="68" y="191" width="284" height="111" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2" stroke-dasharray="8 6"/>
 <text x="210" y="225" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">FULL-SIZE PARENT</text>
 <text x="210" y="254" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">ESP32-C5-WROOM-1</text>
-<text x="210" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">TX 11 · RX 12 · RTS 7*</text>
+<text x="210" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">TX 11 · RX 3 · RTS 7*</text>
 <polyline points="210,302 210,343" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6"/>
 <text x="223" y="329" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="12" font-weight="400" text-anchor="start">TX / RX / direction</text>
 <rect x="95" y="343" width="230" height="90" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
@@ -104,7 +104,7 @@
 <text x="70" y="784" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Fit termination only at the two cable ends. Check existing module termination before adding resistors.</text>
 <text x="70" y="812" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use identical module A/B conventions; provide one appropriate bias network if required by the modules.</text>
 <rect x="48" y="853" width="1344" height="84" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="886" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Parent header layout is pending</text>
-<text x="70" y="919" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">*Parent uses GPIO11 / 12 / 7 in config; verify those pins on its specific development-board headers.</text>
+<text x="70" y="886" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent uses the separate peripheral example config</text>
+<text x="70" y="919" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">*Parent GPIO11 / 3 / 7; workers GPIO11 / 12 / 7. Parent GPIO12 is tied to USB-UART TX.</text>
 <text x="48" y="976" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

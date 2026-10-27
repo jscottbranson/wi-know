@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1250" viewBox="0 0 1440 1250" role="img" aria-labelledby="title description">
+<title id="title">N32R8 parent header connection map</title>
+<desc id="description">Component side up • antenna at top • USB connectors at bottom • P1/P2 numbers from board schematic.</desc>
+<defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0,0 L0,6 L6,3 z" fill="#176aa5"/></marker></defs>
+<rect width="1440" height="1250" fill="#f6f8fb"/>
+<text x="48" y="50" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">wi-know / wiring</text>
+<text x="48" y="99" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="34" font-weight="700" text-anchor="start">N32R8 parent header connection map</text>
+<text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Component side up • antenna at top • USB connectors at bottom • P1/P2 numbers from board schematic.</text>
+<polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="560" y="200" width="320" height="795" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="720" y="238" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="29" font-weight="700" text-anchor="middle">ESP32-C5</text>
+<text x="720" y="270" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="middle">WiFi6 N32R8</text>
+<text x="720" y="306" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">ANTENNA / TOP</text>
+<text x="650" y="955" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="22" font-weight="700" text-anchor="middle">USB</text>
+<text x="790" y="955" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="22" font-weight="700" text-anchor="middle">UART</text>
+<text x="720" y="980" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">Use USB for console</text>
+<circle cx="560" cy="345" r="5" fill="#176aa5"/>
+<text x="575" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">1  3V3</text>
+<polyline points="530,345 560,345" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPS + shifter LV + native SD supply</text>
+<circle cx="560" cy="383" r="5" fill="#526577"/>
+<text x="575" y="389" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">2  RST</text>
+<polyline points="530,383 560,383" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="389" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Leave available</text>
+<circle cx="560" cy="421" r="5" fill="#176aa5"/>
+<text x="575" y="427" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">3  GPIO2</text>
+<polyline points="530,421 560,421" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="427" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">SD MISO / DO</text>
+<circle cx="560" cy="459" r="5" fill="#176aa5"/>
+<text x="575" y="465" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">4  GPIO3</text>
+<polyline points="530,459 560,459" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="465" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Parent RS-485 RO / RX</text>
+<circle cx="560" cy="497" r="5" fill="#176aa5"/>
+<text x="575" y="503" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">5  GPIO0</text>
+<polyline points="530,497 560,497" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="503" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Green LED through 470 Ω</text>
+<circle cx="560" cy="535" r="5" fill="#176aa5"/>
+<text x="575" y="541" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">6  GPIO1</text>
+<polyline points="530,535 560,535" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="541" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Red LED through 470 Ω</text>
+<circle cx="560" cy="573" r="5" fill="#526577"/>
+<text x="575" y="579" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">7  GPIO6</text>
+<polyline points="530,573 560,573" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="579" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Reserved: battery ADC</text>
+<circle cx="560" cy="611" r="5" fill="#176aa5"/>
+<text x="575" y="617" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">8  GPIO7</text>
+<polyline points="530,611 560,611" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="617" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">RS-485 DE + /RE</text>
+<circle cx="560" cy="649" r="5" fill="#176aa5"/>
+<text x="575" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">9  GPIO8</text>
+<polyline points="530,649 560,649" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Amber LED through 470 Ω</text>
+<circle cx="560" cy="687" r="5" fill="#176aa5"/>
+<text x="575" y="693" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">10  GPIO9</text>
+<polyline points="530,687 560,687" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="693" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Buzzer base through 1 kΩ</text>
+<circle cx="560" cy="725" r="5" fill="#176aa5"/>
+<text x="575" y="731" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">11  GPIO10</text>
+<polyline points="530,725 560,725" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="731" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPS TX to parent RX</text>
+<circle cx="560" cy="763" r="5" fill="#526577"/>
+<text x="575" y="769" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">12  GPIO26</text>
+<polyline points="530,763 560,763" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="769" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Leave boot strap free</text>
+<circle cx="560" cy="801" r="5" fill="#176aa5"/>
+<text x="575" y="807" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">13  GPIO25</text>
+<polyline points="530,801 560,801" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="807" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">SD CS</text>
+<circle cx="560" cy="839" r="5" fill="#176aa5"/>
+<text x="575" y="845" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">14  5V</text>
+<polyline points="530,839 560,839" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="845" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Board rail; power plan below</text>
+<circle cx="560" cy="877" r="5" fill="#176aa5"/>
+<text x="575" y="883" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">15  GND</text>
+<polyline points="530,877 560,877" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="883" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Common ground</text>
+<circle cx="560" cy="915" r="5" fill="#526577"/>
+<text x="575" y="921" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">16  VBAT</text>
+<polyline points="530,915 560,915" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="515" y="921" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Battery rail; not a 5 V output</text>
+<circle cx="880" cy="345" r="5" fill="#176aa5"/>
+<text x="865" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GND  1</text>
+<polyline points="880,345 910,345" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Common ground</text>
+<circle cx="880" cy="383" r="5" fill="#176aa5"/>
+<text x="865" y="389" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">TX / GPIO11  2</text>
+<polyline points="880,383 910,383" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="389" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">RS-485 DI / parent TX</text>
+<circle cx="880" cy="421" r="5" fill="#526577"/>
+<text x="865" y="427" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">RX / GPIO12  3</text>
+<polyline points="880,421 910,421" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="427" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Do not use: USB-UART TX attached</text>
+<circle cx="880" cy="459" r="5" fill="#176aa5"/>
+<text x="865" y="465" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO24  4</text>
+<polyline points="880,459 910,459" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="465" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">SD MOSI / DI</text>
+<circle cx="880" cy="497" r="5" fill="#176aa5"/>
+<text x="865" y="503" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO23  5</text>
+<polyline points="880,497 910,497" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="503" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">SD SCK / CLK</text>
+<circle cx="880" cy="535" r="5" fill="#526577"/>
+<text x="865" y="541" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO15  6</text>
+<polyline points="880,535 910,535" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="541" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Reserved: N32R8 PSRAM</text>
+<circle cx="880" cy="573" r="5" fill="#526577"/>
+<text x="865" y="579" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO27  7</text>
+<polyline points="880,573 910,573" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="579" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Reserved: onboard RGB</text>
+<circle cx="880" cy="611" r="5" fill="#176aa5"/>
+<text x="865" y="617" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO4  8</text>
+<polyline points="880,611 910,611" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="617" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">LCD SDA through level shifter</text>
+<circle cx="880" cy="649" r="5" fill="#176aa5"/>
+<text x="865" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO5  9</text>
+<polyline points="880,649 910,649" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">LCD SCL through level shifter</text>
+<circle cx="880" cy="687" r="5" fill="#526577"/>
+<text x="865" y="693" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">NC  10</text>
+<polyline points="880,687 910,687" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="693" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">No connection</text>
+<circle cx="880" cy="725" r="5" fill="#526577"/>
+<text x="865" y="731" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO28  11</text>
+<polyline points="880,725 910,725" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="731" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Reserved: BOOT button / strap</text>
+<circle cx="880" cy="763" r="5" fill="#176aa5"/>
+<text x="865" y="769" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GND  12</text>
+<polyline points="880,763 910,763" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="769" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Common ground</text>
+<circle cx="880" cy="801" r="5" fill="#526577"/>
+<text x="865" y="807" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO14  13</text>
+<polyline points="880,801 910,801" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="807" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Reserved: native USB D+</text>
+<circle cx="880" cy="839" r="5" fill="#526577"/>
+<text x="865" y="845" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPIO13  14</text>
+<polyline points="880,839 910,839" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="845" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Reserved: native USB D−</text>
+<circle cx="880" cy="877" r="5" fill="#176aa5"/>
+<text x="865" y="883" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GND  15</text>
+<polyline points="880,877 910,877" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="883" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Common ground</text>
+<circle cx="880" cy="915" r="5" fill="#526577"/>
+<text x="865" y="921" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">VBAT  16</text>
+<polyline points="880,915 910,915" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="925" y="921" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Battery rail; not a 5 V output</text>
+<text x="530" y="307" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="end">P1 / LEFT</text>
+<text x="910" y="307" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">P2 / RIGHT</text>
+<rect x="48" y="1020" width="1344" height="168" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="1053" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Board-specific details</text>
+<text x="70" y="1086" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Native USB port is left in the supplied pinout. GPIO12 is tied to CH343 TX; parent bus RX uses GPIO3.</text>
+<text x="70" y="1114" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use USB power for parent, external regulated +5 V for LCD/buzzer, common ground; do not tie +5 V rails.</text>
+<text x="70" y="1142" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO25 pull-up selects an SDIO clock strap; firmware uses SPI boot and SPI2 SD, not the SDIO peripheral.</text>
+<text x="70" y="1170" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO0/1 need optional 32 kHz crystal unpopulated. Compare silkscreen before using a different board revision.</text>
+<text x="48" y="1226" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Physical header map for supplied N32R8 board pinout • compare board revision • see docs/wiring.md</text>
+</svg>
