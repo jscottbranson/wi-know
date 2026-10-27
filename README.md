@@ -50,6 +50,9 @@ Optional [following-device alerts](config/README.md#following-device-alerts) com
 continued Wi-Fi/BLE sightings with GPS displacement, with an ignore list and
 configurable distance and delay.
 Settings and rules are validated and compiled into firmware; rebuild after changes.
+Export recorded detections to CSV or GeoJSON with the
+[sharing and mapping tool](docs/exporting.md), including rule evidence and receiver
+locations at capture and peak signal strength.
 An optional [parent peripheral wiring plan](docs/wiring.md#parent-leds-buzzer-screen-and-gps)
 includes LED resistors, buzzer transistor, LCD level shifting, GPS and microSD connections,
 with a matching example config. Default peripheral pins remain unassigned; use the matching parent example config. Nodes are

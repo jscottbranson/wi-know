@@ -16,12 +16,13 @@ class BuildTests(unittest.TestCase):
             source = pathlib.Path(folder) / 'source'
             source.mkdir()
             shutil.copy(ROOT / 'CMakeLists.txt', source)
-            for name in ('components', 'tools', 'tests', 'config'):
+            for name in ('components', 'tools', 'tests', 'config', 'firmware'):
                 shutil.copytree(ROOT / name, source / name)
             rules = source / 'custom-rules'
             rules.mkdir()
             settings = json.loads((source / 'config/settings.json').read_text())
             settings['detection']['rules_directory'] = 'custom-rules'
+            settings['sd']['model'] = 'Unicode 🔎; quote "; slash \\; NUL \x00; trigraph ??/'
             (source / 'config/settings.json').write_text(json.dumps(settings))
             document = json.loads((ROOT / 'rules/examples/lab.json').read_text())
             (rules / 'first.json').write_text(json.dumps(document))
@@ -32,16 +33,24 @@ class BuildTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
             def generated():
-                run('cmake', '--build', str(build), '--target', 'core_tests')
+                run('cmake', '--build', str(build))
                 return (build / 'generated/settings.hpp').read_text()
+
+            def manifest_ids():
+                document = json.loads((build / 'generated/settings.rules.json').read_text())
+                return [rule['id'] for rule in document['rules']]
 
             run('cmake', '-S', str(source), '-B', str(build))
             self.assertIn('lab-test-beacon', generated())
+            self.assertEqual(manifest_ids(), ['lab-test-beacon'])
             document['rules'][0]['id'] = 'edited-beacon'
             (rules / 'first.json').write_text(json.dumps(document))
             self.assertIn('edited-beacon', generated())
+            self.assertEqual(manifest_ids(), ['edited-beacon'])
             document['rules'][0]['id'] = 'added-beacon'
             (rules / 'second.json').write_text(json.dumps(document))
             self.assertIn('added-beacon', generated())
+            self.assertEqual(manifest_ids(), ['edited-beacon', 'added-beacon'])
             (rules / 'first.json').unlink()
             self.assertNotIn('edited-beacon', generated())
+            self.assertEqual(manifest_ids(), ['added-beacon'])

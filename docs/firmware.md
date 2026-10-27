@@ -92,7 +92,9 @@ there is no autonomous fallback that silently changes coverage.
   advertising payloads over 255 bytes are currently skipped; fragmented reports
   are not reassembled. Arbitrary data traffic is not captured.
 - Build-time JSON rule loading: OUI, SSID/name prefix, BLE manufacturer prefix and
-  16-bit service UUID, category switches, highest-priority matching actions.
+  16-bit service UUID, category switches, UTF-8 text prefixes, highest-priority
+  matching actions, and a separate logged classification for every matching rule.
+  The generated `settings.rules.json` retains source provenance for sharing.
 - Matching MAC/protocol follower selection. Wi-Fi follower dwells on the last channel
   then searches configured channels after 3 seconds without a target sample; parent
   releases stale targets. BLE follower filters broadcasts for the requested address.

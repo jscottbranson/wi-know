@@ -206,8 +206,9 @@ def main(argv=None):
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
         raw = generate_config.load(config)
-        # Validate the whole file before accessing its bus fields or showing menus.
-        generate_config.validate(raw)
+        # The menu/CLI selects role and ID independently of the stored defaults.
+        # Validate the common settings first; validate the selected device below.
+        generate_config.validate(raw, 'parent', 0)
         role = args.role or select_role()
         first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
