@@ -29,6 +29,10 @@
     ],
     "dwell_ms": 500
   },
+  "standalone": {
+    "enabled": false,
+    "ble_dwell_ms": 120
+  },
   "ble": {
     "enabled": true
   },

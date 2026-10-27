@@ -113,3 +113,35 @@ This is a movement correlation heuristic: GPS locates the receiver, and the
 configured radius is an assumed plausible radio range. GPS error and long-range
 transmitters can produce false alerts. Randomized Wi-Fi/BLE addresses can break
 continuity and require ignore-list updates; rotating identities are not linked.
+
+## Standalone parent
+
+For a single board, set `standalone.enabled` to `true` and `bus.enabled` to
+`false`, keeping role `parent` and ID `0`. Or build with
+`-DWIKNOW_CONFIG=/absolute/path/config/settings.standalone.example.json`.
+The example leaves peripherals disabled; copy your board's verified peripheral
+settings to retain GPS, storage, screen, LEDs and buzzer.
+
+Flash the example with the normal helper (after activating ESP-IDF):
+
+```sh
+python3 tools/flash.py --config config/settings.standalone.example.json --role parent --node-id 0
+```
+
+The parent visits each configured Wi-Fi channel for `wifi.dwell_ms`, then scans
+BLE for `standalone.ble_dwell_ms` (default 120 ms), repeating through the channel
+list. Both scans are passive. Wi-Fi reception is paused during BLE windows and
+BLE scanning is cancelled before tuning Wi-Fi. With `ble.enabled: false`, it hops
+Wi-Fi continuously. Settings are compiled in; rebuild and flash after changes.
+Old configs without a `standalone` section retain distributed operation.
+
+This trades coverage for needing only one board: with the example’s 19 channels,
+500 ms Wi-Fi dwells and 120 ms BLE windows, each Wi-Fi channel is revisited roughly
+every 11.78 seconds,
+plus switching/processing overhead. BLE also has scan interval/window gaps within
+its allotted time. Packets outside a radio/channel's window are missed. Increase
+following-alert gap and signal-staleness settings if needed for the longer sweep.
+The screen shows the current radio/channel or a scan error; a failed tune is
+retried on the next sweep. No children or dedicated follower are used. Observations
+still flow through the normal parent rules, GPS tagging, tracking, logs and alerts.
+Physical ESP32-C5 validation of switching and reception remains necessary.

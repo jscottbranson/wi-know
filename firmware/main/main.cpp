@@ -290,20 +290,40 @@ static void parent_loop() {
                 std::snprintf(line2, sizeof(line2), "Gap:%u SD:%s", unsigned(plan.uncovered_count),
                               platform::storage_ready() ? "OK" : "OFF");
             }
+            if (c::standalone_enabled && (page == 0 || page == 4) &&
+                !(following_visible && now - following_alert_at < 30000)) {
+                const int channel = platform::standalone_scan_channel();
+                std::snprintf(line1, sizeof(line1), "Standalone");
+                if (channel > 0)
+                    std::snprintf(line2, sizeof(line2), "Wi-Fi CH:%d", channel);
+                else
+                    std::snprintf(line2, sizeof(line2), "%s",
+                                  channel == 0    ? "BLE scan"
+                                  : channel == -2 ? "Starting scan"
+                                                  : "Scan error");
+            }
             platform::screen(line1, line2);
             last_display = now;
         }
         if (now - last_status >= 5000) {
             auto plan = members.plan(c::channels.data(), c::channels.size());
             auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
-            ESP_LOGI("parent",
-                     "children=%u planned=%u tuned=%u scan_errors=%u uncovered=%u local_drops=%u "
-                     "worker_drops=%llu SD=%s",
-                     unsigned(plan.count), unsigned(coverage.planned), unsigned(coverage.confirmed),
-                     unsigned(coverage.errors), unsigned(plan.uncovered_count),
-                     unsigned(platform::dropped.load()),
-                     static_cast<unsigned long long>(worker_losses.total()),
-                     platform::storage_ready() ? "ready" : "off");
+            if (c::standalone_enabled)
+                ESP_LOGI(
+                    "parent",
+                    "standalone scan_channel=%d (0=BLE -1=error -2=starting) local_drops=%u SD=%s",
+                    platform::standalone_scan_channel(), unsigned(platform::dropped.load()),
+                    platform::storage_ready() ? "ready" : "off");
+            else
+                ESP_LOGI(
+                    "parent",
+                    "children=%u planned=%u tuned=%u scan_errors=%u uncovered=%u local_drops=%u "
+                    "worker_drops=%llu SD=%s",
+                    unsigned(plan.count), unsigned(coverage.planned), unsigned(coverage.confirmed),
+                    unsigned(coverage.errors), unsigned(plan.uncovered_count),
+                    unsigned(platform::dropped.load()),
+                    static_cast<unsigned long long>(worker_losses.total()),
+                    platform::storage_ready() ? "ready" : "off");
             last_status = now;
         }
         vTaskDelay(platform::ticks(5));

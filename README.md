@@ -4,6 +4,8 @@ A distributed wireless observation system built around ESP32 microcontrollers.
 Children divide the configured 2.4 GHz and 5 GHz Wi-Fi channels; a parent
 coordinates them, scans BLE, evaluates detection rules, and records observations.
 A dedicated follower spends additional receive time on a selected matching signal.
+An optional [standalone parent](config/README.md#standalone-parent) alternates BLE
+and Wi-Fi scanning on one board, trading scan coverage for fewer devices.
 
 ## Project status
 

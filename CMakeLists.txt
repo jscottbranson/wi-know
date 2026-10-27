@@ -51,3 +51,8 @@ target_link_libraries(storage_tests PRIVATE wiknow)
 target_include_directories(storage_tests PRIVATE firmware/main)
 target_compile_options(storage_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME storage COMMAND storage_tests)
+
+add_executable(standalone_scan_tests tests/standalone_scan_tests.cpp)
+target_link_libraries(standalone_scan_tests PRIVATE wiknow)
+target_compile_options(standalone_scan_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME standalone_scan COMMAND standalone_scan_tests)

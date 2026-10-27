@@ -6,6 +6,10 @@
     "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 36, 40, 44, 48, 149, 153, 157, 161],
     "dwell_ms": 500
   },
+  "standalone": {
+    "enabled": false,
+    "ble_dwell_ms": 120
+  },
   "ble": { "enabled": true },
   "bus": {
     "enabled": true,

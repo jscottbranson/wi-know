@@ -16,6 +16,7 @@ void init_observation_queues();
 bool take_observation(wiknow::Observation &observation);
 void set_capture_assignment(const wiknow::Command &assignment, uint64_t expires);
 void start_radios();
+int standalone_scan_channel(); // -2 starting, -1 error, 0 BLE, positive Wi-Fi channel
 bool tune(uint8_t channel);
 void pause_wifi();
 void submit(wiknow::Observation &observation);
