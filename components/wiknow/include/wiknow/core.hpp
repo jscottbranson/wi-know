@@ -186,6 +186,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
+constexpr uint8_t protocol_version = 2;
 enum class MessageType : uint8_t { poll = 1, report = 2 };
 struct Packet {
     MessageType type{MessageType::poll};
@@ -211,8 +212,40 @@ class Decoder {
     size_t size_{};
     uint32_t errors_{};
 };
+struct Report;
+struct ObservationAck {
+    bool valid{};
+    uint32_t boot{}, sequence{};
+};
+// One in-flight observation survives lost/corrupt replies and assignment changes.
+class RetainedObservation {
+  public:
+    bool pending() const {
+        return pending_;
+    }
+    bool retain(const Observation &observation);
+    bool acknowledge(ObservationAck ack);
+    void report(Report &out, uint64_t now) const;
+
+  private:
+    bool pending_{};
+    Observation observation_{};
+};
+// Stop-and-wait delivery only repeats the most recently accepted observation.
+class ReportReceipt {
+  public:
+    bool accept(const Observation &observation);
+    ObservationAck acknowledgement() const {
+        return ack_;
+    }
+
+  private:
+    ObservationAck ack_{};
+};
 // Poll payload: role-independent assignment lease, dwell, channels, optional target.
 struct Command {
+    ObservationAck ack{};
+    uint32_t assignment_id{};
     uint32_t lease_ms{10000}, dwell_ms{500};
     std::array<Channel, max_channels> channels{};
     uint8_t count{};
@@ -221,7 +254,14 @@ struct Command {
     uint8_t target_channel{}, target_address_type{};
     std::array<uint8_t, 6> target{};
 };
+enum class ScanState : uint8_t { awaiting, idle, scanning, error, expired };
+struct ScanStatus {
+    uint32_t assignment_id{}, confirmed_channels{}; // bits index Command.channels
+    ScanState state{ScanState::awaiting};
+    uint8_t failed_channel{};
+};
 struct Report {
+    ScanStatus scan{};
     Role role{Role::child};
     bool band24{true}, band5{true}, has_observation{};
     uint32_t dropped{}, capture_age_ms{};

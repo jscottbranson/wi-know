@@ -243,6 +243,67 @@ static void busy_trend_test() {
     CHECK(track.sample_count == 1);
     CHECK(track.rssi_histogram[87] == 1);
 }
+static void retained_delivery_test() {
+    RetainedObservation worker;
+    ReportReceipt parent;
+    Observation first = obs(-50, 100);
+    first.boot = 0;
+    first.sequence = 0; // zero is a real identity, not an empty sentinel
+    CHECK(worker.retain(first));
+    CHECK(!worker.retain(obs(-40, 200)));
+    CHECK(!worker.acknowledge({}));
+    CHECK(!worker.acknowledge({true, 1, 0}));
+    CHECK(!worker.acknowledge({true, 0, 1}));
+    Report report{};
+    worker.report(report, 150);
+    CHECK(report.has_observation && report.capture_age_ms == 50);
+    // A corrupt reply never reaches the parent's receipt state. The worker retains it.
+    Packet packet{};
+    CHECK(pack_report(report, packet));
+    uint8_t frame[max_frame]{};
+    const size_t length = encode_packet(packet, frame, sizeof(frame));
+    CHECK(length > 0 && frame[2] == protocol_version);
+    frame[length - 1] ^= 1;
+    Decoder decoder;
+    Packet decoded{};
+    for (size_t i = 0; i < length; ++i)
+        CHECK(!decoder.feed(frame[i], decoded));
+    CHECK(!parent.acknowledgement().valid && worker.pending());
+    worker.report(report, 250); // retry after a lost/corrupt reply uses the original capture
+    CHECK(report.observation.at_ms == 100 && report.capture_age_ms == 150);
+    CHECK(parent.accept(report.observation));
+    CHECK(!parent.accept(report.observation)); // lost ACK: consume only once
+    CHECK(worker.pending());
+    CHECK(worker.acknowledge(parent.acknowledgement()));
+    worker.report(report, 300);
+    CHECK(!report.has_observation);
+    CHECK(!worker.acknowledge(parent.acknowledgement()));
+    // New worker boot may reuse the same sequence.
+    first.boot = 1;
+    CHECK(worker.retain(first));
+    worker.report(report, 300);
+    CHECK(parent.accept(report.observation));
+    CHECK(!worker.acknowledge({true, 0, 0})); // ACK from before reboot
+    CHECK(worker.acknowledge(parent.acknowledgement()));
+    // Sequence rollover and priority delivery may both reorder observation serials.
+    for (uint32_t serial : {UINT32_MAX, 0u, 7u, 3u}) {
+        first.sequence = serial;
+        CHECK(worker.retain(first));
+        worker.report(report, 400);
+        CHECK(parent.accept(report.observation));
+        CHECK(!parent.accept(report.observation));
+        CHECK(worker.acknowledge(parent.acknowledgement()));
+    }
+    CHECK(worker.retain(first));
+    ReportReceipt restarted_parent;
+    worker.report(report, 500);
+    CHECK(restarted_parent.accept(report.observation));
+    CHECK(worker.acknowledge(restarted_parent.acknowledgement()));
+    // Ages saturate instead of wrapping during a long outage.
+    CHECK(worker.retain(first));
+    worker.report(report, uint64_t(UINT32_MAX) + 1000);
+    CHECK(report.capture_age_ms == UINT32_MAX);
+}
 static void protocol_test() {
     CHECK(sequence_newer(1, 0));
     CHECK(sequence_newer(UINT32_MAX, UINT32_MAX - 1));
@@ -258,6 +319,7 @@ static void protocol_test() {
     c.channels[0] = {1};
     c.channels[1] = {36};
     c.follow = true;
+    c.ack = {true, 0x12345678u, UINT32_MAX};
     c.target = {0, 1, 2, 3, 4, 5};
     Packet packet{};
     packet.node = 4;
@@ -277,6 +339,14 @@ static void protocol_test() {
     Command result{};
     CHECK(unpack_command(decoded, result));
     CHECK(result.count == 2 && result.channels[1].number == 36 && result.target == c.target);
+    CHECK(result.ack.valid && result.ack.boot == c.ack.boot &&
+          result.ack.sequence == c.ack.sequence);
+    for (uint16_t size = 0; size < decoded.size; ++size) {
+        Packet truncated = decoded;
+        truncated.size = size;
+        CHECK(!unpack_command(truncated, result));
+    }
+    CHECK(unpack_command(decoded, result));
     // A command may arrive across many worker-loop polling deadlines.
     Decoder fragmented;
     for (size_t begin = 0; begin < n; begin += 7) {
@@ -399,6 +469,7 @@ int main() {
     tracking_test();
     trend_confirmation_test();
     busy_trend_test();
+    retained_delivery_test();
     protocol_test();
     json_test();
     std::puts("All core tests passed");

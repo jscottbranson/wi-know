@@ -9,10 +9,12 @@ inline TickType_t ticks(uint32_t milliseconds) {
     const TickType_t value = pdMS_TO_TICKS(milliseconds);
     return value ? value : 1;
 }
-extern QueueHandle_t observations;
 extern std::atomic<uint32_t> dropped;
 extern uint32_t boot_id;
 uint64_t now_ms();
+void init_observation_queues();
+bool take_observation(wiknow::Observation &observation);
+void set_capture_assignment(const wiknow::Command &assignment, uint64_t expires);
 void start_radios();
 bool tune(uint8_t channel);
 void pause_wifi();

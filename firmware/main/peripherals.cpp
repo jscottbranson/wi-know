@@ -9,6 +9,7 @@
 #include "esp_vfs_fat.h"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
+#include "wiknow/bus_timing.hpp"
 #include <algorithm>
 #include <atomic>
 #include <cstdio>
@@ -49,7 +50,9 @@ void bus_send(const wiknow::Packet &p) {
     if (!n || !c::bus_enabled)
         return;
     int written = uart_write_bytes(uart_port_t(c::bus_uart), frame, n);
-    if (written != int(n) || uart_wait_tx_done(uart_port_t(c::bus_uart), ticks(100)) != ESP_OK)
+    if (written != int(n) ||
+        uart_wait_tx_done(uart_port_t(c::bus_uart),
+                          ticks(wiknow::bus_tx_wait_ms(uint16_t(n), c::bus_baud))) != ESP_OK)
         ++dropped;
 }
 bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
@@ -301,7 +304,8 @@ void start_peripherals() {
         return;
     console_queue = xQueueCreate(8, sizeof(LogLine));
     configASSERT(console_queue);
-    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) == pdPASS);
+    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) ==
+                 pdPASS);
     if (c::gps_enabled)
         uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
     if (c::signal_trend_enabled) {

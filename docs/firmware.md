@@ -85,7 +85,12 @@ there is no autonomous fallback that silently changes coverage.
 - Deterministic capability-aware allocation of up to 32 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
 - Versioned little-endian polling/report protocol with CRC32, node boot IDs,
-  command sequences and assignment leases. Local RS-485 bus is assumed trusted;
+  command sequences and assignment leases. Protocol version 2 adds observation
+  acknowledgments: a worker retains its in-flight observation until the parent
+  acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
+  are retried on subsequent polls; the parent suppresses duplicate processing.
+  Rebuild and flash every node together; version 1 firmware cannot communicate
+  with version 2 firmware. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
 - Receive-only Wi-Fi beacon/probe-response metadata and passive BLE advertising
   (legacy and complete extended reports). Wi-Fi frames over 512 bytes and BLE
@@ -127,11 +132,30 @@ Remote ID payload decoder, drone GPS/velocity decoder, RFID reader, Bluetooth Cl
 support or triangulation in this version. These are explicit next implementation
 stages, not simulated telemetry.
 
-The bus returns at most one observation per node per poll. Busy environments may
-exceed its throughput; bounded queues drop excess reports. Worker loss counters are
-in reports, and local queue/storage loss counters appear on the console/LCD. The
-logical channel plan does not prove uninterrupted reception or report tuning failures
-as per-channel coverage yet. RSSI peaks represent observations that reach the parent.
+The bus returns at most one observation per node per poll. Separate bounded queues
+reserve 16 entries for observations matching local rules and 32 for ordinary
+observations; matching observations are drained first. Install the same reviewed
+rules on parent and workers so they agree on priority. The parent still evaluates
+the final detection rules. Accepted captures survive reassignment and lease expiry;
+expiry stops new captures, while previously accepted observations can still be sent.
+
+Busy environments can exceed bus or radio-parser throughput, and sustained matching
+traffic can fill the matching queue. Queue overflows are counted, not made lossless
+by acknowledgments. Parent console/LCD status distinguishes local losses from worker
+losses; structured worker status events retain per-node totals across worker reboots
+and offline periods for the parent's current uptime. Reports retained only in RAM
+are lost if their worker reboots. Parent deduplication state is also in RAM, so a
+parent reboot may process an unacknowledged observation again. RSSI peaks represent
+observations that reach the parent.
+
+Parent status separates online children, planned channels, and channels confirmed
+by successful tuning. Each report echoes the applied assignment generation and a
+bitmap of channels actually visited; a first-channel success does not confirm the
+rest. Reassignment, expired leases, worker reboots, and tuning errors invalidate
+that evidence. Tuning failures identify the failed channel in `worker_scan` events
+and are reported before retrying. Idle workers and BLE followers contribute no
+Wi-Fi coverage. These confirmations describe successful driver tuning, not
+uninterrupted RF reception or capture of every packet.
 
 Timestamps mapped from worker packet age are approximate; driver buffering and bus
 latency remain. Only active RMC sentences establish UTC initially; backup time before
