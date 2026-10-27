@@ -96,6 +96,9 @@ there is no autonomous fallback that silently changes coverage.
   (legacy and complete extended reports). Wi-Fi frames over 512 bytes and BLE
   advertising payloads over 255 bytes are currently skipped; fragmented reports
   are not reassembled. Arbitrary data traffic is not captured.
+- [Drone Remote ID decoding and storage](remote-id.md) for BLE and Wi-Fi beacon
+  broadcasts: identity, location, velocity, system and operator data, with raw evidence.
+  Supported detections are retained in matches-only mode without custom rules.
 - Build-time JSON rule loading: OUI, SSID/name prefix, BLE manufacturer prefix and
   16-bit service UUID, category switches, UTF-8 text prefixes, highest-priority
   matching actions, and a separate logged classification for every matching rule.
@@ -130,7 +133,7 @@ bus. The N32R8 parent now has a header map and peripheral wiring example;
 the actual HW-125 and LCD backpack variants still require confirmation. SD mount/write failures
 surface on the console and LCD status; recovery currently requires reboot. There
 is no runtime configuration reload, external RTC driver, automatic signature import,
-Remote ID payload decoder, drone GPS/velocity decoder, RFID reader, Bluetooth Classic
+Wi-Fi NAN Remote ID reception, RFID reader, Bluetooth Classic
 support or triangulation in this version. These are explicit next implementation
 stages, not simulated telemetry.
 
