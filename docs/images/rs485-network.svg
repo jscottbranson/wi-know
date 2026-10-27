@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000" role="img" aria-labelledby="title description">
+<title id="title">Shared RS-485 data bus</title>
+<desc id="description">One daisy chain connects the parent, scanning children, and dedicated follower. Power wiring is shown separately.</desc>
+<defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0,0 L0,6 L6,3 z" fill="#176aa5"/></marker></defs>
+<rect width="1440" height="1000" fill="#f6f8fb"/>
+<text x="48" y="50" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">wi-know / wiring</text>
+<text x="48" y="99" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="34" font-weight="700" text-anchor="start">Shared RS-485 data bus</text>
+<text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">One daisy chain connects the parent, scanning children, and dedicated follower. Power wiring is shown separately.</text>
+<polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="68" y="191" width="284" height="111" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2" stroke-dasharray="8 6"/>
+<text x="210" y="225" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">FULL-SIZE PARENT</text>
+<text x="210" y="254" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">ESP32-C5-WROOM-1</text>
+<text x="210" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">TX 11 · RX 12 · RTS 7*</text>
+<polyline points="210,302 210,343" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="8 6"/>
+<text x="223" y="329" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="12" font-weight="400" text-anchor="start">TX / RX / direction</text>
+<rect x="95" y="343" width="230" height="90" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="210" y="375" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">RS-485 transceiver</text>
+<text x="210" y="404" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">One at every board</text>
+<rect x="408" y="191" width="284" height="111" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="550" y="225" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">CHILD 1</text>
+<text x="550" y="254" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<text x="550" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">D6 TX · D7 RX · D3 RTS</text>
+<polyline points="550,302 550,343" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="563" y="329" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="12" font-weight="400" text-anchor="start">TX / RX / direction</text>
+<rect x="435" y="343" width="230" height="90" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="550" y="375" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">RS-485 transceiver</text>
+<text x="550" y="404" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">One at every board</text>
+<rect x="748" y="191" width="284" height="111" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="890" y="225" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">CHILD 2</text>
+<text x="890" y="254" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<text x="890" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">D6 TX · D7 RX · D3 RTS</text>
+<polyline points="890,302 890,343" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="903" y="329" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="12" font-weight="400" text-anchor="start">TX / RX / direction</text>
+<rect x="775" y="343" width="230" height="90" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="890" y="375" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">RS-485 transceiver</text>
+<text x="890" y="404" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">One at every board</text>
+<rect x="1088" y="191" width="284" height="111" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="1230" y="225" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">FOLLOWER</text>
+<text x="1230" y="254" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<text x="1230" y="280" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">D6 TX · D7 RX · D3 RTS</text>
+<polyline points="1230,302 1230,343" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1243" y="329" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="12" font-weight="400" text-anchor="start">TX / RX / direction</text>
+<rect x="1115" y="343" width="230" height="90" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="1230" y="375" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">RS-485 transceiver</text>
+<text x="1230" y="404" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="middle">One at every board</text>
+<polyline points="115,500 1325,500" fill="none" stroke="#147d64" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="55" y="506" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">A</text>
+<polyline points="115,555 1325,555" fill="none" stroke="#176aa5" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="55" y="561" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">B</text>
+<polyline points="115,610 1325,610" fill="none" stroke="#405165" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="55" y="616" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">GND</text>
+<text x="177" y="455" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">A</text>
+<polyline points="168,433 168,500" fill="none" stroke="#147d64" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="168" cy="500" r="5" fill="#147d64"/>
+<text x="219" y="455" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">B</text>
+<polyline points="210,433 210,555" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="210" cy="555" r="5" fill="#176aa5"/>
+<text x="261" y="455" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<polyline points="252,433 252,610" fill="none" stroke="#405165" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="252" cy="610" r="5" fill="#405165"/>
+<text x="517" y="455" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">A</text>
+<polyline points="508,433 508,500" fill="none" stroke="#147d64" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="508" cy="500" r="5" fill="#147d64"/>
+<text x="559" y="455" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">B</text>
+<polyline points="550,433 550,555" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="550" cy="555" r="5" fill="#176aa5"/>
+<text x="601" y="455" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<polyline points="592,433 592,610" fill="none" stroke="#405165" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="592" cy="610" r="5" fill="#405165"/>
+<text x="857" y="455" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">A</text>
+<polyline points="848,433 848,500" fill="none" stroke="#147d64" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="848" cy="500" r="5" fill="#147d64"/>
+<text x="899" y="455" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">B</text>
+<polyline points="890,433 890,555" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="890" cy="555" r="5" fill="#176aa5"/>
+<text x="941" y="455" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<polyline points="932,433 932,610" fill="none" stroke="#405165" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="932" cy="610" r="5" fill="#405165"/>
+<text x="1197" y="455" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">A</text>
+<polyline points="1188,433 1188,500" fill="none" stroke="#147d64" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1188" cy="500" r="5" fill="#147d64"/>
+<text x="1239" y="455" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">B</text>
+<polyline points="1230,433 1230,555" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1230" cy="555" r="5" fill="#176aa5"/>
+<text x="1281" y="455" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<polyline points="1272,433 1272,610" fill="none" stroke="#405165" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1272" cy="610" r="5" fill="#405165"/>
+<polyline points="115,500 115,515" fill="none" stroke="#183044" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="106" y="515" width="18" height="25" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
+<polyline points="115,540 115,555" fill="none" stroke="#183044" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="115" cy="500" r="5" fill="#147d64"/>
+<circle cx="115" cy="555" r="5" fill="#176aa5"/>
+<text x="130" y="537" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="700" text-anchor="start">120 Ω</text>
+<polyline points="1325,500 1325,515" fill="none" stroke="#183044" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="1316" y="515" width="18" height="25" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
+<polyline points="1325,540 1325,555" fill="none" stroke="#183044" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1325" cy="500" r="5" fill="#147d64"/>
+<circle cx="1325" cy="555" r="5" fill="#176aa5"/>
+<text x="1190" y="537" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="700" text-anchor="start">120 Ω</text>
+<text x="720" y="657" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">Dots mark electrical junctions. Unmarked crossings do not connect.</text>
+<rect x="48" y="690" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="723" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Bus layout</text>
+<text x="70" y="756" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Run A and B as a twisted pair; keep node stubs short. Join the grounds of this non-isolated bus.</text>
+<text x="70" y="784" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Fit termination only at the two cable ends. Check existing module termination before adding resistors.</text>
+<text x="70" y="812" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use identical module A/B conventions; provide one appropriate bias network if required by the modules.</text>
+<rect x="48" y="853" width="1344" height="84" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="886" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Parent header layout is pending</text>
+<text x="70" y="919" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">*Parent uses GPIO11 / 12 / 7 in config; verify those pins on its specific development-board headers.</text>
+<text x="48" y="976" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
+</svg>

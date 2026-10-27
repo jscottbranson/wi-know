@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "lab-test-beacon",
+      "category": "lab",
+      "enabled": false,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 10,
+      "confidence": "possible",
+      "actions": { "buzzer": true, "follow": true },
+      "predicates": [ { "field": "ssid_prefix", "value": "WI-KNOW-TEST-" } ],
+      "source": { "url": "local:lab-fixture", "revision": "1", "license": "CC0-1.0", "reviewed": "2026-10-27" }
+    }
+  ]
+}

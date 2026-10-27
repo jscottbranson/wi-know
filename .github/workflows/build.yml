@@ -1,0 +1,28 @@
+name: Build and test
+on: [push, pull_request]
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure
+  esp32c5:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.1
+    strategy:
+      matrix:
+        include:
+          - role: parent
+            id: 0
+          - role: child
+            id: 1
+          - role: follower
+            id: 2
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} build

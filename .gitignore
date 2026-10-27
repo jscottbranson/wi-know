@@ -1,0 +1,7 @@
+build/
+build-*/
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+__pycache__/
+*.pyc

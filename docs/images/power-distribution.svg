@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title description">
+<title id="title">Power distribution</title>
+<desc id="description">XIAO boards receive regulated 5 V in parallel. Parent input wiring remains provisional until its board layout is confirmed.</desc>
+<defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0,0 L0,6 L6,3 z" fill="#176aa5"/></marker></defs>
+<rect width="1440" height="1040" fill="#f6f8fb"/>
+<text x="48" y="50" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">wi-know / wiring</text>
+<text x="48" y="99" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="34" font-weight="700" text-anchor="start">Power distribution</text>
+<text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO boards receive regulated 5 V in parallel. Parent input wiring remains provisional until its board layout is confirmed.</text>
+<polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="70" y="195" width="1300" height="105" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="100" y="235" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">REGULATED 5 V SUPPLY / USB POWER BANK</text>
+<text x="100" y="272" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Verify output voltage and total current capacity for all boards and peripherals.</text>
+<polyline points="1240,300 1240,345" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1320,300 1320,395" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1228" y="327" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="end">+5 V</text>
+<text x="1308" y="327" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="end">GND</text>
+<circle cx="1240" cy="345" r="5" fill="#b83543"/>
+<circle cx="1320" cy="395" r="5" fill="#405165"/>
+<polyline points="110,345 1330,345" fill="none" stroke="#b83543" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="110,395 1330,395" fill="none" stroke="#405165" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="70" y="351" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="end">+5 V</text>
+<text x="70" y="402" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="end">GND</text>
+<polyline points="190,345 190,480" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="270,395 270,480" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="190" cy="345" r="5" fill="#b83543"/>
+<circle cx="270" cy="395" r="5" fill="#405165"/>
+<text x="190" y="465" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">VBUS</text>
+<text x="270" y="465" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND</text>
+<rect x="85" y="480" width="290" height="100" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="230" y="517" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">CHILD 1</text>
+<text x="230" y="550" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<polyline points="190,580 190,625" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="270,580 270,625" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="183" y="607" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="end">3V3 OUT</text>
+<text x="277" y="607" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<rect x="85" y="625" width="290" height="76" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="230" y="656" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Local 3.3 V transceiver</text>
+<text x="230" y="682" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="400" text-anchor="middle">VCC from this XIAO only</text>
+<polyline points="680,345 680,480" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="760,395 760,480" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="680" cy="345" r="5" fill="#b83543"/>
+<circle cx="760" cy="395" r="5" fill="#405165"/>
+<text x="680" y="465" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">VBUS</text>
+<text x="760" y="465" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND</text>
+<rect x="575" y="480" width="290" height="100" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="720" y="517" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">CHILD 2 / MORE</text>
+<text x="720" y="550" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<polyline points="680,580 680,625" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="760,580 760,625" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="673" y="607" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="end">3V3 OUT</text>
+<text x="767" y="607" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<rect x="575" y="625" width="290" height="76" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="720" y="656" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Local 3.3 V transceiver</text>
+<text x="720" y="682" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="400" text-anchor="middle">VCC from this XIAO only</text>
+<polyline points="1170,345 1170,480" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1250,395 1250,480" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="1170" cy="345" r="5" fill="#b83543"/>
+<circle cx="1250" cy="395" r="5" fill="#405165"/>
+<text x="1170" y="465" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">VBUS</text>
+<text x="1250" y="465" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND</text>
+<rect x="1065" y="480" width="290" height="100" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="1210" y="517" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="middle">FOLLOWER</text>
+<text x="1210" y="550" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">XIAO ESP32-C5</text>
+<polyline points="1170,580 1170,625" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1250,580 1250,625" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="1163" y="607" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="end">3V3 OUT</text>
+<text x="1257" y="607" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="14" font-weight="400" text-anchor="start">GND</text>
+<rect x="1065" y="625" width="290" height="76" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
+<text x="1210" y="656" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="middle">Local 3.3 V transceiver</text>
+<text x="1210" y="682" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="400" text-anchor="middle">VCC from this XIAO only</text>
+<rect x="48" y="730" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="763" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Full-size ESP32-C5-WROOM-1 parent: power connector / header positions TBD</text>
+<text x="70" y="796" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use the parent board’s documented USB power input for now. No parent VIN / 5V pin is assigned here.</text>
+<text x="70" y="824" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">For this non-isolated RS-485 bus, connect parent GND to the same common ground.</text>
+<rect x="48" y="868" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="901" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Keep the voltage rails separate</text>
+<text x="70" y="934" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not feed external power into XIAO 3V3_OUT. Do not connect different boards’ 3V3 outputs together.</text>
+<text x="70" y="962" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not attach the LCD backpack or HW-125 to a rail until its actual voltage requirements are confirmed.</text>
+<text x="48" y="1016" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
+</svg>
