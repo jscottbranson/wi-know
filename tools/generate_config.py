@@ -37,6 +37,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         'ble': {'enabled': bool},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
         'detection': {'rules_directory': str, 'enabled_categories': list},
+        'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list},
         'follower': {'enabled': bool, 'release_after_ms': int},
         'gps': {'enabled': bool, 'model': str, 'backup_battery_present': bool, **dict.fromkeys(('uart', 'rx_pin', 'tx_pin', 'baud', 'max_fix_age_ms', 'max_timing_uncertainty_ms'), int)},
         'sd': {'enabled': bool, 'model': str, **dict.fromkeys(('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin', 'clock_khz'), int)},
@@ -110,6 +111,22 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     integer(trend['minimum_samples'], 1, 31, 'signal_trend.minimum_samples')
     integer(trend['deadband_db'], 0, 30, 'signal_trend.deadband_db')
     integer(trend['confirmations'], 1, 20, 'signal_trend.confirmations')
+    following = settings['following_alert']
+    integer(following['distance_m'], 1, 100000, 'following_alert.distance_m')
+    integer(following['delay_ms'], 0, 3600000, 'following_alert.delay_ms')
+    integer(following['max_gap_ms'], 1, 3600000, 'following_alert.max_gap_ms')
+    require(not following['enabled'] or settings['gps']['enabled'], 'following alerts require GPS')
+    require(len(following['ignore_devices']) <= 64, 'maximum 64 ignored devices')
+    identities = set()
+    for device in following['ignore_devices']:
+        require(type(device) is dict and set(device) == {'radio', 'address_type', 'address'}, 'invalid ignored device keys')
+        require(device['radio'] in ('wifi', 'ble'), 'invalid ignored device radio')
+        integer(device['address_type'], 0, 1, 'ignored device address_type')
+        require(device['radio'] != 'wifi' or device['address_type'] == 0, 'Wi-Fi address_type must be 0')
+        require(type(device['address']) is str and re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', device['address']), 'ignored device needs colon-separated MAC address')
+        identity = (device['radio'], device['address_type'], device['address'].lower())
+        require(identity not in identities, 'duplicate ignored device')
+        identities.add(identity)
     used = {}
     for section, values in settings.items():
         if not isinstance(values, dict):
@@ -179,6 +196,13 @@ def emit(settings, rules):
             if isinstance(value, (bool, int, str)):
                 kind = 'bool' if isinstance(value, bool) else 'int' if isinstance(value, int) else 'auto'
                 out.append(f'inline constexpr {kind} {section}_{key} = {cpp(value)};')
+    ignored = settings['following_alert']['ignore_devices']
+    out.append(f'inline constexpr std::array<DeviceIdentity, {len(ignored)}> following_ignore = {{{{')
+    for device in ignored:
+        address = ','.join('0x'+part for part in device['address'].split(':'))
+        out.append('DeviceIdentity{Radio::'+device['radio']+','+str(device['address_type'])+',{{'+address+'}}},')
+    out.append('}};')
+    out.append('inline constexpr FollowingConfig following_config{following_alert_enabled, following_alert_distance_m, following_alert_delay_ms, following_alert_max_gap_ms};')
     out.append(f'inline constexpr Role role = Role::{settings["node"]["role"]};')
     channels = ','.join('Channel{'+str(n)+'}' for n in settings['wifi']['channels'])
     out.append(f'inline constexpr std::array<Channel, {len(settings["wifi"]["channels"])}> channels = {{{channels}}};')

@@ -150,6 +150,36 @@ class Tracker {
 bool same_signal(const Observation &a, const Observation &b);
 const char *trend_name(Trend trend);
 
+// Identity excludes receiver/channel so sightings from different nodes are combined.
+struct DeviceIdentity {
+    Radio radio{};
+    uint8_t address_type{};
+    std::array<uint8_t, 6> address{};
+};
+struct FollowingConfig {
+    bool enabled{};
+    uint32_t distance_m{200}, delay_ms{30000}, max_gap_ms{15000};
+};
+class FollowingDetector {
+  public:
+    FollowingDetector(FollowingConfig config, const DeviceIdentity *ignored, size_t count)
+        : config_(config), ignored_(ignored), ignored_count_(count) {}
+    // True once per continuous encounter, only on a fresh sighting beyond the radius.
+    bool observe(const Observation &observation, Fix fix, double &distance_m);
+
+  private:
+    struct Entry {
+        bool used{}, waiting{}, alerted{};
+        DeviceIdentity identity{};
+        Fix origin{};
+        uint64_t last_seen{}, beyond_since{};
+    };
+    FollowingConfig config_;
+    const DeviceIdentity *ignored_;
+    size_t ignored_count_;
+    std::array<Entry, max_tracks> entries_{};
+};
+
 // Versioned little-endian wire protocol. Not a packed native struct.
 enum class MessageType : uint8_t { poll = 1, report = 2 };
 struct Packet {

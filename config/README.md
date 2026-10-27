@@ -61,3 +61,49 @@ GPS supplies UTC and receiver position; its onboard backup battery is recorded i
 configuration. The first driver trusts active, checksum-valid RMC date/time and
 coordinates. Battery-retained time availability without a fix still requires a
 hardware check. No external RTC driver or fabricated UTC fallback is present.
+
+## Following-device alerts
+
+Set `following_alert.enabled` to `true` in `settings.json`, enable and wire GPS,
+and rebuild/flash the parent. This works without detection rules, including in
+`matches` logging mode. Bluetooth support covers BLE advertisements only.
+
+```json
+"following_alert": {
+  "enabled": true,
+  "distance_m": 200,
+  "delay_ms": 30000,
+  "max_gap_ms": 15000,
+  "ignore_devices": [
+    {"radio": "wifi", "address_type": 0, "address": "AA:BB:CC:DD:EE:FF"},
+    {"radio": "ble", "address_type": 1, "address": "11:22:33:44:55:66"}
+  ]
+}
+```
+
+Use addresses from observation logs. Wi-Fi uses address type 0; BLE uses 0 for
+public and 1 for random addresses. Ignore entries match the full address, radio,
+and address type and suppress only following alerts, not rule alerts.
+
+For each unfamiliar device, the first valid GPS-tagged sighting establishes the
+receiver's starting location. The delay starts at the first further sighting at
+least `distance_m` away from that location (straight-line displacement, not path
+length). Further sightings must remain beyond that radius for `delay_ms` before
+an alert is emitted. Returning inside the radius restarts the delay. Sightings
+may be at most `max_gap_ms` apart; a longer gap or an observation without a valid
+GPS fix resets the encounter. Set this gap above the expected scan/channel sweep
+time. Delayed or duplicate reports do not advance timers, and stale buffered
+captures cannot trigger an alert. Zero delay alerts on the first qualifying
+sighting after the distance threshold is crossed.
+
+Each continuous encounter produces one `following_alert` JSON event over serial
+and SD when available, a 30-second LCD message, and a buzzer pulse when enabled
+(subject to the shared buzzer cooldown). Configure `buzzer.enabled` and its GPIO
+for audible alerts. A new encounter can alert again after a sighting gap. Up to
+64 identities are tracked; the least recently seen identity is replaced when full.
+State is cleared on reboot.
+
+This is a movement correlation heuristic: GPS locates the receiver, and the
+configured radius is an assumed plausible radio range. GPS error and long-range
+transmitters can produce false alerts. Randomized Wi-Fi/BLE addresses can break
+continuity and require ignore-list updates; rotating identities are not linked.

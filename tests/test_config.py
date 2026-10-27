@@ -13,6 +13,22 @@ spec.loader.exec_module(generate)
 class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
+    def test_following_alert(self):
+        self.settings['following_alert']['enabled'] = True
+        with self.assertRaises(ValueError):
+            generate.validate(self.settings)
+        self.settings['gps'].update(enabled=True, rx_pin=5)
+        self.settings['following_alert']['ignore_devices'] = [
+            {'radio': 'ble', 'address_type': 1, 'address': 'AA:BB:CC:DD:EE:FF'}]
+        settings, rules = generate.validate(self.settings)
+        self.assertIn('DeviceIdentity{Radio::ble,1,{{0xAA', generate.emit(settings, rules))
+        for field, value in [('distance_m', 0), ('delay_ms', -1), ('max_gap_ms', 0),
+                             ('ignore_devices', [{'radio': 'wifi', 'address_type': 1, 'address': 'bad'}])]:
+            invalid = copy.deepcopy(self.settings)
+            invalid['following_alert'][field] = value
+            with self.assertRaises(ValueError):
+                generate.validate(invalid)
+
     def test_defaults(self):
         settings, rules = generate.validate(self.settings)
         self.assertEqual(settings['node']['role'], 'parent')

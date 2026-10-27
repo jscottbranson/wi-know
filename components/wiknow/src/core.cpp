@@ -7,6 +7,64 @@
 #include <cstring>
 
 namespace wiknow {
+bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_m) {
+    if (!config_.enabled)
+        return false;
+    auto equal = [&](const DeviceIdentity &id) {
+        return id.radio == o.radio && id.address_type == o.address_type && id.address == o.address;
+    };
+    for (size_t i = 0; i < ignored_count_; ++i)
+        if (equal(ignored_[i]))
+            return false;
+    Entry *entry = nullptr, *slot = &entries_[0];
+    for (auto &e : entries_) {
+        if (e.used && equal(e.identity)) {
+            entry = &e;
+            break;
+        }
+        if (!e.used || (slot->used && e.last_seen < slot->last_seen))
+            slot = &e;
+    }
+    if (entry && o.at_ms <= entry->last_seen)
+        return false; // duplicate or delayed worker report
+    if (!fix.valid || !std::isfinite(fix.latitude) || !std::isfinite(fix.longitude) ||
+        std::abs(fix.latitude) > 90 || std::abs(fix.longitude) > 180) {
+        if (entry)
+            *entry = {};
+        return false;
+    }
+    if (!entry || o.at_ms - entry->last_seen > config_.max_gap_ms) {
+        entry = entry ? entry : slot;
+        *entry = {};
+        entry->used = true;
+        entry->identity = {o.radio, o.address_type, o.address};
+        entry->origin = fix;
+        entry->last_seen = o.at_ms;
+        return false;
+    }
+    entry->last_seen = o.at_ms;
+    constexpr double radians = 3.14159265358979323846 / 180.0;
+    double lat = (fix.latitude - entry->origin.latitude) * radians;
+    double lon = (fix.longitude - entry->origin.longitude) * radians;
+    double a = std::sin(lat / 2) * std::sin(lat / 2) +
+               std::cos(fix.latitude * radians) * std::cos(entry->origin.latitude * radians) *
+                   std::sin(lon / 2) * std::sin(lon / 2);
+    distance_m = 6371000.0 * 2 * std::asin(std::sqrt(std::clamp(a, 0.0, 1.0)));
+    if (distance_m < config_.distance_m) {
+        entry->waiting = false;
+        return false;
+    }
+    if (!entry->waiting) {
+        entry->waiting = true;
+        entry->beyond_since = o.at_ms;
+    }
+    if (!entry->alerted && o.at_ms - entry->beyond_since >= config_.delay_ms) {
+        entry->alerted = true;
+        return true;
+    }
+    return false;
+}
+
 namespace {
 bool hex(std::string_view text, uint8_t *out, size_t &size, size_t capacity) {
     size = 0;

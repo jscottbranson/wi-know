@@ -46,6 +46,9 @@ GPS association, peak RSSI, LED behavior, clock fallback, and implementation sta
 **Edit [config/settings.json](config/settings.json)** for device settings and GPIOs.
 **Store matching rules in [rules/](rules/README.md)** as JSON documents.
 See [configuration help](config/README.md) and [build/run instructions](docs/firmware.md).
+Optional [following-device alerts](config/README.md#following-device-alerts) compare
+continued Wi-Fi/BLE sightings with GPS displacement, with an ignore list and
+configurable distance and delay.
 Settings and rules are validated and compiled into firmware; rebuild after changes.
 An optional [parent peripheral wiring plan](docs/wiring.md#parent-leds-buzzer-screen-and-gps)
 includes LED resistors, buzzer transistor, LCD level shifting, GPS and microSD connections,

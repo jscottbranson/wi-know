@@ -286,8 +286,51 @@ static void json_test() {
     std::fputs(json, stdout);
     CHECK(!observation_json(o, t, {}, {}, gps, json, 10));
 }
+static void following_test() {
+    DeviceIdentity ignored{Radio::ble, 1, {{1, 2, 3, 4, 5, 6}}};
+    FollowingDetector detector({true, 100, 2000, 1500}, &ignored, 1);
+    auto o = obs(-50, 1000);
+    double distance = 0;
+    auto sight = [&](uint64_t time, double latitude, bool valid = true) {
+        o.at_ms = time;
+        return detector.observe(o, {valid, latitude, 0, time}, distance);
+    };
+    CHECK(!sight(1000, 0));
+    CHECK(!sight(2000, .002)); // crossed 100m: start delay
+    CHECK(!sight(3000, .002));
+    o.node = 2;
+    o.channel = 6; // combine receivers/channels
+    CHECK(sight(4000, .002));
+    CHECK(distance > 200 && distance < 230);
+    CHECK(!sight(5000, .003)); // once per encounter
+    CHECK(!sight(7000, .003)); // gap creates a new origin
+    CHECK(!sight(8000, .005));
+    CHECK(!sight(9000, .003)); // returning inside radius resets timer
+    CHECK(!sight(10000, .005));
+    CHECK(!sight(11000, .005, false)); // loss of GPS resets encounter
+    CHECK(!sight(12000, .005));
+    CHECK(!sight(13000, .007));
+    CHECK(!sight(12500, .007)); // out-of-order reports ignored
+    CHECK(!sight(14000, .007));
+    CHECK(sight(15000, .007));
+    FollowingDetector disabled({}, nullptr, 0);
+    CHECK(!disabled.observe(o, {true, 0, 0, 0}, distance));
+    o.radio = ignored.radio;
+    o.address_type = ignored.address_type;
+    o.address = ignored.address;
+    CHECK(!sight(16000, 0));
+    CHECK(!sight(17000, .002));
+    CHECK(!sight(18000, .002));
+    CHECK(!sight(19000, .002));
+    FollowingDetector immediate({true, 100, 0, 1500}, nullptr, 0);
+    o.at_ms = 1000;
+    CHECK(!immediate.observe(o, {true, 0, 0, 1000}, distance));
+    o.at_ms = 2000;
+    CHECK(immediate.observe(o, {true, .002, 0, 2000}, distance));
+}
 int main() {
     CHECK(config::channels.size() > 0);
+    following_test();
     membership_test();
     parser_match_test();
     gps_test();

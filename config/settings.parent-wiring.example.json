@@ -57,6 +57,7 @@
       "lab"
     ]
   },
+  "following_alert": { "enabled": false, "distance_m": 200, "delay_ms": 30000, "max_gap_ms": 15000, "ignore_devices": [] },
   "follower": {
     "enabled": true,
     "release_after_ms": 30000

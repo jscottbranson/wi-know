@@ -12,6 +12,11 @@ namespace c = wiknow::config;
 static Membership members;
 static Tracker tracker(c::trend_config);
 static Gps gps;
+static FollowingDetector following(c::following_config, c::following_ignore.data(),
+                                   c::following_ignore.size());
+static bool following_visible{};
+static uint64_t following_alert_at{};
+static char following_address[18]{};
 static Observation target{};
 static const Rule *target_rule{};
 static uint64_t target_seen{}, last_beep{};
@@ -26,6 +31,33 @@ static void consume(Observation o) {
     // Drain GPS again after a bus poll so buffered worker captures use the latest fixes.
     platform::gps_update(gps);
     Fix fix = gps.tag(o, c::gps_max_fix_age_ms, c::gps_max_timing_uncertainty_ms);
+    uint64_t received = platform::now_ms();
+    double distance_m = 0;
+    Fix following_fix = fix;
+    // Buffered captures must not trigger an alert after the device has disappeared.
+    if (o.at_ms > received || received - o.at_ms > uint64_t(c::following_alert_max_gap_ms))
+        following_fix.valid = false;
+    if (following.observe(o, following_fix, distance_m)) {
+        std::snprintf(following_address, sizeof(following_address), "%02X:%02X:%02X:%02X:%02X:%02X",
+                      o.address[0], o.address[1], o.address[2], o.address[3], o.address[4],
+                      o.address[5]);
+        following_visible = true;
+        following_alert_at = received;
+        char event[384];
+        std::snprintf(event, sizeof(event),
+                      "{\"event\":\"following_alert\",\"radio\":\"%s\","
+                      "\"address\":\"%s\",\"address_type\":%u,\"at_ms\":%llu,"
+                      "\"displacement_m\":%.1f,\"delay_ms\":%d}\n",
+                      o.radio == Radio::wifi ? "wifi" : "ble", following_address,
+                      unsigned(o.address_type), static_cast<unsigned long long>(o.at_ms),
+                      distance_m, c::following_alert_delay_ms);
+        platform::write_log(event);
+        if (!has_beeped || received - last_beep >= uint64_t(c::buzzer_cooldown_ms)) {
+            platform::indicators(target_trend, true);
+            last_beep = received;
+            has_beeped = true;
+        }
+    }
     Match match = best_match(c::rules.data(), c::rules.size(), o);
     // Preserve matching target state even when logging is matches-only.
     if (!match.rule && std::strcmp(c::logging_mode, "all") != 0)
@@ -146,7 +178,10 @@ static void parent_loop() {
         if (now - last_display >= 250) {
             char line1[32]{}, line2[32]{};
             size_t page = (now / c::display_page_interval_ms) % 3;
-            if (page == 0) {
+            if (following_visible && now - following_alert_at < 30000) {
+                std::snprintf(line1, sizeof(line1), "Following alert");
+                std::snprintf(line2, sizeof(line2), "%.16s", following_address);
+            } else if (page == 0) {
                 auto plan = members.plan(c::channels.data(), c::channels.size());
                 std::snprintf(line1, sizeof(line1), "Children:%u", unsigned(plan.count));
                 std::snprintf(line2, sizeof(line2), "Gap:%u SD:%s", unsigned(plan.uncovered_count),
