@@ -11,6 +11,7 @@
 #include "wiknow/capture_policy.hpp"
 #include "wiknow/observation_queue.hpp"
 #include "wiknow/standalone_scan.hpp"
+#include "wiknow/remote_id.hpp"
 #include <algorithm>
 #include <cstring>
 
@@ -48,7 +49,8 @@ bool take_observation(wiknow::Observation &o) {
 static void enqueue_observation(const wiknow::Observation &o) {
     // Match outside the radio driver's raw callback and outside the queue lock.
     const bool matching =
-        wiknow::best_match(wiknow::config::rules.data(), wiknow::config::rules.size(), o).rule;
+        wiknow::best_match(wiknow::config::rules.data(), wiknow::config::rules.size(), o).rule ||
+        wiknow::remote_id_messages(o).count != 0;
     portENTER_CRITICAL(&observation_lock);
     const bool queued = observation_queue.push(o, matching);
     portEXIT_CRITICAL(&observation_lock);

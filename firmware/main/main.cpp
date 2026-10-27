@@ -3,6 +3,7 @@
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
 #include "wiknow/scan_status.hpp"
 #include "wiknow/worker_counters.hpp"
@@ -93,7 +94,8 @@ static void consume(Observation o) {
     }
     Match match = best_match(c::rules.data(), c::rules.size(), o);
     // Preserve matching target state even when logging is matches-only.
-    if (!match.rule && std::strcmp(c::logging_mode, "all") != 0)
+    const auto drone = remote_id_messages(o);
+    if (!match.rule && !drone.count && std::strcmp(c::logging_mode, "all") != 0)
         return;
     Track &track = tracker.observe(o, fix);
     if (match.rule && received >= o.at_ms &&
@@ -134,6 +136,12 @@ static void consume(Observation o) {
         }
     }
     char json[log_line_capacity];
+    for (size_t i = 0; i < drone.count; ++i) {
+        if (drone_detection_json(o, i, fix, gps, json, sizeof(json)))
+            platform::write_log(json);
+        else
+            ++platform::dropped;
+    }
     // Preserve every matching classification; actions still use the highest priority.
     // Repeated records share one observation identity and do not increment its count.
     if (match.rule) {

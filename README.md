@@ -12,8 +12,8 @@ and Wi-Fi scanning on one board, trading scan coverage for fewer devices.
 The initial C++ firmware targets ESP-IDF v5.5.1 on ESP32-C5, with parent, child,
 and follower roles. It includes passive radio reception, coordination, matching,
 GPS/peak tracking, and peripheral drivers. Host tests and firmware builds check the
-software; physical hardware validation is still required. Production signatures and
-Remote ID telemetry decoding are not yet included.
+software; physical hardware validation is still required. Production signatures are not yet included. [Drone Remote ID decoding and storage](docs/remote-id.md)
+support BLE and Wi-Fi beacon broadcasts.
 
 ## Hardware
 
