@@ -1,5 +1,6 @@
 #include "esp_log.h"
 #include "esp_random.h"
+#include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
 #include "wiknow/report_delivery.hpp"
@@ -78,15 +79,12 @@ static void consume(Observation o) {
                       o.address[5]);
         following_visible = true;
         following_alert_at = received;
-        char event[384];
-        std::snprintf(event, sizeof(event),
-                      "{\"event\":\"following_alert\",\"radio\":\"%s\","
-                      "\"address\":\"%s\",\"address_type\":%u,\"at_ms\":%llu,"
-                      "\"displacement_m\":%.1f,\"delay_ms\":%d}\n",
-                      o.radio == Radio::wifi ? "wifi" : "ble", following_address,
-                      unsigned(o.address_type), static_cast<unsigned long long>(o.at_ms),
-                      distance_m, c::following_alert_delay_ms);
-        platform::write_log(event);
+        char event[1024];
+        if (platform::following_alert_json(o, fix, gps, distance_m, c::following_alert_delay_ms,
+                                           event, sizeof(event)))
+            platform::write_log(event);
+        else
+            ++platform::dropped;
         if (!has_beeped || received - last_beep >= uint64_t(c::buzzer_cooldown_ms)) {
             platform::indicators(target_trend, true);
             last_beep = received;
@@ -98,11 +96,15 @@ static void consume(Observation o) {
     if (!match.rule && std::strcmp(c::logging_mode, "all") != 0)
         return;
     Track &track = tracker.observe(o, fix);
-    if (match.rule && platform::now_ms() - o.at_ms <= uint64_t(c::signal_trend_stale_ms)) {
+    if (match.rule && received >= o.at_ms &&
+        received - o.at_ms <= uint64_t(c::signal_trend_stale_ms)) {
         bool current = target_rule && same_target(target, o);
         bool expired = !target_rule ||
                        platform::now_ms() - target_seen >= uint64_t(c::follower_release_after_ms);
-        if (current || expired || match.rule->priority >= target_rule->priority) {
+        if ((current && o.at_ms >= target.at_ms) || expired ||
+            (!current &&
+             (match.rule->priority > target_rule->priority ||
+              (match.rule->priority == target_rule->priority && o.at_ms >= target_seen)))) {
             // Prefer the dedicated follower's measurements to avoid source-switch flicker.
             bool existing_follower = false, incoming_follower = false;
             for (const auto &n : members.nodes()) {
@@ -117,11 +119,11 @@ static void consume(Observation o) {
                     tracker.reset_trend(track);
                 target = o;
                 target_rule = match.rule;
-                target_seen = o.at_ms;
+                target_seen = current ? std::max(target_seen, o.at_ms) : o.at_ms;
                 target_peak = track.peak.rssi;
                 target_trend = tracker.trend(track, platform::now_ms());
             } else
-                target_seen = o.at_ms;
+                target_seen = std::max(target_seen, o.at_ms);
         }
         uint64_t now = platform::now_ms();
         if (match.rule->buzzer &&
@@ -132,7 +134,17 @@ static void consume(Observation o) {
         }
     }
     char json[log_line_capacity];
-    if (observation_json(o, track, match, fix, gps, json, sizeof(json)))
+    // Preserve every matching classification; actions still use the highest priority.
+    // Repeated records share one observation identity and do not increment its count.
+    if (match.rule) {
+        for (const auto &rule : c::rules)
+            if (matches(rule, o)) {
+                if (observation_json(o, track, Match{&rule}, fix, gps, json, sizeof(json)))
+                    platform::write_log(json);
+                else
+                    ++platform::dropped;
+            }
+    } else if (observation_json(o, track, {}, fix, gps, json, sizeof(json)))
         platform::write_log(json);
     else
         ++platform::dropped;

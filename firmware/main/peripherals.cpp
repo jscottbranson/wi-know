@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
+#include "log_helpers.hpp"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
 #include "wiknow/bus_timing.hpp"
@@ -207,10 +208,8 @@ static LogFiles files() {
     if (!dir)
         return result;
     while (auto *entry = readdir(dir)) {
-        unsigned id{};
-        int consumed{};
-        if (std::sscanf(entry->d_name, "WK%8u.LOG%n", &id, &consumed) == 1 &&
-            consumed == int(std::strlen(entry->d_name))) {
+        uint32_t id{};
+        if (log_file_id(entry->d_name, id)) {
             result.newest = std::max(result.newest, uint32_t(id));
             result.oldest = std::min(result.oldest, uint32_t(id));
             ++result.count;

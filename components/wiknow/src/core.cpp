@@ -92,8 +92,7 @@ bool hex(std::string_view text, uint8_t *out, size_t &size, size_t capacity) {
 void text_copy(std::array<char, 33> &out, const uint8_t *src, size_t n) {
     out.fill(0);
     n = std::min(n, out.size() - 1);
-    for (size_t i = 0; i < n; ++i)
-        out[i] = src[i] >= 32 && src[i] < 127 ? char(src[i]) : '?';
+    std::copy(src, src + n, out.begin());
 }
 bool starts(std::string_view a, std::string_view b) {
     return !b.empty() && a.size() >= b.size() && a.substr(0, b.size()) == b;
@@ -242,20 +241,44 @@ struct Json {
         }
         used += size_t(n);
     }
+    // Keep valid UTF-8 readable; escape individual invalid bytes so radio input
+    // can never produce malformed JSON or be confused with a literal '?'.
     void string(std::string_view s) {
         add("\"");
-        for (unsigned char c : s) {
+        for (size_t i = 0; i < s.size(); ++i) {
+            const auto c = static_cast<unsigned char>(s[i]);
             if (c == '"' || c == '\\')
                 add("\\%c", c);
             else if (c < 32)
                 add("\\u%04x", unsigned(c));
-            else
+            else if (c < 128)
                 add("%c", c);
+            else {
+                size_t n = c >= 0xc2 && c <= 0xdf   ? 2
+                           : c >= 0xe0 && c <= 0xef ? 3
+                           : c >= 0xf0 && c <= 0xf4 ? 4
+                                                    : 0;
+                bool valid = n && i + n <= s.size();
+                for (size_t k = 1; valid && k < n; ++k)
+                    valid = (static_cast<unsigned char>(s[i + k]) & 0xc0) == 0x80;
+                if (valid) {
+                    const auto second = static_cast<unsigned char>(s[i + 1]);
+                    valid = !(c == 0xe0 && second < 0xa0) && !(c == 0xed && second >= 0xa0) &&
+                            !(c == 0xf0 && second < 0x90) && !(c == 0xf4 && second >= 0x90);
+                }
+                if (valid) {
+                    for (size_t k = 0; k < n; ++k)
+                        add("%c", static_cast<unsigned char>(s[i + k]));
+                    i += n - 1;
+                } else
+                    add("\\u%04x", unsigned(c));
+            }
         }
         add("\"");
     }
     void fix(Fix f) {
-        if (!f.valid)
+        if (!f.valid || !std::isfinite(f.latitude) || !std::isfinite(f.longitude) ||
+            std::abs(f.latitude) > 90 || std::abs(f.longitude) > 180)
             add("null");
         else
             add("{\"latitude\":%.7f,\"longitude\":%.7f,\"fix_at_ms\":%llu}", f.latitude,
@@ -536,8 +559,17 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
         t->peak_changed = true;
     } else
         t->peak_changed = false;
+    // Priority queues and transport delays can reorder valid captures. Preserve
+    // their historical evidence without feeding them into current trend windows.
+    t->first_seen = std::min(t->first_seen, o.at_ms);
+    ++t->count;
+    if (o.rssi > t->peak.rssi) {
+        t->peak = o;
+        t->peak_fix = fix;
+        t->peak_changed = true;
+    }
     if (o.at_ms < t->latest.at_ms)
-        return *t; // stale/out-of-order sample
+        return *t;
     if (t->count && o.at_ms - t->latest.at_ms > config_.stale_ms) {
         t->sample_count = 0;
         t->rssi_histogram.fill(0);
@@ -546,11 +578,6 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
         t->candidate = Trend::unknown;
         t->confirmations = 0;
         t->window_start = o.at_ms;
-    }
-    if (o.rssi > t->peak.rssi) {
-        t->peak = o;
-        t->peak_fix = fix;
-        t->peak_changed = true;
     }
     if (config_.window_ms && o.at_ms - t->window_start >= config_.window_ms) {
         if (t->sample_count >= config_.minimum_samples && config_.minimum_samples) {
@@ -595,7 +622,6 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
         ++t->sample_count;
     }
     t->latest = o;
-    ++t->count;
     return *t;
 }
 void Tracker::reset_trend(Track &t) {
@@ -863,11 +889,24 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         j.add("%s%02x", i ? ":" : "", unsigned(o.address[i]));
     j.add("\",\"rssi_dbm\":%d,\"ssid\":", int(o.rssi));
     j.string(text_view(o.ssid));
-    j.add(",\"name\":");
+    j.add(",\"ssid_hex\":\"");
+    for (unsigned char byte : text_view(o.ssid))
+        j.add("%02x", unsigned(byte));
+    j.add("\",\"name\":");
     j.string(text_view(o.name));
     j.add(",\"rule_id\":");
     if (match.rule)
         j.string(match.rule->id);
+    else
+        j.add("null");
+    j.add(",\"category\":");
+    if (match.rule)
+        j.string(match.rule->category);
+    else
+        j.add("null");
+    j.add(",\"rule_priority\":");
+    if (match.rule)
+        j.add("%u", unsigned(match.rule->priority));
     else
         j.add("null");
     j.add(",\"receiver_boot\":%u,\"confidence\":", unsigned(o.receiver_boot));
@@ -880,13 +919,21 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
             j.add("%02x", unsigned(o.payload[i]));
     j.add("\"");
-    j.add(",\"receiver_fix\":");
+    j.add(",\"location_role\":\"receiver\",\"receiver_fix\":");
     j.fix(fix);
     j.add(",\"peak_dbm\":%d,\"peak_capture_ms\":%llu,\"peak_receiver_fix\":", int(t.peak.rssi),
           (unsigned long long)t.peak.at_ms);
     j.fix(t.peak_fix);
-    j.add(",\"peak_changed\":%s,\"observations\":%llu}\n", t.peak_changed ? "true" : "false",
-          (unsigned long long)t.count);
+    j.add(",\"peak_sequence\":%u,\"peak_timing_uncertainty_ms\":%u,\"peak_utc_ms\":",
+          unsigned(t.peak.sequence), unsigned(t.peak.timing_uncertainty_ms));
+    if (gps.utc(t.peak.at_ms, utc))
+        j.add("%lld", (long long)utc);
+    else
+        j.add("null");
+    j.add(",\"first_seen_ms\":%llu,\"last_seen_ms\":%llu,\"peak_changed\":%s,\"observations\":%llu}"
+          "\n",
+          (unsigned long long)t.first_seen, (unsigned long long)t.latest.at_ms,
+          t.peak_changed ? "true" : "false", (unsigned long long)t.count);
     return j.ok;
 }
 } // namespace wiknow

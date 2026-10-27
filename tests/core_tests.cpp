@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 #include <string>
 using namespace wiknow;
 #define CHECK(condition)                                                                           \
@@ -204,12 +205,19 @@ static void tracking_test() {
     CHECK(!same.peak_fix.valid);
     auto previous_count = same.count;
     t.observe(obs(-40, 6000), a);
-    CHECK(same.count == previous_count && same.peak.rssi == -50);
+    CHECK(same.count == previous_count + 1 && same.peak.rssi == -40);
+    CHECK(same.latest.at_ms == 7000 && same.peak.at_ms == 6000);
+    CHECK(same.peak_fix.latitude == a.latitude && same.peak_changed);
+    const auto samples = same.sample_count;
+    t.observe(obs(-30, 0), b);
+    CHECK(same.first_seen == 0 && same.latest.at_ms == 7000);
+    CHECK(same.peak.rssi == -30 && same.peak_fix.latitude == b.latitude);
+    CHECK(same.sample_count == samples && same.trend == Trend::unknown);
     auto other = obs(-20, 8000);
     other.node = 2;
     auto &second = t.observe(other, a);
     CHECK(second.count == 1 && second.peak.rssi == -20);
-    CHECK(same.peak.rssi == -50);
+    CHECK(same.peak.rssi == -30);
 }
 static void trend_confirmation_test() {
     Tracker tracker(TrendConfig{1000, 3000, 3, 2, 3});
@@ -417,6 +425,85 @@ static void json_test() {
     o.payload_size = 1000;
     CHECK(!matches(rule, o));
 }
+static void text_evidence_test() {
+    auto o = obs(-50, 1000);
+    const uint8_t ad[] = {6, 9, 'C', 'a', 'f', 0xc3, 0xa9};
+    CHECK(parse_ble(ad, sizeof(ad), o));
+    Rule rule{};
+    rule.enabled = true;
+    rule.radio = Radio::ble;
+    rule.category = "other";
+    rule.id = "unicode-name";
+    rule.priority = 7;
+    rule.predicate_count = 1;
+    rule.predicates[0] = {Field::name_prefix, "Caf\xc3\xa9"};
+    CHECK(matches(rule, o));
+    Tracker tracker;
+    Gps gps;
+    auto &track = tracker.observe(o, {});
+    char json[log_line_capacity];
+    CHECK(observation_json(o, track, {&rule}, {}, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"name\":\"Caf\xc3\xa9\""));
+    CHECK(std::strstr(json, "\"category\":\"other\""));
+    CHECK(std::strstr(json, "\"rule_priority\":7"));
+    CHECK(std::strstr(json, "\"location_role\":\"receiver\""));
+    const uint8_t binary_ad[] = {3, 9, 0xff, 1};
+    CHECK(parse_ble(binary_ad, sizeof(binary_ad), o));
+    rule.predicates[0] = {Field::name_prefix, "??"};
+    CHECK(!matches(rule, o)); // lossy ASCII sanitization formerly caused this false match
+    const Fix invalid{true, std::numeric_limits<double>::quiet_NaN(), 0, 1000};
+    auto &invalid_track = tracker.observe(o, invalid);
+    invalid_track.peak_fix = invalid;
+    CHECK(observation_json(o, invalid_track, {}, invalid, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"name\":\"\\u00ff\\u0001\""));
+    CHECK(std::strstr(json, "\"receiver_fix\":null"));
+    CHECK(std::strstr(json, "\"peak_receiver_fix\":null"));
+    // Truncated, overlong, surrogate and out-of-range UTF-8 must remain valid JSON.
+    for (const auto &invalid_utf8 :
+         {std::string("\xc3"), std::string("\xc0\x80"), std::string("\xed\xa0\x80"),
+          std::string("\xf4\x90\x80\x80")}) {
+        o.name.fill(0);
+        std::memcpy(o.name.data(), invalid_utf8.data(), invalid_utf8.size());
+        CHECK(observation_json(o, track, {}, {}, gps, json, sizeof(json)));
+        CHECK(std::strstr(json, "\"name\":\"\\u00"));
+        std::fputs(json, stdout);
+    }
+    // Invalid Wi-Fi bytes and valid UTF-8 remain distinguishable in shared logs.
+    o.ssid.fill(0);
+    o.ssid[0] = char(0xff);
+    CHECK(observation_json(o, track, {}, {}, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"ssid_hex\":\"ff\""));
+    o.ssid[0] = char(0xc3);
+    o.ssid[1] = char(0xbf);
+    CHECK(observation_json(o, track, {}, {}, gps, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"ssid_hex\":\"c3bf\""));
+    // Maximum bounded metadata, payload, counter values and escaping must fit.
+    o.name.fill(1);
+    o.name.back() = 0;
+    o.ssid = o.name;
+    o.payload.fill(0xff);
+    o.payload_size = max_payload;
+    o.at_ms = UINT64_MAX;
+    o.timing_uncertainty_ms = UINT32_MAX;
+    o.receiver_boot = o.boot = o.sequence = UINT32_MAX;
+    o.node = UINT16_MAX;
+    const std::string id(64, 'i');
+    rule.id = id;
+    const std::string category(40, 'c');
+    rule.category = category;
+    rule.confidence = "broadcast";
+    rule.priority = UINT8_MAX;
+    o.channel = UINT8_MAX;
+    o.rssi = -127;
+    const Fix extreme{true, -90, -180, UINT64_MAX};
+    Tracker maximum_tracker;
+    auto &max_track = maximum_tracker.observe(o, extreme);
+    max_track.count = UINT64_MAX;
+    CHECK(feed(gps, nmea("GNRMC,120000.000,A,9000.000,S,18000.000,W,0,0,271026,,,A"),
+               UINT64_MAX - 1000000));
+    CHECK(observation_json(o, max_track, {&rule}, extreme, gps, json, sizeof(json)));
+    std::fputs(json, stdout);
+}
 static void following_test() {
     DeviceIdentity ignored{Radio::ble, 1, {{1, 2, 3, 4, 5, 6}}};
     FollowingDetector detector({true, 100, 2000, 1500}, &ignored, 1);
@@ -472,5 +559,6 @@ int main() {
     retained_delivery_test();
     protocol_test();
     json_test();
+    text_evidence_test();
     std::puts("All core tests passed");
 }

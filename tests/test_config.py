@@ -2,6 +2,8 @@ import copy
 import importlib.util
 import json
 import pathlib
+import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -60,7 +62,7 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             generate.validate(self.settings)
     def test_bad_channels(self):
-        for channels in ([1, 1], [52], [], [True]):
+        for channels in ([1, 1], [52], [], [True], [[]], [{}]):
             settings = copy.deepcopy(self.settings)
             settings['wifi']['channels'] = channels
             with self.assertRaises(ValueError):
@@ -93,6 +95,80 @@ class ConfigTests(unittest.TestCase):
             path.write_text('{"x":1,"x":2}')
             with self.assertRaises(ValueError):
                 generate.load(path)
+    def test_nonstandard_json_constants(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = pathlib.Path(folder)/'invalid.json'
+            for value in ('NaN', 'Infinity', '-Infinity'):
+                path.write_text('{"value":' + value + '}')
+                with self.assertRaisesRegex(ValueError, 'nonstandard JSON'):
+                    generate.load(path)
+    def test_validation_does_not_mutate_settings(self):
+        before = copy.deepcopy(self.settings)
+        generate.validate(self.settings, 'child', 3)
+        self.assertEqual(self.settings, before)
+        with self.assertRaises(ValueError):
+            generate.validate(self.settings, 'child', 0)
+        self.assertEqual(self.settings, before)
+
+    def test_malformed_rule_shapes_report_value_errors(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = '.'
+            template = generate.load(ROOT/'rules/examples/lab.json')
+            documents = [None, [], {'schema_version': True, 'rules': []},
+                         {'schema_version': 1, 'rules': [None]}]
+            for field, value in [('actions', ['buzzer', 'follow']),
+                                 ('source', ['url', 'revision', 'license', 'reviewed']),
+                                 ('predicates', [None]), ('predicates', [['field', 'value']])]:
+                document = copy.deepcopy(template)
+                document['rules'][0][field] = value
+                documents.append(document)
+            for document in documents:
+                with self.subTest(document=document):
+                    (base/'rule.json').write_text(json.dumps(document))
+                    with self.assertRaises(ValueError):
+                        generate.validate(self.settings, base=base)
+
+    def test_text_prefix_limits_use_utf8_bytes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = '.'
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            for value, valid in [('a'*32, True), ('a'*33, False), ('é'*16, True),
+                                 ('é'*17, False), ('a\x7f', False), ('a\x00', False),
+                                 ('🔎', True)]:
+                with self.subTest(value=value):
+                    document['rules'][0]['predicates'][0]['value'] = value
+                    (base/'rule.json').write_text(json.dumps(document))
+                    if valid:
+                        settings, rules = generate.validate(self.settings, base=base)
+                        generate.emit(settings, rules).encode('ascii')
+                    else:
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings, base=base)
+
+    def test_manifest_preserves_provenance_and_effective_enablement(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            rules_dir = base/'rules'
+            rules_dir.mkdir()
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            document['rules'][0]['enabled'] = True
+            (rules_dir/'lab.json').write_text(json.dumps(document))
+            self.settings['detection']['rules_directory'] = str(rules_dir)
+            self.settings['detection']['enabled_categories'] = ['other']
+            settings_file = base/'settings.json'
+            settings_file.write_text(json.dumps(self.settings))
+            output = base/'generated/settings.hpp'
+            result = subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                                     '--config', str(settings_file), '--output', str(output)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = generate.load(output.with_suffix('.rules.json'))
+            self.assertEqual(manifest['rules'][0]['source'], document['rules'][0]['source'])
+            self.assertEqual(manifest['rules'][0]['predicates'], document['rules'][0]['predicates'])
+            self.assertFalse(manifest['rules'][0]['enabled'])
+            self.assertIn('no enabled rules for categories: other', result.stdout)
     def test_unknown_setting_and_wrong_type(self):
         self.settings['gps']['enabled'] = 1
         with self.assertRaises(ValueError):
