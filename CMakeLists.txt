@@ -24,3 +24,9 @@ add_test(NAME config COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMA
 add_test(NAME flash_tool COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_flash.py)
 
 add_test(NAME build_regeneration COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_build.py)
+add_test(NAME export COMMAND ${Python3_EXECUTABLE} -m unittest discover -s ${CMAKE_SOURCE_DIR}/tests -p test_export.py)
+add_executable(storage_tests tests/storage_tests.cpp)
+target_link_libraries(storage_tests PRIVATE wiknow)
+target_include_directories(storage_tests PRIVATE firmware/main)
+target_compile_options(storage_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME storage COMMAND storage_tests)

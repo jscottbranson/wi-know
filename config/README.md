@@ -19,6 +19,12 @@ python3 tools/generate_config.py
 
 The build generates a typed C++ header with no runtime JSON parser. Settings and
 rules are compiled into firmware; changing either requires rebuilding/reflashing.
+The generated directory also contains `settings.rules.json`: a portable rule
+manifest retaining the exact predicates, source provenance and effective enabled
+state after category filtering. Keep it with exported logs so rule IDs can be
+traced back to the signatures used by that firmware build. The generator reports
+enabled categories that have no enabled rules; selecting a category does not
+install detection signatures.
 The generator rejects unknown/missing settings, wrong types, duplicate JSON keys,
 invalid channels, duplicate rule IDs, invalid predicates, UART conflicts, duplicate
 active GPIOs, and enabled peripherals with unassigned GPIOs.

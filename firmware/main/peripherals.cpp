@@ -7,6 +7,7 @@
 #include "esp_log.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
+#include "log_helpers.hpp"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
 #include <algorithm>
@@ -204,10 +205,8 @@ static LogFiles files() {
     if (!dir)
         return result;
     while (auto *entry = readdir(dir)) {
-        unsigned id{};
-        int consumed{};
-        if (std::sscanf(entry->d_name, "WK%8u.LOG%n", &id, &consumed) == 1 &&
-            consumed == int(std::strlen(entry->d_name))) {
+        uint32_t id{};
+        if (log_file_id(entry->d_name, id)) {
             result.newest = std::max(result.newest, uint32_t(id));
             result.oldest = std::min(result.oldest, uint32_t(id));
             ++result.count;
@@ -301,7 +300,8 @@ void start_peripherals() {
         return;
     console_queue = xQueueCreate(8, sizeof(LogLine));
     configASSERT(console_queue);
-    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) == pdPASS);
+    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) ==
+                 pdPASS);
     if (c::gps_enabled)
         uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
     if (c::signal_trend_enabled) {

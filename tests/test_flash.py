@@ -1,9 +1,11 @@
 import contextlib
 import importlib.util
 import io
+import json
 import pathlib
 import subprocess
 import sys
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -92,6 +94,18 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(status, 0)
         self.assertNotIn('<serial-port>', output)
         ports.assert_not_called()
+
+    def test_selected_role_and_id_override_stored_defaults_before_validation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = pathlib.Path(folder)/'settings.json'
+            settings = flash.generate_config.load(ROOT/'config/settings.json')
+            settings['node'] = {'role': 'child', 'id': 0}
+            config.write_text(json.dumps(settings))
+            with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']):
+                status, output = self.run_main('--config', str(config), '--role', 'child',
+                                               '--node-id', '3', '--build-only', '--dry-run')
+            self.assertEqual(status, 0, output)
+            self.assertIn('child / node 3', output)
 
     def test_invalid_ids_and_option_combinations(self):
         cases = [('--role', 'parent', '--node-id', '1'),

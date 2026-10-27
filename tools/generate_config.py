@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Validate JSON configuration and emit allocation-free C++ constants. Stdlib only."""
 import argparse
+import copy
 import json
 import pathlib
 import re
@@ -26,10 +27,15 @@ def load(path):
             require(key not in result, f'duplicate JSON key: {key}')
             result[key] = value
         return result
-    return json.loads(path.read_text(), object_pairs_hook=pairs)
+    def constant(value):
+        raise ValueError(f'nonstandard JSON value: {value}')
+    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=pairs,
+                      parse_constant=constant)
 
 
 def validate(settings, role_override=None, node_override=None, base=ROOT):
+    # Overrides and category switches must not change the caller's saved settings.
+    settings = copy.deepcopy(settings)
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
@@ -68,10 +74,11 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     # Initial receive-only implementation deliberately excludes DFS / region-specific extensions.
     allowed = set(range(1, 12)) | {36, 40, 44, 48, 149, 153, 157, 161}
     require(wifi['country'] == 'US', 'initial channel policy supports US only')
-    require(0 < len(wifi['channels']) <= 32 and len(set(wifi['channels'])) == len(wifi['channels']), 'channels must be nonempty, unique, <=32')
+    require(0 < len(wifi['channels']) <= 32, 'channels must be nonempty, unique, <=32')
     for channel in wifi['channels']:
         integer(channel, 1, 196, 'channel')
         require(channel in allowed, f'channel {channel} outside implemented passive policy')
+    require(len(set(wifi['channels'])) == len(wifi['channels']), 'channels must be unique')
     integer(wifi['dwell_ms'], 10, 60000, 'wifi.dwell_ms')
     bus = settings['bus']
     for field in ('first_node_id', 'last_node_id'):
@@ -151,10 +158,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     rules, ids = [], set()
     for path in sorted(directory.glob('*.json')):
         document = load(path)
-        require(set(document) == {'schema_version', 'rules'} and document['schema_version'] == 1, f'{path}: invalid rule document')
+        require(type(document) is dict and set(document) == {'schema_version', 'rules'} and
+                type(document['schema_version']) is int and document['schema_version'] == 1,
+                f'{path}: invalid rule document')
         require(isinstance(document['rules'], list), f'{path}: rules must be a list')
         for rule in document['rules']:
-            require(set(rule) == {'id', 'category', 'enabled', 'radio', 'match', 'priority', 'confidence', 'actions', 'predicates', 'source'}, f'{path}: rule keys invalid')
+            require(type(rule) is dict and set(rule) == {'id', 'category', 'enabled', 'radio', 'match', 'priority', 'confidence', 'actions', 'predicates', 'source'}, f'{path}: rule keys invalid')
             require(isinstance(rule['id'], str) and re.fullmatch(r'[a-zA-Z0-9_-]{1,64}', rule['id']) and rule['id'] not in ids, 'invalid/duplicate rule ID')
             ids.add(rule['id'])
             require(type(rule['enabled']) is bool, 'rule.enabled must be boolean')
@@ -162,14 +171,18 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             require(rule['radio'] in ('wifi', 'ble') and rule['match'] in ('all', 'any'), 'invalid radio/match')
             integer(rule['priority'], 0, 255, 'rule.priority')
             require(rule['confidence'] in ('possible', 'probable', 'broadcast'), 'invalid confidence')
-            require(set(rule['actions']) == {'buzzer', 'follow'} and all(type(v) is bool for v in rule['actions'].values()), 'invalid actions')
-            require(set(rule['source']) == {'url', 'revision', 'license', 'reviewed'} and all(isinstance(v, str) and v for v in rule['source'].values()), 'source provenance required')
+            require(type(rule['actions']) is dict and set(rule['actions']) == {'buzzer', 'follow'} and all(type(v) is bool for v in rule['actions'].values()), 'invalid actions')
+            require(type(rule['source']) is dict and set(rule['source']) == {'url', 'revision', 'license', 'reviewed'} and all(isinstance(v, str) and v for v in rule['source'].values()), 'source provenance required')
             require(isinstance(rule['predicates'], list) and 1 <= len(rule['predicates']) <= 4, 'rule needs 1..4 predicates')
             for pred in rule['predicates']:
-                require(set(pred) == {'field', 'value'}, 'invalid predicate')
+                require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
                 require(field in ('oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16'), 'unknown predicate field')
-                require(isinstance(value, str) and 0 < len(value) <= 96 and value.isascii() and all(ord(c) >= 32 for c in value), 'invalid predicate value')
+                require(isinstance(value, str) and 0 < len(value) <= 96, 'invalid predicate value')
+                if field in ('ssid_prefix', 'name_prefix'):
+                    require(len(value.encode('utf-8')) <= 32 and
+                            all(ord(c) >= 32 and ord(c) != 127 for c in value),
+                            'text predicate must be printable UTF-8 within the 32-byte captured text limit')
                 require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'manufacturer_prefix', 'service_uuid16')), 'BLE predicate in Wi-Fi rule')
                 require(not (rule['radio'] == 'ble' and field == 'ssid_prefix'), 'SSID predicate in BLE rule')
                 if field in ('oui', 'manufacturer_prefix', 'service_uuid16'):
@@ -189,7 +202,11 @@ def emit(settings, rules):
         if isinstance(value, bool):
             return str(value).lower()
         if isinstance(value, str):
-            return json.dumps(value, ensure_ascii=True)
+            # C++ universal character escapes cannot encode NUL or UTF-16 surrogate
+            # pairs. Fixed-width octal escapes preserve arbitrary UTF-8 safely;
+            # escaping '?' also prevents trigraph warnings under -Werror.
+            return '"' + ''.join(chr(b) if 32 <= b < 127 and b not in (34, 63, 92)
+                                 else f'\\{b:03o}' for b in value.encode('utf-8')) + '"'
         return str(value)
     out = ['// Generated from config/settings.json and rules/*.json. Do not edit.', '#pragma once', '#include "wiknow/core.hpp"', 'namespace wiknow::config {']
     for section, fields in settings.items():
@@ -230,11 +247,22 @@ def main():
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             content = emit(settings, rules)
-            if not args.output.exists() or args.output.read_text() != content:
-                args.output.write_text(content)
+            if not args.output.exists() or args.output.read_text(encoding='utf-8') != content:
+                args.output.write_text(content, encoding='utf-8')
+            # Keep the reviewed source and predicates alongside firmware artifacts
+            # without repeating potentially long metadata in each radio event.
+            manifest = args.output.with_suffix('.rules.json')
+            content = json.dumps({'schema_version': 1, 'rules': rules},
+                                 ensure_ascii=True, indent=2) + '\n'
+            if not manifest.exists() or manifest.read_text(encoding='utf-8') != content:
+                manifest.write_text(content, encoding='utf-8')
         print(f'Validated {settings["node"]["role"]} node {settings["node"]["id"]}: {len(rules)} rules ({sum(r["enabled"] for r in rules)} enabled)')
         if not any(r['enabled'] for r in rules):
             print('NOTE: no enabled detection rules; match alerts unavailable. See rules/README.md.')
+        available = {r['category'] for r in rules if r['enabled']}
+        unavailable = sorted(set(settings['detection']['enabled_categories']) - available)
+        if unavailable:
+            print('NOTE: no enabled rules for categories: ' + ', '.join(unavailable))
     except (ValueError, KeyError, TypeError, OSError) as error:
         print(f'Configuration error: {error}', file=sys.stderr)
         return 1
