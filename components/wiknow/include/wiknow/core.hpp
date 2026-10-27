@@ -128,7 +128,7 @@ struct Track {
     Observation latest{}, peak{};
     Fix peak_fix{};
     uint64_t first_seen{}, count{}, window_start{};
-    std::array<int8_t, 31> samples{};
+    std::array<uint32_t, 128> rssi_histogram{};
     size_t sample_count{};
     bool previous_valid{};
     int previous_median{};

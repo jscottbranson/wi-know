@@ -217,6 +217,20 @@ static void trend_confirmation_test() {
     tracker.reset_trend(*current);
     CHECK(current->trend == Trend::unknown && current->peak.rssi == peak);
 }
+static void busy_trend_test() {
+    Tracker tracker(TrendConfig{1000, 3000, 3, 1, 3});
+    for (uint64_t i = 0; i < 100; ++i)
+        tracker.observe(obs(-80, i * 9), {});
+    for (uint64_t i = 0; i < 100; ++i)
+        tracker.observe(obs(i < 31 ? -80 : -40, 1000 + i * 9), {});
+    auto &track = tracker.observe(obs(-40, 2000), {});
+    CHECK(track.trend == Trend::increasing);
+    CHECK(track.previous_median == -40);
+    CHECK(track.count == 201);
+    tracker.reset_trend(track);
+    CHECK(track.sample_count == 1);
+    CHECK(track.rssi_histogram[87] == 1);
+}
 static void protocol_test() {
     Command c{};
     c.count = 2;
@@ -242,6 +256,13 @@ static void protocol_test() {
     Command result{};
     CHECK(unpack_command(decoded, result));
     CHECK(result.count == 2 && result.channels[1].number == 36 && result.target == c.target);
+    // A command may arrive across many worker-loop polling deadlines.
+    Decoder fragmented;
+    for (size_t begin = 0; begin < n; begin += 7) {
+        for (size_t i = begin; i < n && i < begin + 7; ++i)
+            CHECK(fragmented.feed(bytes[i], decoded) == (i + 1 == n));
+    }
+    CHECK(unpack_command(decoded, result));
     bytes[n - 1] ^= 1;
     complete = false;
     for (size_t i = 0; i < n; ++i)
@@ -337,6 +358,7 @@ int main() {
     gps_tagging_test();
     tracking_test();
     trend_confirmation_test();
+    busy_trend_test();
     protocol_test();
     json_test();
     std::puts("All core tests passed");

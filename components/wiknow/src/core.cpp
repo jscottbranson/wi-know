@@ -536,6 +536,7 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
         return *t; // stale/out-of-order sample
     if (t->count && o.at_ms - t->latest.at_ms > config_.stale_ms) {
         t->sample_count = 0;
+        t->rssi_histogram.fill(0);
         t->previous_valid = false;
         t->trend = Trend::unknown;
         t->candidate = Trend::unknown;
@@ -549,9 +550,15 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
     }
     if (config_.window_ms && o.at_ms - t->window_start >= config_.window_ms) {
         if (t->sample_count >= config_.minimum_samples && config_.minimum_samples) {
-            auto samples = t->samples;
-            std::sort(samples.begin(), samples.begin() + t->sample_count);
-            int median = samples[t->sample_count / 2];
+            size_t accumulated = 0;
+            int median = -128;
+            for (size_t i = 0; i < t->rssi_histogram.size(); ++i) {
+                accumulated += t->rssi_histogram[i];
+                if (accumulated > t->sample_count / 2) {
+                    median = int(i) - 127;
+                    break;
+                }
+            }
             if (t->previous_valid) {
                 int delta = median - t->previous_median;
                 Trend next = delta > config_.deadband_db    ? Trend::increasing
@@ -576,17 +583,21 @@ Track &Tracker::observe(const Observation &o, Fix fix) {
             t->confirmations = 0;
         }
         t->sample_count = 0;
+        t->rssi_histogram.fill(0);
         t->window_start = o.at_ms;
     }
-    if (t->sample_count < t->samples.size())
-        t->samples[t->sample_count++] = o.rssi;
+    if (o.rssi >= -127 && o.rssi <= 0 && t->sample_count < UINT32_MAX) {
+        ++t->rssi_histogram[size_t(int(o.rssi) + 127)];
+        ++t->sample_count;
+    }
     t->latest = o;
     ++t->count;
     return *t;
 }
 void Tracker::reset_trend(Track &t) {
     t.sample_count = 1;
-    t.samples[0] = t.latest.rssi;
+    t.rssi_histogram.fill(0);
+    ++t.rssi_histogram[size_t(std::clamp(int(t.latest.rssi), -127, 0) + 127)];
     t.window_start = t.latest.at_ms;
     t.previous_valid = false;
     t.trend = t.candidate = Trend::unknown;
