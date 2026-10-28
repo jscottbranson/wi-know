@@ -82,14 +82,15 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Deterministic capability-aware allocation of up to 32 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
 - Manual mode uses a versioned little-endian polling/report protocol with CRC32, node boot IDs,
-  command sequences and assignment leases. Protocol version 2 adds observation
-  acknowledgments: a worker retains its in-flight observation until the parent
-  acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
+  command sequences and assignment leases. Protocol version 3 includes a Wi-Fi
+  subtype/evidence discriminator; observation acknowledgments retain their existing
+  behavior: a worker retains its in-flight observation until the parent acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
   are retried on subsequent polls; the parent suppresses duplicate processing.
-  Rebuild and flash every node together; version 1 firmware cannot communicate
-  with version 2 firmware. Local RS-485 bus is assumed trusted;
+  Rebuild and flash every node together; version 3 cannot communicate
+  with version 1 or 2 firmware. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
-- Receive-only Wi-Fi beacon/probe-response metadata, NAN service discovery and passive BLE advertising
+- Receive-only Wi-Fi beacon/probe-response metadata, bounded probe-request IE evidence,
+  NAN service discovery and passive BLE advertising
   (legacy, complete extended reports, and bounded extended-advertising reassembly).
   Wi-Fi frames over 512 bytes and complete/reassembled BLE payloads over 255 bytes
   are skipped. BLE chains are bounded to four advertisers/sets, eight fragments

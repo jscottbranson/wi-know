@@ -111,8 +111,46 @@ bool predicate(const Predicate &p, const Observation &o) {
     case Field::rid_basic_id_type:
     case Field::rid_position_valid:
         return false; // Evaluated together against one decoded message in matches().
+    case Field::wifi_subtype:
+        if (o.radio != Radio::wifi)
+            return false;
+        return (p.value == "probe_request" && o.wifi_subtype == WifiSubtype::probe_request) ||
+               (p.value == "probe_response" && o.wifi_subtype == WifiSubtype::probe_response) ||
+               (p.value == "beacon" && o.wifi_subtype == WifiSubtype::beacon) ||
+               (p.value == "nan_action" && o.wifi_subtype == WifiSubtype::nan_action);
+    case Field::wifi_ssid_wildcard:
+    case Field::wifi_requested_ssid_prefix:
+    case Field::wifi_ie_fingerprint: {
+        if (o.radio != Radio::wifi || o.wifi_subtype != WifiSubtype::probe_request ||
+            !valid_probe_ies(o.payload.data(), o.payload_size))
+            return false;
+        if (p.field == Field::wifi_requested_ssid_prefix) {
+            for (size_t at = 0; at < o.payload_size; at += 2 + o.payload[at + 1])
+                if (o.payload[at] == 0)
+                    return starts({reinterpret_cast<const char *>(o.payload.data() + at + 2),
+                                   o.payload[at + 1]},
+                                  p.value);
+            return false;
+        }
+        if (p.field == Field::wifi_ssid_wildcard) {
+            for (size_t at = 0; at < o.payload_size; at += 2 + o.payload[at + 1])
+                if (o.payload[at] == 0)
+                    return p.value == (o.payload[at + 1] == 0 ? "true" : "false");
+            return false; // A missing SSID is neither directed nor wildcard.
+        }
+        // Full canonical IE bytes, not a hash or a substring. No variable bytes normalized.
+        if (p.value.size() != size_t(o.payload_size) * 2 || p.value.empty())
+            return false;
+        for (size_t at = 0; at < o.payload_size; ++at) {
+            size_t n{};
+            uint8_t byte{};
+            if (!hex(p.value.substr(at * 2, 2), &byte, n, 1) || n != 1 || byte != o.payload[at])
+                return false;
+        }
+        return true;
+    }
     case Field::ssid_prefix:
-        return starts(text_view(o.ssid), p.value);
+        return o.wifi_subtype != WifiSubtype::probe_request && starts(text_view(o.ssid), p.value);
     case Field::name_prefix:
         return starts(text_view(o.name), p.value);
     case Field::oui:
@@ -294,48 +332,73 @@ struct Json {
 };
 } // namespace
 
-bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
-    // Unfragmented NAN Public Action frames retain their complete action body.
-    if (frame && length >= 30 && frame[0] == 0xd0) {
-        constexpr uint8_t destination[]{0x51, 0x6f, 0x9a, 1, 0, 0};
-        if ((frame[1] & 0xc7) || (frame[22] & 15) ||
-            std::memcmp(frame + 4, destination, sizeof(destination)) || length - 24 > max_payload)
-            return false;
-        out.radio = Radio::wifi;
-        out.address_type = 0;
-        std::copy(frame + 10, frame + 16, out.address.begin());
-        out.ssid.fill(0);
-        out.name.fill(0);
-        out.payload_size = uint16_t(length - 24);
-        std::copy(frame + 24, frame + length, out.payload.begin());
-        if (remote_id_messages(out).count)
-            return true;
-        out.payload_size = 0;
+bool valid_probe_ies(const uint8_t *data, size_t length) {
+    if (!data || length > max_payload)
         return false;
+    bool ssid = false;
+    for (size_t at = 0; at < length;) {
+        if (length - at < 2 || size_t(data[at + 1]) > length - at - 2)
+            return false;
+        const size_t n = data[at + 1];
+        if (data[at] == 0) {
+            if (ssid || n > 32)
+                return false;
+            ssid = true;
+        }
+        // Vendor/extension IEs must include their identifying bytes.
+        if ((data[at] == 221 && n < 4) || (data[at] == 255 && n < 1))
+            return false;
+        at += 2 + n;
     }
-    // Beacon and probe response management headers + fixed parameters.
-    if (!frame || length < 36 || ((frame[0] & 0xfc) != 0x80 && (frame[0] & 0xfc) != 0x50) ||
-        (frame[0] & 3))
+    return true;
+}
+bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
+    // Clear parse-owned state even when an Observation is reused after a failed parse.
+    out.wifi_subtype = WifiSubtype::unknown;
+    out.ssid.fill(0);
+    out.name.fill(0);
+    out.payload_size = 0;
+    if (!frame || length < 24 || length > 512 || (frame[0] & 15) || (frame[1] & 0xc7) ||
+        (frame[22] & 15))
+        return false; // No DS, fragmentation, protection, or HT-control headers.
+    const auto subtype = WifiSubtype(frame[0] >> 4);
+    if (subtype != WifiSubtype::probe_request && subtype != WifiSubtype::probe_response &&
+        subtype != WifiSubtype::beacon && subtype != WifiSubtype::nan_action)
         return false;
     out.radio = Radio::wifi;
     out.address_type = 0;
     std::copy(frame + 10, frame + 16, out.address.begin());
-    out.ssid.fill(0);
-    out.payload_size = 0;
-    for (size_t at = 36; at < length;) {
-        if (at + 2 > length)
+    if (subtype == WifiSubtype::nan_action) {
+        constexpr uint8_t destination[]{0x51, 0x6f, 0x9a, 1, 0, 0};
+        if (length < 30 || std::memcmp(frame + 4, destination, sizeof(destination)) ||
+            length - 24 > max_payload)
+            return false;
+        out.payload_size = uint16_t(length - 24);
+        std::copy(frame + 24, frame + length, out.payload.begin());
+        if (!remote_id_messages(out).count) {
+            out.payload_size = 0;
+            return false;
+        }
+        out.wifi_subtype = subtype;
+        return true;
+    }
+    const bool probe = subtype == WifiSubtype::probe_request;
+    const size_t start = probe ? 24 : 36;
+    if (length < start || (probe && !valid_probe_ies(frame + start, length - start)))
+        return false;
+    bool ssid = false;
+    for (size_t at = start; at < length;) {
+        if (length - at < 2 || size_t(frame[at + 1]) > length - at - 2)
             return false;
         size_t n = frame[at + 1];
-        if (at + 2 + n > length)
-            return false;
         if (frame[at] == 0) {
-            if (n > 32)
+            if (ssid || n > 32)
                 return false;
+            ssid = true;
             text_copy(out.ssid, frame + at + 2, n);
         }
-        if (frame[at] == 221 && n >= 4 && frame[at + 2] == 0xfa && frame[at + 3] == 0x0b &&
-            frame[at + 4] == 0xbc && frame[at + 5] == 0x0d) {
-            // A single complete Remote ID vendor IE fits the existing wire payload.
+        if (!probe && frame[at] == 221 && n >= 4 && frame[at + 2] == 0xfa &&
+            frame[at + 3] == 0x0b && frame[at + 4] == 0xbc && frame[at + 5] == 0x0d) {
             if (out.payload_size)
                 return false;
             std::copy(frame + at + 2, frame + at + 2 + n, out.payload.begin());
@@ -343,11 +406,18 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
         }
         at += 2 + n;
     }
+    if (probe) {
+        out.payload_size = uint16_t(length - start);
+        std::copy(frame + start, frame + length, out.payload.begin());
+    }
+    out.wifi_subtype = subtype;
     return true;
 }
 bool parse_ble(const uint8_t *data, size_t length, Observation &out) {
     if (!data || length > max_payload)
         return false;
+    out.wifi_subtype = WifiSubtype::unknown;
+    out.ssid.fill(0);
     out.radio = Radio::ble;
     out.payload_size = uint16_t(length);
     out.name.fill(0);
@@ -846,6 +916,16 @@ bool pack_report(const Report &r, Packet &p) {
         (r.scan.state != ScanState::scanning && r.scan.confirmed_channels) ||
         ((r.scan.state == ScanState::error) != (r.scan.failed_channel != 0)))
         return false;
+    const auto subtype = r.observation.wifi_subtype;
+    if (subtype != WifiSubtype::unknown && subtype != WifiSubtype::probe_request &&
+        subtype != WifiSubtype::probe_response && subtype != WifiSubtype::beacon &&
+        subtype != WifiSubtype::nan_action)
+        return false;
+    if (r.observation.radio == Radio::ble && subtype != WifiSubtype::unknown)
+        return false;
+    if (subtype == WifiSubtype::probe_request &&
+        !valid_probe_ies(r.observation.payload.data(), r.observation.payload_size))
+        return false;
     p.type = MessageType::report;
     auto *b = p.payload.data();
     b[0] = uint8_t(r.role);
@@ -871,8 +951,9 @@ bool pack_report(const Report &r, Packet &p) {
     std::memcpy(b + 36, o.ssid.data(), 33);
     std::memcpy(b + 69, o.name.data(), 33);
     put16(b + 102, o.payload_size);
-    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 104);
-    p.size = uint16_t(104 + o.payload_size);
+    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 105);
+    b[104] = uint8_t(o.wifi_subtype);
+    p.size = uint16_t(105 + o.payload_size);
     return true;
 }
 bool unpack_report(const Packet &p, Report &r) {
@@ -897,7 +978,7 @@ bool unpack_report(const Packet &p, Report &r) {
         return false;
     if (!r.has_observation)
         return p.size == 18;
-    if (p.size < 104 || get16(b + 102) > max_payload || p.size != 104 + get16(b + 102) ||
+    if (p.size < 105 || get16(b + 102) > max_payload || p.size != 105 + get16(b + 102) ||
         b[26] > 1 || b[27] > 1 || b[68] != 0 || b[101] != 0)
         return false;
     auto &o = r.observation;
@@ -914,9 +995,15 @@ bool unpack_report(const Packet &p, Report &r) {
     std::copy(b + 30, b + 36, o.address.begin());
     std::memcpy(o.ssid.data(), b + 36, 33);
     std::memcpy(o.name.data(), b + 69, 33);
+    if (b[104] != 255 && b[104] != 4 && b[104] != 5 && b[104] != 8 && b[104] != 13)
+        return false;
+    o.wifi_subtype = WifiSubtype(b[104]);
+    if (o.radio == Radio::ble && o.wifi_subtype != WifiSubtype::unknown)
+        return false;
     o.payload_size = get16(b + 102);
-    std::copy(b + 104, b + 104 + o.payload_size, o.payload.begin());
-    return true;
+    std::copy(b + 105, b + 105 + o.payload_size, o.payload.begin());
+    return o.wifi_subtype != WifiSubtype::probe_request ||
+           valid_probe_ies(o.payload.data(), o.payload_size);
 }
 bool observation_json(const Observation &o, const Track &t, Match match, Fix fix, const Gps &gps,
                       char *out, size_t cap) {
@@ -980,10 +1067,19 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         j.add(",\"remote_id_transport\":\"%s\"",
               remote_id_transport_name(remote_messages.transport));
     j.add(",\"wifi_remote_id_hex\":\"");
-    if (o.radio == Radio::wifi)
+    if (o.radio == Radio::wifi && o.wifi_subtype != WifiSubtype::probe_request)
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
             j.add("%02x", unsigned(o.payload[i]));
     j.add("\"");
+    if (o.radio == Radio::wifi) {
+        j.add(",\"wifi_subtype\":%u,\"wifi_payload_format\":\"%s\",\"wifi_ie_hex\":\"",
+              unsigned(o.wifi_subtype),
+              o.wifi_subtype == WifiSubtype::probe_request ? "probe_ie_v1" : "remote_id");
+        if (o.wifi_subtype == WifiSubtype::probe_request)
+            for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
+                j.add("%02x", unsigned(o.payload[i]));
+        j.add("\"");
+    }
     j.add(",\"location_role\":\"receiver\",\"receiver_fix\":");
     j.fix(fix);
     j.add(",\"peak_dbm\":%d,\"peak_capture_ms\":%llu,\"peak_receiver_fix\":", int(t.peak.rssi),

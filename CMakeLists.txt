@@ -85,3 +85,8 @@ add_executable(ble_reassembly_tests tests/ble_reassembly_tests.cpp)
 target_link_libraries(ble_reassembly_tests PRIVATE wiknow)
 target_compile_options(ble_reassembly_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME ble_reassembly COMMAND ble_reassembly_tests)
+
+add_executable(probe_tests tests/probe_tests.cpp)
+target_link_libraries(probe_tests PRIVATE wiknow)
+target_compile_options(probe_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME probe COMMAND probe_tests)
