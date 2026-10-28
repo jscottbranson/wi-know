@@ -93,6 +93,28 @@ activation. The helper accepts exactly the tested release, **v5.5.1**.
 
 ## Build isolation and troubleshooting
 
+### Parent boot indicators
+
+After reset, an identified parent tests enabled, assigned signal LEDs in order:
+increasing, decreasing, then steady, for 200 ms each. An enabled buzzer then chirps
+for 100 ms at its configured frequency. All outputs return to off before normal
+operation. This adds at most 700 ms to startup and does not consume an alert
+cooldown. Disabled peripherals and LED pins set to `-1` are skipped; workers do
+not run the test. The default configuration leaves these peripherals disabled.
+
+With the LCD enabled, the screen then shows `wi-know` / `Starting...` before
+cycling through status pages. The serial log reports parent peripheral enable
+states (or that a worker skipped them), followed by the LCD SDA/SCL GPIOs and I2C
+address. A completed LED/buzzer test confirms software drove the outputs, not
+that the attached hardware responded; verify the light and sound physically.
+
+For a blank LCD, check the serial identity message says `detected=parent`, verify
+the flashed config enables the display, and compare its logged GPIOs/address with
+your wiring. `No response at configured I2C address` means the initial LCD write
+failed. If the backlight is on but characters are absent, check the backpack's
+contrast adjustment and its PCF8574 mapping against the wiring guide. The boot
+test does not diagnose or repair LCD wiring.
+
 Build products are stored under:
 
 ```text

@@ -200,6 +200,8 @@ void indicators(wiknow::Trend trend, bool beep) {
     }
 }
 static void init_lcd() {
+    ESP_LOGI("lcd", "Initializing SDA=%d SCL=%d address=0x%02x",
+             c::display_sda_pin, c::display_scl_pin, unsigned(c::display_i2c_address));
     i2c_master_bus_config_t bus{};
     bus.i2c_port = I2C_NUM_0;
     bus.sda_io_num = gpio_num_t(c::display_sda_pin);
@@ -363,9 +365,39 @@ void storage_tick() {}
 bool storage_ready() {
     return sd_ready;
 }
-void start_peripherals() {
-    if (role != wiknow::Role::parent)
+static void boot_indicator_test() {
+    if (!c::signal_trend_enabled && !c::buzzer_enabled)
         return;
+    ESP_LOGI("peripherals", "Boot test: LEDs 200 ms each, then buzzer 100 ms (enabled outputs only)");
+    if (c::signal_trend_enabled) {
+        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
+                        c::signal_trend_steady_pin}) {
+            if (pin < 0)
+                continue;
+            ESP_ERROR_CHECK(gpio_set_level(gpio_num_t(pin), 1));
+            vTaskDelay(ticks(200));
+            ESP_ERROR_CHECK(gpio_set_level(gpio_num_t(pin), 0));
+        }
+    }
+    if (c::buzzer_enabled) {
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 512));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+        vTaskDelay(ticks(100));
+        ESP_ERROR_CHECK(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0));
+        ESP_ERROR_CHECK(ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0));
+    }
+    // This hardware check does not create a detection or consume its alert cooldown.
+    ESP_LOGI("peripherals", "Boot test complete; outputs off (confirm light/sound physically)");
+}
+void start_peripherals() {
+    if (role != wiknow::Role::parent) {
+        ESP_LOGI("peripherals", "Worker: parent peripherals and boot test skipped");
+        return;
+    }
+    ESP_LOGI("peripherals", "Parent: LEDs=%s buzzer=%s LCD=%s",
+             c::signal_trend_enabled ? "enabled" : "disabled",
+             c::buzzer_enabled ? "enabled" : "disabled",
+             c::display_enabled ? "enabled" : "disabled");
     console_queue = xQueueCreate(8, sizeof(LogLine));
     configASSERT(console_queue);
     configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) ==
@@ -397,6 +429,7 @@ void start_peripherals() {
         channel.timer_sel = LEDC_TIMER_0;
         ESP_ERROR_CHECK(ledc_channel_config(&channel));
     }
+    boot_indicator_test();
     if (c::display_enabled)
         init_lcd();
     if (c::sd_enabled) {
