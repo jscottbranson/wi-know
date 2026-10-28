@@ -9,6 +9,7 @@
 #include "nimble/nimble_port_freertos.h"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "wiknow/ble_reassembly.hpp"
 #include "wiknow/capture_policy.hpp"
 #include "wiknow/observation_queue.hpp"
 #include "wiknow/remote_id.hpp"
@@ -24,6 +25,7 @@ static bool wifi_started{};
 static bool wifi_receiving{};
 static wiknow::ObservationQueue observation_queue;
 static portMUX_TYPE observation_lock = portMUX_INITIALIZER_UNLOCKED;
+static std::atomic<uint32_t> ble_generation{1}, ble_stale_reports{};
 static wiknow::CapturePolicy capture_policy{wiknow::config::role};
 static std::atomic<bool> local_scan_requested{};
 void local_scanning(bool enabled) {
@@ -67,14 +69,17 @@ bool take_observation(wiknow::Observation &o) {
     portEXIT_CRITICAL(&observation_lock);
     return available;
 }
-static void enqueue_observation(const wiknow::Observation &o) {
+static void enqueue_observation(const wiknow::Observation &o, uint32_t ble_epoch = 0) {
     // Match outside the radio driver's raw callback and outside the queue lock.
     const bool matching =
         wiknow::best_match(wiknow::config::rules.data(), wiknow::config::rules.size(), o).rule ||
         wiknow::remote_id_messages(o).count != 0;
     portENTER_CRITICAL(&observation_lock);
-    const bool queued = observation_queue.push(o, matching);
+    const bool current = !ble_epoch || ble_epoch == ble_generation.load();
+    const bool queued = current && observation_queue.push(o, matching);
     portEXIT_CRITICAL(&observation_lock);
+    if (!current)
+        ++ble_stale_reports;
     if (!queued)
         ++dropped;
 }
@@ -162,6 +167,95 @@ void pause_wifi() {
         wifi_receiving = false;
     }
 }
+// NimBLE calls and scan transitions are serialized on its host event queue.
+// Reassembly only copies bounded bytes there; AD/RID parsing runs on ble_parse.
+static wiknow::BleAssembler ble_assembler;
+static portMUX_TYPE ble_assembly_lock = portMUX_INITIALIZER_UNLOCKED;
+static QueueHandle_t raw_ble{};
+static constexpr unsigned ble_queue_depth = 2;
+struct RawBle {
+    wiknow::BleAdvertisement advertisement;
+    uint32_t generation;
+};
+static std::atomic<uint32_t> ble_queue_drops{};
+static bool ble_ready{}, ble_recovery_pending{};
+static void reset_ble_assembly() {
+    // Synchronize with the final queue insertion, not just the worker's first
+    // generation check: a reset during parsing must also reject the old report.
+    portENTER_CRITICAL(&observation_lock);
+    if (++ble_generation == 0)
+        ++ble_generation;
+    portEXIT_CRITICAL(&observation_lock);
+    portENTER_CRITICAL(&ble_assembly_lock);
+    ble_assembler.reset();
+    portEXIT_CRITICAL(&ble_assembly_lock);
+}
+static void receive_ble_fragment(wiknow::BleFragment &fragment) {
+    if (!ble_ready || !ble_gap_disc_active())
+        return;
+    fragment.capture.at_ms = now_ms();
+    fragment.capture.policy = capture_snapshot();
+    RawBle raw{};
+    raw.generation = ble_generation.load();
+    portENTER_CRITICAL(&ble_assembly_lock);
+    const auto result = ble_assembler.accept(fragment, raw.advertisement);
+    portEXIT_CRITICAL(&ble_assembly_lock);
+    if (result == wiknow::BleAssemblyResult::rejected)
+        ++dropped;
+    else if (result == wiknow::BleAssemblyResult::complete &&
+             xQueueSend(raw_ble, &raw, 0) != pdTRUE) {
+        ++ble_queue_drops;
+        ++dropped;
+    }
+}
+static void ble_worker(void *) {
+    RawBle raw{};
+    uint64_t last_report = now_ms();
+    for (;;) {
+        if (xQueueReceive(raw_ble, &raw, ticks(100)) == pdTRUE) {
+            if (raw.generation != ble_generation.load()) {
+                ++ble_stale_reports;
+                ++dropped;
+            } else {
+                const auto &advertisement = raw.advertisement;
+                wiknow::Observation o{};
+                o.address = advertisement.key.address;
+                o.address_type = advertisement.key.address_type == BLE_ADDR_PUBLIC ||
+                                         advertisement.key.address_type == BLE_ADDR_PUBLIC_ID
+                                     ? 0
+                                     : 1;
+                o.rssi = advertisement.capture.rssi;
+                o.at_ms = advertisement.capture.at_ms;
+                o.timing_uncertainty_ms = advertisement.duration_ms;
+                o.node = advertisement.capture.policy.node;
+                o.boot = boot_id;
+                o.sequence = ++sequence;
+                if (o.rssi <= 0 && o.rssi != -128 &&
+                    wiknow::parse_ble(advertisement.data.data(), advertisement.size, o) &&
+                    advertisement.capture.policy.accepts(o))
+                    enqueue_observation(o, raw.generation);
+            }
+        }
+        if (now_ms() - last_report >= 30000) {
+            portENTER_CRITICAL(&ble_assembly_lock);
+            const auto stats = ble_assembler.stats();
+            portEXIT_CRITICAL(&ble_assembly_lock);
+            ESP_LOGI(
+                "ble",
+                "assembly=%u complete=%u timeout=%u truncated=%u overflow=%u "
+                "ambiguous=%u capacity_reset=%u cancelled=%u queue_drop=%u stale=%u "
+                "internal_free=%u internal_min=%u",
+                unsigned(stats.assemblies), unsigned(stats.complete_reports),
+                unsigned(stats.timeouts), unsigned(stats.truncations), unsigned(stats.overflows),
+                unsigned(stats.ambiguous), unsigned(stats.capacity_resets),
+                unsigned(stats.cancelled), unsigned(ble_queue_drops.load()),
+                unsigned(ble_stale_reports.load()),
+                unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+            last_report = now_ms();
+        }
+    }
+}
 // Standalone transitions run on the NimBLE host queue, serializing them with
 // sync/reset/discovery callbacks. With BLE disabled a dedicated task drives them.
 static std::atomic<int> standalone_channel{-2}; // -2 starting, -1 error, 0 BLE
@@ -170,51 +264,65 @@ int standalone_scan_channel() {
 }
 static wiknow::StandaloneScan standalone_scan;
 static ble_npl_callout standalone_timer;
-static bool ble_ready{};
 static uint8_t own_type{};
 static void scan_ble();
 static int gap_event(struct ble_gap_event *event, void *) {
-    wiknow::Observation o{};
     if (event->type == BLE_GAP_EVENT_DISC) {
         const auto &d = event->disc;
-        std::reverse_copy(d.addr.val, d.addr.val + 6, o.address.begin());
-        o.address_type =
-            d.addr.type == BLE_ADDR_PUBLIC || d.addr.type == BLE_ADDR_PUBLIC_ID ? 0 : 1;
-        o.rssi = d.rssi;
-        if (wiknow::parse_ble(d.data, d.length_data, o))
-            submit(o);
+        wiknow::BleFragment fragment{};
+        std::reverse_copy(d.addr.val, d.addr.val + 6, fragment.key.address.begin());
+        fragment.key.address_type = d.addr.type;
+        fragment.key.sid = 0xff;
+        fragment.key.properties =
+            0x10 | (d.event_type == BLE_HCI_ADV_RPT_EVTYPE_SCAN_RSP ? 0x08 : 0);
+        fragment.capture.rssi = d.rssi;
+        fragment.data = d.data;
+        fragment.size = d.length_data;
+        receive_ble_fragment(fragment);
     }
 #if CONFIG_BT_NIMBLE_EXT_ADV
     if (event->type == BLE_GAP_EVENT_EXT_DISC) {
         const auto &d = event->ext_disc;
-        // Fragmented/truncated advertising reports are not complete AD structures.
-        if (d.data_status != 0)
-            return 0;
-        std::reverse_copy(d.addr.val, d.addr.val + 6, o.address.begin());
-        o.address_type =
-            d.addr.type == BLE_ADDR_PUBLIC || d.addr.type == BLE_ADDR_PUBLIC_ID ? 0 : 1;
-        o.rssi = d.rssi;
-        if (wiknow::parse_ble(d.data, d.length_data, o))
-            submit(o);
+        wiknow::BleFragment fragment{};
+        std::reverse_copy(d.addr.val, d.addr.val + 6, fragment.key.address.begin());
+        fragment.key.address_type = d.addr.type;
+        fragment.key.sid = d.sid;
+        fragment.key.properties = d.props;
+        fragment.key.primary_phy = d.prim_phy;
+        fragment.key.secondary_phy = d.sec_phy;
+        fragment.key.direct_address_type = d.direct_addr.type;
+        std::reverse_copy(d.direct_addr.val, d.direct_addr.val + 6,
+                          fragment.key.direct_address.begin());
+        fragment.key.periodic_interval = d.periodic_adv_itvl;
+        fragment.status = static_cast<wiknow::BleDataStatus>(d.data_status);
+        fragment.capture.rssi = d.rssi;
+        fragment.data = d.data;
+        fragment.size = d.length_data;
+        receive_ble_fragment(fragment);
     }
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !standalone_scheduler())
-        scan_ble();
-#else
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !standalone_scheduler())
-        scan_ble();
 #endif
+    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE) {
+        reset_ble_assembly();
+        if (!standalone_scheduler())
+            scan_ble();
+    }
     return 0;
 }
 static void scan_ble() {
+    if (ble_gap_disc_active())
+        return;
+    reset_ble_assembly();
 #if CONFIG_BT_NIMBLE_EXT_ADV
     ble_gap_ext_disc_params params{};
     params.passive = 1;
+    params.disable_observer_mode = 0; // Forward raw fragments even when AD headers are split.
     params.itvl = 160;
     params.window = 80;
     int rc = ble_gap_ext_disc(own_type, 0, 0, 0, 0, 0, &params, &params, gap_event, nullptr);
 #else
     ble_gap_disc_params params{};
     params.passive = 1;
+    params.disable_observer_mode = 0; // Forward raw fragments even when AD headers are split.
     params.itvl = 160;
     params.window = 80;
     params.filter_duplicates = 0;
@@ -243,6 +351,8 @@ static void standalone_step() {
             standalone_channel = -1;
             return;
         }
+        reset_ble_assembly();
+        ble_recovery_pending = false;
     }
     pause_wifi();
     if (standalone_scan.has_started())
@@ -278,10 +388,44 @@ static void ble_sync() {
         scan_ble();
 }
 static void ble_reset(int reason) {
+    reset_ble_assembly();
     ble_ready = false;
+    ble_recovery_pending = false;
     if (standalone_scheduler() && standalone_channel == 0)
         standalone_channel = -1;
     ESP_LOGW("ble", "Host reset: %d", reason);
+}
+static ble_npl_callout ble_maintenance_timer;
+static void ble_maintenance(struct ble_npl_event *) {
+    portENTER_CRITICAL(&ble_assembly_lock);
+    ble_assembler.expire(now_ms());
+    const bool restart = ble_assembler.needs_restart();
+    portEXIT_CRITICAL(&ble_assembly_lock);
+    // Quarantine survives a failed cancellation. Only a confirmed controller
+    // boundary permits later COMPLETE reports to be treated as standalone again.
+    if (restart && ble_ready) {
+        if (ble_gap_disc_active()) {
+            if (ble_gap_disc_cancel() == 0) {
+                reset_ble_assembly();
+                scan_ble();
+                ble_recovery_pending = !ble_gap_disc_active();
+            }
+        } else {
+            reset_ble_assembly();
+        }
+    }
+    if (ble_recovery_pending && ble_ready) {
+        const bool desired = !standalone_scheduler() || standalone_scan.ble() ||
+                             (wiknow::config::universal_enabled && !local_scanning());
+        if (!desired)
+            ble_recovery_pending = false;
+        else if (!ble_gap_disc_active()) {
+            scan_ble();
+            ble_recovery_pending = !ble_gap_disc_active();
+        } else
+            ble_recovery_pending = false;
+    }
+    ble_npl_callout_reset(&ble_maintenance_timer, ble_npl_time_ms_to_ticks32(50));
 }
 static void ble_task(void *) {
     nimble_port_run();
@@ -337,6 +481,14 @@ void start_radios() {
             screen("BLE init fail", esp_err_to_name(ble_error));
         }
         ESP_ERROR_CHECK(ble_error);
+        raw_ble = xQueueCreate(ble_queue_depth, sizeof(RawBle));
+        configASSERT(raw_ble);
+        configASSERT(xTaskCreate(ble_worker, "ble_parse", 4096, nullptr, 4, nullptr) == pdPASS);
+        ESP_LOGI("ble", "Bounded assembly=%u bytes; completed queue=%u bytes; parser stack=4096",
+                 unsigned(sizeof(ble_assembler)), unsigned(ble_queue_depth * sizeof(RawBle)));
+        ble_npl_callout_init(&ble_maintenance_timer, nimble_port_get_dflt_eventq(), ble_maintenance,
+                             nullptr);
+        ble_npl_callout_reset(&ble_maintenance_timer, ble_npl_time_ms_to_ticks32(50));
         ble_hs_cfg.sync_cb = ble_sync;
         ble_hs_cfg.reset_cb = ble_reset;
         if (standalone_scheduler()) {
