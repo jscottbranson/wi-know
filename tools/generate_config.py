@@ -37,7 +37,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
     if isinstance(settings.get('sd'), dict):
-        settings['sd'].setdefault('format_if_mount_failed', False)
+        settings['sd'].setdefault('format_if_mount_failed', True)
     # Optional section keeps existing schema-v1 configurations compatible.
     settings.setdefault('standalone', {'enabled': False, 'ble_dwell_ms': 120})
     settings.setdefault('universal', {'strap_pin': 10, 'parent_tx_pin': 11, 'parent_rx_pin': 3,

@@ -85,7 +85,7 @@
   },
   "sd": {
     "enabled": true,
-    "format_if_mount_failed": false,
+    "format_if_mount_failed": true,
     "model": "Native 3.3 V SPI microSD breakout",
     "sck_pin": 8,
     "mosi_pin": 10,
