@@ -36,6 +36,8 @@ def load(path):
 def validate(settings, role_override=None, node_override=None, base=ROOT):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
+    if isinstance(settings.get('sd'), dict):
+        settings['sd'].setdefault('format_if_mount_failed', False)
     # Optional section keeps existing schema-v1 configurations compatible.
     settings.setdefault('standalone', {'enabled': False, 'ble_dwell_ms': 120})
     settings.setdefault('universal', {'strap_pin': 10, 'parent_tx_pin': 11, 'parent_rx_pin': 3,
@@ -54,7 +56,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list},
         'follower': {'enabled': bool, 'release_after_ms': int},
         'gps': {'enabled': bool, 'model': str, 'backup_battery_present': bool, **dict.fromkeys(('uart', 'rx_pin', 'tx_pin', 'baud', 'max_fix_age_ms', 'max_timing_uncertainty_ms'), int)},
-        'sd': {'enabled': bool, 'model': str, **dict.fromkeys(('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin', 'clock_khz'), int)},
+        'sd': {'enabled': bool, 'format_if_mount_failed': bool, 'model': str, **dict.fromkeys(('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin', 'clock_khz'), int)},
         'logging': {'mode': str, **dict.fromkeys(('flush_interval_ms', 'rotate_bytes', 'max_files'), int)},
         'display': {'enabled': bool, **dict.fromkeys(('sda_pin', 'scl_pin', 'i2c_address', 'page_interval_ms'), int)},
         'buzzer': {'enabled': bool, **dict.fromkeys(('pin', 'frequency_hz', 'duration_ms', 'cooldown_ms'), int)},

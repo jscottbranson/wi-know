@@ -118,13 +118,29 @@ test does not diagnose or repair LCD wiring.
 Build products are stored under:
 
 ```text
-build/devices/<role>-<node-id>-<config-path-hash>/
+build/devices/<role>-<node-id>-<config-and-sdk-defaults-hash>/
 ```
 
 Each directory has its own generated header and `sdkconfig`. Switching roles,
 IDs, or config paths cannot accidentally reuse another device's settings. Changes
 to the same settings/rule files are picked up by subsequent builds. The build tree
 is ignored by Git.
+
+The directory hash also includes `firmware/sdkconfig.defaults`. When those defaults
+change, the helper uses a new build directory so existing SDK settings cannot
+silently keep an old memory profile. Previous build outputs are left intact. If
+you flash manually with `@flash_args`, use the **Build:** directory printed by the
+latest helper invocation. Manual `idf.py` users should use a fresh build directory
+and an explicit `-DSDKCONFIG=/absolute/path/to/new-build/sdkconfig` when adopting
+changed SDK defaults.
+
+The memory profile enables optional quad PSRAM at 40 MHz, allocates the parent
+tracking table there when available, and disables Wi-Fi IRAM throughput
+optimizations. It retains both 1M and coded-PHY extended BLE scanning. Startup
+prints the tracking-table location and available internal heap. Missing PSRAM
+does not prevent boot: parents fall back to internal tracking RAM; workers do
+not allocate the table. Hardware tests still need to verify radio and storage
+headroom on boards without PSRAM. Task stacks and radio/DMA buffers stay internal.
 
 If flashing cannot connect, check the selected port, USB data cable, and operating
 system serial-port permissions. If needed, hold **BOOT**, tap **RESET**, release

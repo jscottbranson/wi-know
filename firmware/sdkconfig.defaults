@@ -5,6 +5,23 @@ CONFIG_BT_NIMBLE_ROLE_PERIPHERAL=n
 CONFIG_BT_NIMBLE_ROLE_BROADCASTER=n
 CONFIG_BT_NIMBLE_ROLE_OBSERVER=y
 CONFIG_BT_NIMBLE_EXT_ADV=y
+# Passive reception does not use periodic advertising/synchronization or reserve
+# connection/advertiser state. Retain extended scanning and both receive PHYs.
+CONFIG_BT_NIMBLE_ENABLE_PERIODIC_ADV=n
+CONFIG_BT_NIMBLE_ENABLE_PERIODIC_SYNC=n
+CONFIG_BT_LE_EXT_ADV_RESERVED_MEMORY_COUNT=0
+CONFIG_BT_LE_CONN_RESERVED_MEMORY_COUNT=0
+# Only explicitly allocated application state goes into PSRAM. DMA buffers and
+# task stacks remain internal; boards without PSRAM may still boot.
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_QUAD=y
+CONFIG_SPIRAM_SPEED_40M=y
+CONFIG_SPIRAM_USE_CAPS_ALLOC=y
+CONFIG_SPIRAM_IGNORE_NOTFOUND=y
+# Prefer RAM headroom over Wi-Fi throughput optimizations for passive capture.
+CONFIG_ESP_WIFI_IRAM_OPT=n
+CONFIG_ESP_WIFI_EXTRA_IRAM_OPT=n
+CONFIG_ESP_WIFI_RX_IRAM_OPT=n
 CONFIG_ESP_MAIN_TASK_STACK_SIZE=12288
 CONFIG_COMPILER_OPTIMIZATION_SIZE=y
 CONFIG_FATFS_LFN_HEAP=y

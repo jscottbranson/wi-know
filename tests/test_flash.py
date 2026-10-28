@@ -16,6 +16,36 @@ spec.loader.exec_module(flash)
 
 
 class FlashTests(unittest.TestCase):
+    def test_changed_sdk_defaults_select_fresh_sdkconfig(self):
+        with tempfile.TemporaryDirectory() as folder:
+            defaults = pathlib.Path(folder)/'sdkconfig.defaults'
+            config = pathlib.Path(folder)/'settings.json'
+            defaults.write_text('CONFIG_SPIRAM=n\n')
+            config.write_text('{}')
+            with patch.object(flash, 'SDK_DEFAULTS', defaults):
+                old = flash.build_directory('parent', 0, config)
+                config.write_text('{"edited": true}')
+                self.assertEqual(old, flash.build_directory('parent', 0, config))
+                defaults.write_text('CONFIG_SPIRAM=y\n')
+                new = flash.build_directory('parent', 0, config)
+                self.assertNotEqual(old, new)
+                self.assertEqual(new, flash.build_directory('parent', 0, config))
+
+    def test_sd_formatting_warning_in_dry_run(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = pathlib.Path(folder)/'settings.json'
+            settings = flash.generate_config.load(ROOT/'config/settings.standalone-wiring.example.json')
+            settings['sd']['format_if_mount_failed'] = True
+            config.write_text(json.dumps(settings))
+            status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')
+            self.assertEqual(status, 0, output)
+            self.assertIn('SD formatting is enabled', output)
+            settings['sd']['format_if_mount_failed'] = False
+            config.write_text(json.dumps(settings))
+            status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')
+            self.assertEqual(status, 0, output)
+            self.assertNotIn('SD formatting is enabled', output)
+
     def run_main(self, *args):
         output = io.StringIO()
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):

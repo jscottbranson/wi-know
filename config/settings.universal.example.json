@@ -85,6 +85,7 @@
   },
   "sd": {
     "enabled": true,
+    "format_if_mount_failed": false,
     "model": "HW-125 (probable, unconfirmed)",
     "sck_pin": 23,
     "mosi_pin": 24,

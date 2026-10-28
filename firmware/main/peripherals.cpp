@@ -262,12 +262,16 @@ static bool mount_sd() {
     slot.host_id = SPI2_HOST;
     slot.gpio_cs = gpio_num_t(c::sd_cs_pin);
     esp_vfs_fat_sdmmc_mount_config_t mount{};
-    mount.format_if_mount_failed = false;
+    mount.format_if_mount_failed = c::sd_format_if_mount_failed;
+    if (c::sd_format_if_mount_failed)
+        ESP_LOGW("sd", "Formatting authorized for unrecognized/damaged filesystem; existing data "
+                       "may be erased");
     mount.max_files = 3;
     mount.allocation_unit_size = 16 * 1024;
     error = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot, &mount, &sd_card);
     if (error != ESP_OK) {
-        ESP_LOGE("sd", "Mount failed (card is never auto-formatted): %s", esp_err_to_name(error));
+        ESP_LOGE("sd", "Mount failed (format_if_mount_failed=%s): %s",
+                 c::sd_format_if_mount_failed ? "true" : "false", esp_err_to_name(error));
         spi_bus_free(SPI2_HOST);
         return false;
     }

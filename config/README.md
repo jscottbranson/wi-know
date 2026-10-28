@@ -50,7 +50,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `detection` | Rules directory and enabled categories |
 | `follower` | Enable target commands; release after no fresh matching observation |
 | `gps` | Air530 UART (9600 baud), maximum fix age, capture-time uncertainty limit |
-| `sd` | HW-125 SPI pins and conservative 4 MHz initial clock |
+| `sd` | SPI pins and conservative 4 MHz initial clock; optional destructive `format_if_mount_failed` (default false) |
 | `logging` | `matches` or `all`; flush period, rotation bytes, retained files; flash fallback caps apply |
 | `display` | I²C pins/address and page period; 16×2 PCF8574 backpack driver |
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
@@ -67,6 +67,9 @@ legacy bus. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-
 The default LCD address 39 (`0x27`) and PCF8574 mapping are assumptions to verify.
 Parents try enabled SD storage at boot, then fall back to internal flash if SD is
 disabled or unavailable. See [storage selection, limits and readback](../docs/storage.md).
+An unformatted card can be prepared with the explicit
+[`sd.format_if_mount_failed` option](../docs/storage.md#preparing-an-unformatted-sd-card).
+It may erase a damaged or unrecognized filesystem; turn it off again after setup.
 Do not infer HW-125 supply voltage from its header labels. The RS-485 bus requires
 3.3 V-compatible transceivers, common ground, correct termination/biasing, and RTS
 wired to the transceiver's transmit-enable/receive-enable control. Bare UART TX

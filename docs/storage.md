@@ -15,7 +15,33 @@ Selection happens once per boot. Insert/remove the card while powered off, then
 restart. There is no hot-swap support or automatic copying between flash and SD.
 If the selected medium later fails to write, flush, or rotate, persistent logging
 stops with `OFF` and an error on serial; scanning and console output continue.
-Reboot to select storage again. SD cards are never automatically formatted.
+Reboot to select storage again. SD formatting is disabled by default; see the
+explicit opt-in below.
+
+## Preparing an unformatted SD card
+
+In the settings file you actually pass to the flashing helper, set these fields
+inside the existing `sd` object (keep your verified GPIO settings):
+
+```json
+"enabled": true,
+"format_if_mount_failed": true
+```
+
+Rebuild and flash with that config, then boot with the card inserted. ESP-IDF
+first initializes the card and attempts a normal FAT mount. With this option
+enabled it may format a filesystem reported as missing/unrecognized or internally
+damaged (`FR_NO_FILESYSTEM` or `FR_INT_ERR`) and retry mounting. This can erase
+existing files, including a non-FAT filesystem; use only a card whose contents
+you intend to replace. A readable FAT filesystem is mounted without formatting.
+Memory-allocation, absent-card, and communication failures do not authorize
+formatting. `ESP_ERR_NO_MEM` must be fixed before a card can be initialized.
+
+The helper prints a warning when formatting is enabled. After the card mounts
+successfully, set the option back to `false` and rebuild/reflash to prevent future
+mount failures from formatting the card. Old settings files that omit the option
+retain the safe default `false`. Formatting is not offered for internal flash
+through this setting.
 
 ## Flash layout and retention
 
@@ -48,7 +74,8 @@ still apply. Flash flushes dirty data no more often than every five seconds
 Recent buffered records can be lost at power failure. Flash has finite write
 endurance; SD is preferable for sustained `logging.mode: "all"` captures.
 
-Storage starts after radio initialization. Its queue holds two records; slow
+Storage starts after radio initialization. Parent tracking state uses PSRAM when
+available, leaving internal RAM for radio, storage, and task allocations. Its queue holds two records; slow
 mounts or writes can cause records to be dropped, counted in `local_drops` along
 with other local losses. If there is insufficient RAM for the storage task,
 serial reports the failure and console logging continues. Hardware validation

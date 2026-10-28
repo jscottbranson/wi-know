@@ -19,5 +19,5 @@ if(NOT CMAKE_BUILD_EARLY_EXPANSION)
     execute_process(COMMAND "${PYTHON}" "${GENERATOR}" ${GENERATE_ARGS} COMMAND_ERROR_IS_FATAL ANY)
 endif()
 idf_component_register(SRCS "main.cpp" "radios.cpp" "peripherals.cpp" INCLUDE_DIRS "." "${GENERATED_DIR}"
-    REQUIRES wiknow esp_wifi esp_event esp_netif nvs_flash bt esp_timer esp_driver_uart esp_driver_gpio esp_driver_ledc esp_driver_i2c esp_driver_spi fatfs sdmmc esp_partition wear_levelling)
+    REQUIRES wiknow esp_wifi esp_event esp_netif nvs_flash bt esp_timer esp_driver_uart esp_driver_gpio esp_driver_ledc esp_driver_i2c esp_driver_spi fatfs sdmmc esp_partition wear_levelling esp_psram)
 target_compile_features(${COMPONENT_LIB} PUBLIC cxx_std_17)

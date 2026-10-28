@@ -16,6 +16,20 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
+    def test_sd_formatting_requires_explicit_boolean_opt_in(self):
+        self.settings['sd'].pop('format_if_mount_failed', None)
+        settings, rules = generate.validate(self.settings)
+        self.assertFalse(settings['sd']['format_if_mount_failed'])
+        self.assertNotIn('format_if_mount_failed', self.settings['sd'])
+        self.assertIn('sd_format_if_mount_failed = false', generate.emit(settings, rules))
+        self.settings['sd']['format_if_mount_failed'] = True
+        settings, rules = generate.validate(self.settings)
+        self.assertIn('sd_format_if_mount_failed = true', generate.emit(settings, rules))
+        for invalid in (1, 'true', None):
+            self.settings['sd']['format_if_mount_failed'] = invalid
+            with self.assertRaises(ValueError):
+                generate.validate(self.settings)
+
     def test_universal_profiles_and_strap_conflicts(self):
         for name in ('settings.json', 'settings.universal.example.json'):
             settings, rules = generate.validate(generate.load(ROOT/'config'/name))
