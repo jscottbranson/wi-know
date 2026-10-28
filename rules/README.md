@@ -101,6 +101,7 @@ Supported predicates:
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
 | `manufacturer_prefix` | Hex prefix of BLE AD type `0xff`, including little-endian company ID bytes |
 | `service_uuid16` | Conventional 16-bit UUID text, e.g. `180F`; compared against little-endian AD bytes |
+| `service_uuid128` | BLE canonical UUID text, e.g. `00112233-4455-6677-8899-aabbccddeeff`; case-insensitive input, normalized to lowercase |
 | `rid_valid` | String `"true"`: at least one structurally valid supported decoded Remote ID message |
 | `rid_message_type` | `basic_id`, `location`, `authentication`, `self_id`, `system`, or `operator_id` |
 | `rid_basic_id` | Exact, case-sensitive Basic ID text, 1–20 printable ASCII characters; serial (type 1) and CAA registration (type 2) only |
@@ -168,3 +169,49 @@ Potential upstream sources: [Eye Spy](https://github.com/simeononsecurity/eye-sp
 fix the exact revision, and retain attribution when importing. Enable Flock, Axon,
 ALPR, Ring, or drone categories only with reviewed signatures appropriate to the
 radio/parser. Category switches alone do not add signatures. Decoded drone telemetry and rule predicates are documented in [Remote ID](../docs/remote-id.md).
+
+### 128-bit BLE service UUIDs
+
+`service_uuid128` accepts exactly 8-4-4-4-12 hexadecimal digits with hyphens.
+Braces, URN prefixes, missing/misplaced separators, masks and wildcards are rejected.
+Generated C++ and the provenance manifest contain lowercase canonical text.
+BLE sends the entire 16-byte UUID least-significant octet first: the example
+above matches `ffeeddccbbaa99887766554433221100` in advertising data.
+
+Matching checks complete entries in incomplete/complete service lists (AD types
+`0x06`/`0x07`) and only the leading UUID in 128-bit service data (`0x21`). It never
+searches application data or manufacturer data for UUID bytes. A partial UUID in
+any of these elements makes this predicate fail for the whole report, even if
+another element matches; list lengths must be multiples of 16, and service data
+must have at least 16 UUID bytes. An empty service list contains no match. A zero
+AD length terminates parsing, consistently with other BLE predicates.
+
+Public and random advertiser addresses use the same UUID comparison. This is
+passive advertising matching, with no GATT connection or service discovery.
+The existing 255-byte complete-report/reassembly limit, scan-boundary quarantine,
+observation identity and deduplication policies are unchanged. Raw AD evidence
+already crosses the child-parent bus and is retained as `ble_ad_hex` in
+JSONL; no wire or log version change is required. Standalone and parent matching
+therefore receive identical UUID bytes. Use `all` to combine independent evidence,
+or `any` for alternatives, as with `service_uuid16`.
+
+A service UUID is a broadcast claim, not authentication or proof of a particular
+manufacturer. Generic Nordic DFU services must not be labeled Flock-specific.
+This feature introduces no production signatures or third-party fingerprints;
+new signatures require separate source/license and confidence review. UniFi and
+Ubiquiti remain excluded.
+
+Hardware validation for issue #32 remains **not performed**. Before closing it,
+use a controlled advertiser and actual XIAO ESP32-C5 receivers to:
+
+1. Advertise a synthetic UUID above in `0x06`, `0x07`, and leading `0x21` service
+   data, separately, using public and random addresses. Verify passive delivery
+   and matching with a temporary lab rule and no active discovery.
+2. Repeat with complete legacy reports and bounded extended advertising, including
+   split UUID bytes; verify over-255-byte/truncated reports cannot match and scan
+   restarts do not join fragments across boundaries.
+3. Compare standalone and child-parent captures, classification/actions, raw
+   `ble_ad_hex`, and generated `.rules.json` provenance. Test a UUID appearing
+   only inside service-data bytes and one-byte near misses; neither should match.
+4. Record firmware commit, advertiser setup, controller report behavior, JSONL,
+   and scan/queue counters. Host tests are software evidence, not hardware proof.

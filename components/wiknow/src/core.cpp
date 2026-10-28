@@ -6,6 +6,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 
 namespace wiknow {
 bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_m) {
@@ -101,6 +102,46 @@ bool starts(std::string_view a, std::string_view b) {
 std::string_view text_view(const std::array<char, 33> &text) {
     return {text.data(), size_t(std::find(text.begin(), text.end(), '\0') - text.begin())};
 }
+// Canonical UUID text uses display order; BLE transmits all 16 octets reversed.
+bool uuid128(std::string_view text, uint8_t *bytes) {
+    if (text.size() != 36)
+        return false;
+    for (size_t i = 0; i < text.size(); ++i) {
+        const bool separator = i == 8 || i == 13 || i == 18 || i == 23;
+        const char c = text[i];
+        if (separator ? c != '-' : !((c >= '0' && c <= '9') ||
+                                     (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            return false;
+    }
+    size_t size{};
+    return hex(text, bytes, size, 16) && size == 16;
+}
+bool service_uuid128(std::string_view value, const Observation &o) {
+    uint8_t bytes[16];
+    if (o.radio != Radio::ble || !uuid128(value, bytes))
+        return false;
+    bool found = false;
+    for (size_t at = 0; at < o.payload_size;) {
+        const size_t n = o.payload[at];
+        if (!n)
+            break; // AD terminator, as in parse_ble().
+        if (at + 1 + n > o.payload_size)
+            return false;
+        const uint8_t type = o.payload[at + 1];
+        const auto *data = o.payload.data() + at + 2;
+        if (type == 0x06 || type == 0x07 || type == 0x21) {
+            const size_t length = n - 1;
+            if (type == 0x21 ? length < 16 : length % 16 != 0)
+                return false; // Reject a partial entry even after a complete match.
+            const size_t limit = type == 0x21 ? 16 : length;
+            for (size_t i = 0; i < limit; i += 16)
+                found = std::equal(bytes, bytes + 16,
+                                   std::reverse_iterator<const uint8_t *>(data + i + 16)) || found;
+        }
+        at += n + 1;
+    }
+    return found;
+}
 bool predicate(const Predicate &p, const Observation &o) {
     uint8_t bytes[32]{};
     size_t size{};
@@ -121,6 +162,8 @@ bool predicate(const Predicate &p, const Observation &o) {
             return false;
         return hex(p.value, bytes, size, 3) && size == 3 &&
                std::equal(bytes, bytes + 3, o.address.begin());
+    case Field::service_uuid128:
+        return service_uuid128(p.value, o);
     case Field::manufacturer_prefix:
     case Field::service_uuid16:
         if (o.radio != Radio::ble || !hex(p.value, bytes, size, sizeof(bytes)))
