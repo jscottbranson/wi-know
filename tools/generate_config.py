@@ -213,7 +213,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             for pred in rule['predicates']:
                 require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
-                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16',
+                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= 96, 'invalid predicate value')
@@ -235,8 +235,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')
-                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'manufacturer_prefix', 'service_uuid16')), 'BLE predicate in Wi-Fi rule')
+                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128')), 'BLE predicate in Wi-Fi rule')
                 require(not (rule['radio'] == 'ble' and field == 'ssid_prefix'), 'SSID predicate in BLE rule')
+                if field == 'service_uuid128':
+                    require(bool(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', value)),
+                            'UUID128 must be canonical 8-4-4-4-12 hex text')
+                    pred['value'] = value.lower()
                 if field in ('oui', 'manufacturer_prefix', 'service_uuid16'):
                     require(bool(re.fullmatch(r'[0-9a-fA-F :\-]+', value)), 'invalid hex predicate')
                     raw = bytes.fromhex(value.replace(':', '').replace('-', ''))

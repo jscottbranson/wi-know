@@ -283,6 +283,49 @@ class ConfigTests(unittest.TestCase):
                                 with self.assertRaises(ValueError):
                                     generate.validate(self.settings, base=base)
 
+    def test_service_uuid128(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = '.'
+            doc = generate.load(ROOT/'rules/examples/lab.json')
+            doc['rules'] = doc['rules'][:1]
+            rule = doc['rules'][0]
+            rule['radio'] = 'ble'
+            value = '00112233-4455-6677-8899-aabbccddeeff'
+            rule['predicates'] = [{'field': 'service_uuid128', 'value': value.upper()}]
+            path = base/'uuid.json'
+            path.write_text(json.dumps(doc))
+            settings, rules = generate.validate(self.settings, base=base)
+            self.assertEqual(rules[0]['predicates'][0]['value'], value)
+            self.assertEqual(rules[0]['source'], rule['source'])
+            self.assertIn('Field::service_uuid128,"'+value+'"', generate.emit(settings, rules))
+            # Exercise the actual provenance sidecar, not only in-memory rules.
+            settings_path = base/'settings.config'
+            cli_settings = copy.deepcopy(self.settings)
+            cli_settings['detection']['rules_directory'] = str(base)
+            settings_path.write_text(json.dumps(cli_settings))
+            output = base/'settings.hpp'
+            subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                            '--config', str(settings_path), '--output', str(output)],
+                           check=True, capture_output=True)
+            manifest = json.loads(output.with_suffix('.rules.json').read_text())
+            self.assertEqual(manifest['rules'][0]['predicates'], rules[0]['predicates'])
+            self.assertEqual(manifest['rules'][0]['source'], rule['source'])
+            output.with_suffix('.rules.json').unlink()
+            for bad in (value.replace('-', ''), '{'+value+'}', 'urn:uuid:'+value,
+                        value.replace('-', ':'), value+' ', value[:-1], value+'0',
+                        value[:-1]+'g', '*', '', 123):
+                with self.subTest(value=bad):
+                    rule['predicates'][0]['value'] = bad
+                    path.write_text(json.dumps(doc))
+                    with self.assertRaises(ValueError):
+                        generate.validate(self.settings, base=base)
+            rule['predicates'][0]['value'] = value
+            rule['radio'] = 'wifi'
+            path.write_text(json.dumps(doc))
+            with self.assertRaisesRegex(ValueError, 'BLE predicate'):
+                generate.validate(self.settings, base=base)
+
     def test_malformed_rules(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)
