@@ -36,6 +36,69 @@ class ExportTests(unittest.TestCase):
         self.log.write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf-8')
         return export.main([str(self.log), '--format', kind, '-o', str(self.output), *extra])
 
+    def test_json_formats_preserve_complete_detections(self):
+        drone = observation(event='drone_detection', message_type=1,
+                            data={'latitude': 42, 'longitude': -83},
+                            authenticated=False, rule_id=None, name='雪')
+        for kind in ('json', 'jsonl'):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.run_export([{'event': 'status'}, drone], kind,
+                                                 ['--matches-only']), 0)
+                text = self.output.read_text()
+                rows = json.loads(text) if kind == 'json' else [json.loads(line) for line in text.splitlines()]
+                self.assertEqual(len(rows), 1)
+                for key, value in drone.items():
+                    self.assertEqual(rows[0][key], value)
+                self.assertEqual(rows[0]['source_line'], 2)
+                self.assertEqual(self.run_export([], kind), 0)
+                self.assertEqual(self.output.read_text(), '[]\n' if kind == 'json' else '')
+
+    def test_infers_extensions_and_defaults_stdout_to_json(self):
+        self.log.write_text(json.dumps(observation()))
+        for kind in ('json', 'jsonl', 'csv', 'tsv', 'geojson'):
+            target = self.root / ('detections.' + kind.upper())
+            self.assertEqual(export.main([str(self.log), '-o', str(target)]), 0)
+            self.assertTrue(target.read_text())
+        with contextlib.redirect_stdout(io.StringIO()) as output:
+            self.assertEqual(export.main([str(self.log)]), 0)
+        self.assertEqual(len(json.loads(output.getvalue())), 1)
+        with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+            export.main([str(self.log), '-o', str(self.output)])
+
+    def test_tabular_drone_evidence(self):
+        drone = observation(event='drone_detection', data={'description': 'a,\tb\n雪'},
+                            protocol='remote_id', authenticated=False, raw_hex='abcd')
+        for kind, delimiter in (('csv', ','), ('tsv', '\t')):
+            self.assertEqual(self.run_export([drone], kind), 0)
+            with self.output.open(newline='') as stream:
+                row, = csv.DictReader(stream, delimiter=delimiter)
+            self.assertEqual(json.loads(row['data']), drone['data'])
+            self.assertEqual(row['protocol'], 'remote_id')
+            self.assertEqual(row['raw_hex'], 'abcd')
+
+    def test_drone_map_distinguishes_aircraft_operator_and_receiver(self):
+        aircraft = observation(event='drone_detection', message_type=1,
+                               data={'latitude': 40, 'longitude': -80})
+        operator = observation(event='drone_detection', message_type=4,
+                               data={'operator_position': {'latitude': 41, 'longitude': -81}})
+        unknown = observation(event='drone_detection', message_type=1,
+                              data={'latitude': None, 'longitude': None})
+        for location, index, point in (('aircraft', 0, [-80, 40]), ('operator', 1, [-81, 41])):
+            self.assertEqual(self.run_export([aircraft, operator, unknown, observation()],
+                                             extra=['--location', location]), 0)
+            features = json.loads(self.output.read_text())['features']
+            for i, feature in enumerate(features):
+                self.assertEqual(feature['properties']['location_role'], location)
+                self.assertEqual(feature['geometry'], {'type': 'Point', 'coordinates': point}
+                                 if i == index else None)
+        bad = observation(event='drone_detection', message_type=1,
+                          data={'latitude': 100, 'longitude': 0})
+        with contextlib.redirect_stderr(io.StringIO()) as errors:
+            self.assertEqual(self.run_export([bad, aircraft], extra=['--location', 'aircraft',
+                                                                    '--skip-invalid']), 0)
+        self.assertIn('WARNING: skipped', errors.getvalue())
+        self.assertEqual(len(json.loads(self.output.read_text())['features']), 1)
+
     def test_geojson_preserves_rule_evidence_and_unknown_locations(self):
         self.assertEqual(self.run_export([observation(), observation(rule_id='other'),
                                          observation(receiver_fix=None)]), 0)
