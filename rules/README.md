@@ -7,13 +7,16 @@ file is validated and compiled into firmware. Subdirectories are excluded, so
 `rules.json` remains available for additional local entries.
 An empty enabled ruleset produces a visible build/startup diagnostic.
 
+See [expanded detection coverage and configuration](EXPANDED.md) for the additional
+67 rules, default opt-outs, matcher formats, and limitations.
+
 ## Local surveillance pack (reviewed 2026-10-28)
 
 `surveillance.json` contains 25 enabled rules. The local settings and all shipped
 example profiles enable its categories, including `body_cameras` for Utility,
 Digital Ally, and legacy VIEVU. Existing custom profiles must add `body_cameras`
 to `detection.enabled_categories` to enable those rules.
-No UniFi/Ubiquiti Wi-Fi or Bluetooth identifiers are included.
+The separate [expanded pack](EXPANDED.md) includes Ubiquiti/UniFi identifiers, disabled by default alongside BLE trackers in every profile.
 
 | Category | Coverage | Interpretation |
 | --- | --- | --- |
@@ -67,7 +70,7 @@ Flock devices. Requested SSIDs never match `ssid_prefix` rules. BLE OUI rules on
 work with public, globally administered addresses. Names/company IDs can still match random
 addresses. Raw `BWCDEVICE` payload substring matching is unsupported and was
 not approximated. Native 128-bit service UUID matching is supported. Exact probe IE fingerprints are
-supported as described below; no production fingerprints are imported. No signal
+supported as described below; the expanded pack also adds a separate normalized community probe signature. No signal
 does not mean no camera.
 
 Validate with `python3 tools/generate_config.py`, then rebuild/reflash the parent
@@ -255,8 +258,7 @@ Use `match: "all"` to combine four predicates: `wifi_subtype: "probe_request"`,
 and `wifi_ie_fingerprint`. The third predicate can be `mac`; an OUI provides only vendor association and does not prove device identity.
 A wildcard probe or shared chipset fingerprint alone must never assert Flock
 identity. Shared defaults, random/private addresses, spoofing and common radio
-stacks remain limitations. No production probe signatures, generic chipset lists,
-UniFi/Ubiquiti signatures, or community implementation code are added here.
+stacks remain limitations. The original exact-byte predicate added no production signatures. The [expanded pack](EXPANDED.md) now supplies a separate normalized probe pattern and shared-vendor rules.
 The test fixtures are newly authored synthetic bytes under this repository's
 license. Any future external fingerprint requires a pinned source, license review,
 and independent confidence/evidence review before enabling it.
@@ -290,9 +292,8 @@ or `any` for alternatives, as with `service_uuid16`.
 
 A service UUID is a broadcast claim, not authentication or proof of a particular
 manufacturer. Generic Nordic DFU services must not be labeled Flock-specific.
-This feature introduces no production signatures or third-party fingerprints;
-new signatures require separate source/license and confidence review. UniFi and
-Ubiquiti remain excluded.
+The [expanded pack](EXPANDED.md) supplies reviewed service signatures. UniFi and
+Ubiquiti have a separate category disabled in all shipped profiles.
 
 Hardware validation for issue #32 remains **not performed**. Before closing it,
 use a controlled advertiser and actual XIAO ESP32-C5 receivers to:

@@ -58,9 +58,16 @@
       "body_cameras",
       "alpr",
       "ring",
-      "other_doorbell_cameras",
+      "acoustic_sensors",
+      "cameras",
+      "device_services",
+      "mesh_radios",
+      "serial_modules",
+      "shared_radio_vendors",
+      "smart_glasses",
       "lab"
-    ]
+    ],
+    "disabled_categories": ["ble_trackers", "unifi_cameras"]
   },
   "following_alert": {
     "enabled": false,

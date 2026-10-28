@@ -44,3 +44,37 @@ vendor candidates, and parser limitations. No code or tables were copied from
 that project. The vendor assignments used here were obtained directly from
 IEEE. This attribution records research provenance; it does not relicense
 FlipDeFlock material under CC0 or MIT.
+
+## Expanded pack: modified adaptations (2026-10-28)
+
+`../expanded.json` is a modified adaptation, not an upstream source file. Each
+rule carries its exact source URL, revision, license and review date. See the
+root [NOTICE](../../NOTICE) for retained copyright and modification notices.
+
+- **Eye Spy**, SimeonOnSecurity, revision
+  `5dba436175fd670a67eb819c2e17407d6fe918e8`: `src/es_detect.h` pattern tables
+  and `src/main.cpp` tracker/MeshCore/iBeacon/Remote ID identifiers. Apache-2.0;
+  [license](eye-spy-LICENSE.txt) and unmodified [NOTICE](eye-spy-NOTICE.txt).
+  Camera/vendor tables are attributed to Eye Spy, not presented as a fresh IEEE
+  registry verification. Upstream high-confidence/shared-chipset labels are not
+  inherited: broad vendor observations are explicitly possible associations.
+- **OUI Spy Unified Blue**, colonelpanichacks, pinned revision already listed
+  above: `src/raw/detector.cpp` Meta composite and names. MIT notice retained.
+- **Flock You**, colonelpanichacks, revision
+  `6704f011f3e6c9cfe94fe18c593f863032c9c954`: `main.cpp` ordered probe signature.
+  [MIT notice](flock-you-LICENSE.txt). Upstream credits NitekryDPaul and
+  DeFlockJoplin for this community drive-test fingerprint. The adaptation requires
+  strict valid probe IEs, a wildcard SSID and a vendor OUI, does not salvage corrupt
+  frames, and retains `possible` confidence. No upstream parser code is copied.
+- Decoded Remote ID alert rules are locally authored using the existing decoder.
+
+Eye Spy and Flock You cite GainSec, wgreenberg, dougborg, NitekryDPaul and
+DeFlockJoplin for underlying research. Firmware-derived identifiers are cited
+through those open-source projects; their licenses do not license proprietary
+firmware. No firmware image or code is copied. FlipDeFlock remains research-only,
+with no GPL source or signature table imported.
+
+The original CC0 dedication does not relicense Apache/MIT adaptations. Retain
+NOTICE, these upstream notices/licenses and the generated provenance manifest
+when distributing source or firmware. CI universal firmware artifacts include
+these files. The full IEEE database is still not bundled.

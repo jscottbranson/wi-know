@@ -173,3 +173,15 @@ The screen shows the current radio/channel or a scan error; a failed tune is
 retried on the next sweep. No children or dedicated follower are used. Observations
 still flow through the normal parent rules, GPS tagging, tracking, logs and alerts.
 Physical ESP32-C5 validation of switching and reception remains necessary.
+
+## Detection category defaults
+
+All shipped profiles enable the [expanded detection pack](../rules/EXPANDED.md),
+except `ble_trackers` (Tile, SmartTag, Apple Find My/iBeacon) and `unifi_cameras`.
+These are explicitly listed in `detection.disabled_categories` as examples of
+default-disabled matches. To enable one, remove it from that list and add it to
+`detection.enabled_categories`, then rebuild/reflash. Listing a category in both
+places is a validation error. Existing configs may omit `disabled_categories`.
+Category selection controls classifications and rule actions, not radio reception.
+Unifi/Ubiquiti OUIs also identify non-camera equipment. Generic camera keywords
+can independently match the same device even when its vendor category is off.

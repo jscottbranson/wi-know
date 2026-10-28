@@ -43,6 +43,8 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     settings.setdefault('universal', {'strap_pin': 10, 'parent_tx_pin': 11, 'parent_rx_pin': 3,
                                     'parent_rts_pin': 7, 'worker_tx_pin': 11,
                                     'worker_rx_pin': 12, 'worker_rts_pin': 7})
+    if isinstance(settings.get('detection'), dict):
+        settings['detection'].setdefault('disabled_categories', [])
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
@@ -52,7 +54,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         'ble': {'enabled': bool},
         'standalone': {'enabled': bool, 'ble_dwell_ms': int},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
-        'detection': {'rules_directory': str, 'enabled_categories': list},
+        'detection': {'rules_directory': str, 'enabled_categories': list, 'disabled_categories': list},
         'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list},
         'follower': {'enabled': bool, 'release_after_ms': int},
         'gps': {'enabled': bool, 'model': str, 'backup_battery_present': bool, **dict.fromkeys(('uart', 'rx_pin', 'tx_pin', 'baud', 'max_fix_age_ms', 'max_timing_uncertainty_ms'), int)},
@@ -189,6 +191,10 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     categories = settings['detection']['enabled_categories']
     require(all(isinstance(c, str) and re.fullmatch(r'[a-z0-9_]{1,40}', c) for c in categories), 'invalid category name')
     require(len(categories) == len(set(categories)), 'duplicate category')
+    disabled = settings['detection']['disabled_categories']
+    require(all(isinstance(c, str) and re.fullmatch(r'[a-z0-9_]{1,40}', c) for c in disabled), 'invalid disabled category')
+    require(len(disabled) == len(set(disabled)), 'duplicate disabled category')
+    require(not set(categories) & set(disabled), 'category cannot be both enabled and disabled')
     directory = (base / settings['detection']['rules_directory']).resolve()
     require(directory.is_dir(), f'rules directory missing: {directory}')
     rules, ids = [], set()
@@ -216,7 +222,8 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                 require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
-                                  'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix'), 'unknown predicate field')
+                                  'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci',
+                                  'name_contains_ci', 'name_exact', 'service_uuid16_range', 'wifi_ie_signature'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= (510 if field == 'wifi_ie_fingerprint' else 96), 'invalid predicate value')
                 if field.startswith('wifi_'):
                     require(rule['radio'] == 'wifi', 'Wi-Fi predicate in BLE rule')
@@ -225,6 +232,14 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                             'invalid Wi-Fi subtype')
                 if field == 'wifi_ssid_wildcard':
                     require(value in ('true', 'false'), 'wildcard must be true or false')
+                if field == 'wifi_ie_signature':
+                    tokens = value.split(',')
+                    for token in tokens:
+                        if token.startswith('221:'):
+                            require(bool(re.fullmatch(r'221:(?:[0-9a-fA-F]{2}){4,8}', token)), 'invalid vendor signature token')
+                        else:
+                            require(bool(re.fullmatch(r'[1-9][0-9]{0,2}', token)) and int(token) <= 255 and int(token) != 221, 'invalid signature tag')
+                    pred['value'] = value.lower()
                 if field == 'wifi_ie_fingerprint':
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2})+', value)),
                             'fingerprint must be complete contiguous hex bytes')
@@ -255,12 +270,16 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                 if field == 'rid_basic_id':
                     require(1 <= len(value) <= 20 and all(32 <= ord(c) <= 126 for c in value),
                             'Remote ID Basic ID must be 1..20 printable ASCII characters')
-                if field in ('ssid_prefix', 'name_prefix', 'wifi_requested_ssid_prefix'):
+                if field == 'service_uuid16_range':
+                    require(bool(re.fullmatch(r'[0-9a-fA-F]{4}-[0-9a-fA-F]{4}', value)), 'invalid UUID16 range')
+                    require(int(value[:4], 16) <= int(value[5:], 16), 'reversed UUID16 range')
+                    pred['value'] = value.lower()
+                if field in ('ssid_prefix', 'name_prefix', 'wifi_requested_ssid_prefix', 'ssid_contains_ci', 'name_contains_ci', 'name_exact'):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')
-                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128')), 'BLE predicate in Wi-Fi rule')
-                require(not (rule['radio'] == 'ble' and field == 'ssid_prefix'), 'SSID predicate in BLE rule')
+                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
+                require(not (rule['radio'] == 'ble' and field in ('ssid_prefix', 'ssid_contains_ci')), 'SSID predicate in BLE rule')
                 if field == 'service_uuid128':
                     require(bool(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', value)),
                             'UUID128 must be canonical 8-4-4-4-12 hex text')
@@ -273,7 +292,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                     require(field != 'service_uuid16' or len(raw) == 2, 'UUID16 must be 2 bytes, big-endian text')
             rule['enabled'] = rule['enabled'] and rule['category'] in categories
             rules.append(rule)
-    require(len(rules) <= 64, 'maximum 64 rules')
+    require(len(rules) <= 128, 'maximum 128 rules')
     return settings, rules
 
 

@@ -1,0 +1,34 @@
+wi-know third-party detection notices
+
+rules/expanded.json is a modified adaptation of detection pattern data from:
+
+Eye Spy — SimeonOnSecurity
+Copyright 2024 SimeonOnSecurity (https://github.com/simeononsecurity)
+https://github.com/simeononsecurity/eye-spy
+Revision 5dba436175fd670a67eb819c2e17407d6fe918e8
+Apache License 2.0. Retain rules/sources/eye-spy-LICENSE.txt and the unmodified
+upstream rules/sources/eye-spy-NOTICE.txt with source and binary distributions.
+
+OUI Spy Unified Blue and Flock You — colonelpanichacks
+Copyright (c) 2026 colonelpanichacks
+https://github.com/colonelpanichacks/oui-spy-unified-blue
+Revision 46eb13b2746ae72ad7070bbf5e42deb09b573623
+https://github.com/colonelpanichacks/flock-you
+Revision 6704f011f3e6c9cfe94fe18c593f863032c9c954
+MIT. Retain rules/sources/oui-spy-LICENSE.txt and flock-you-LICENSE.txt.
+Upstream credits NitekryDPaul / OrdoOuroboros, DeFlockJoplin, wgreenberg,
+dougborg and GainSec for field observations and signature research.
+
+Changes made by wi-know, 2026-10-28: translated pattern tables into JSON rules;
+separated shared-vendor associations, Nordic DFU, and serial-module names from
+camera identification; reduced confidence; grouped alternatives; made tracker
+and UniFi categories opt-in; matched UUIDs only in structured advertising data;
+added decoded Remote ID rules; required vendor and wildcard-probe evidence for
+the community IE pattern; rejected malformed IEs instead of resynchronizing.
+No upstream detector implementation, proprietary firmware, or firmware dump is
+included. The independently written matcher is part of wi-know.
+
+The repository's CC0 dedication does not supersede these third-party licenses.
+See rules/sources/README.md for per-file provenance, IEEE registry limitations,
+and research-only references. Distribute this NOTICE, the referenced notices
+and licenses, and the matching generated settings.rules.json with firmware.
