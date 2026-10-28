@@ -1,0 +1,126 @@
+{
+  "schema_version": 1,
+  "node": {
+    "role": "parent",
+    "id": 0
+  },
+  "wifi": {
+    "country": "US",
+    "channels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      36,
+      40,
+      44,
+      48,
+      149,
+      153,
+      157,
+      161
+    ],
+    "dwell_ms": 500
+  },
+  "standalone": {
+    "enabled": true,
+    "ble_dwell_ms": 120
+  },
+  "ble": {
+    "enabled": true
+  },
+  "bus": {
+    "enabled": false,
+    "uart": 1,
+    "tx_pin": 11,
+    "rx_pin": 12,
+    "rts_pin": 7,
+    "baud": 115200,
+    "first_node_id": 1,
+    "last_node_id": 8,
+    "poll_timeout_ms": 60,
+    "membership_lease_ms": 5000,
+    "assignment_lease_ms": 10000
+  },
+  "detection": {
+    "rules_directory": "rules",
+    "enabled_categories": [
+      "drones",
+      "flock",
+      "axon",
+      "alpr",
+      "ring",
+      "other_doorbell_cameras",
+      "lab"
+    ]
+  },
+  "following_alert": {
+    "enabled": false,
+    "distance_m": 200,
+    "delay_ms": 30000,
+    "max_gap_ms": 15000,
+    "ignore_devices": []
+  },
+  "follower": {
+    "enabled": true,
+    "release_after_ms": 30000
+  },
+  "gps": {
+    "enabled": false,
+    "model": "Grove GPS Air530",
+    "backup_battery_present": true,
+    "uart": 0,
+    "rx_pin": -1,
+    "tx_pin": -1,
+    "baud": 9600,
+    "max_fix_age_ms": 3000,
+    "max_timing_uncertainty_ms": 250
+  },
+  "sd": {
+    "enabled": false,
+    "model": "HW-125 (probable, unconfirmed)",
+    "sck_pin": -1,
+    "mosi_pin": -1,
+    "miso_pin": -1,
+    "cs_pin": -1,
+    "clock_khz": 4000
+  },
+  "logging": {
+    "mode": "matches",
+    "flush_interval_ms": 1000,
+    "rotate_bytes": 10485760,
+    "max_files": 100
+  },
+  "display": {
+    "enabled": true,
+    "sda_pin": 23,
+    "scl_pin": 24,
+    "i2c_address": 39,
+    "page_interval_ms": 3000
+  },
+  "buzzer": {
+    "enabled": true,
+    "pin": 7,
+    "frequency_hz": 2000,
+    "duration_ms": 150,
+    "cooldown_ms": 10000
+  },
+  "signal_trend": {
+    "enabled": true,
+    "increasing_pin": 1,
+    "decreasing_pin": 0,
+    "steady_pin": 25,
+    "window_ms": 2000,
+    "stale_ms": 6000,
+    "minimum_samples": 3,
+    "deadband_db": 3,
+    "confirmations": 2
+  }
+}

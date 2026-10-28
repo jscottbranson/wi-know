@@ -54,7 +54,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `logging` | `matches` or `all`; flush period, rotation bytes, number of retained logs |
 | `display` | I²C pins/address and page period; 16×2 PCF8574 backpack driver |
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
-| `signal_trend` | Three active-high LED pins, median window, samples, deadband and confirmations |
+| `signal_trend` | Optional active-high LED pins (`-1` omits each LED), median window, samples, deadband and confirmations |
 
 For multiple boards, flash the same universal config and binary onto every board.
 Only detected parents initialize the configured peripherals. The generator checks
@@ -131,7 +131,11 @@ For a single board, set `standalone.enabled` to `true` and `bus.enabled` to
 `false`, keeping role `parent` and ID `0`. Or build with
 `-DWIKNOW_CONFIG=/absolute/path/config/settings.standalone.example.json`.
 The example leaves peripherals disabled; copy your board's verified peripheral
-settings to retain GPS, storage, screen, LEDs and buzzer.
+settings to retain GPS, storage, screen, LEDs and buzzer. For a mini XIAO with an
+optional display, buzzer and 1–3 LEDs, use
+[`settings.standalone-wiring.example.json`](settings.standalone-wiring.example.json)
+and the [standalone wiring and selection guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
+Set individual omitted trend LED pins to `-1`; they are not initialized or driven.
 
 Flash the example with the normal helper (after activating ESP-IDF):
 

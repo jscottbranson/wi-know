@@ -197,20 +197,12 @@ def power_wiring(png):
     d.save('power-distribution', png)
 
 
-def parent_wiring(png):
-    d = Diagram('Parent LEDs, buzzer, LCD, GPS and microSD',
-                'ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.', 2190)
-    d.note(182, 'N32R8 parent GPIO map — config/settings.parent-wiring.example.json', [
-        'LEDs: GPIO0 increasing / GPIO1 decreasing / GPIO8 steady. Buzzer PWM: GPIO9.',
-        'LCD: GPIO4 SDA / GPIO5 SCL. GPS: GPIO10 RX (UART0). GPS RX is unused; tx_pin = -1.',
-        'Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.',
-    ])
-
+def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board='PARENT'):
     d.box(48, 350, 650, 405)
     d.text(70, 388, '1  Three active-high trend LEDs', size=25, weight=700)
-    for y, pin, label, color in [(450, 0, 'Increasing / green', GREEN),
-                                  (535, 1, 'Decreasing / red', RED),
-                                  (620, 8, 'Steady / amber', ORANGE)]:
+    for y, pin, label, color in [(450, led_pins[0], 'Increasing / green', GREEN),
+                                  (535, led_pins[1], 'Decreasing / red', RED),
+                                  (620, led_pins[2], 'Steady / amber', ORANGE)]:
         d.text(70, y + 6, f'GPIO{pin}', size=19, weight=700)
         d.line([(155, y), (190, y)], BLUE)
         d.box(190, y - 10, 70, 20, stroke=INK)
@@ -245,7 +237,7 @@ def parent_wiring(png):
     d.text(1067, 634, 'E', size=17)
     d.text(1090, 583, 'Q1 2N3904', size=18, weight=700)
     d.text(1090, 610, 'NPN', size=17, color=MUTED)
-    d.text(742, 584, 'GPIO9', size=18, weight=700)
+    d.text(742, 584, f'GPIO{buzzer_pin}', size=18, weight=700)
     d.line([(820, 590), (845, 590)], BLUE)
     d.box(845, 580, 60, 20, stroke=INK)
     d.text(875, 568, '1 kΩ', size=17, anchor='middle')
@@ -275,13 +267,13 @@ def parent_wiring(png):
     d.text(70, 821, '3  1602A LCD + assumed 5 V PCF8574 backpack', size=25, weight=700)
     d.text(70, 851, 'Two bidirectional BSS138 channels. LV = 3.3 V; HV = 5 V; all grounds joined.', size=19, color=MUTED)
     d.box(70, 930, 210, 160, fill='#edf3f8')
-    d.text(175, 960, 'PARENT', size=21, weight=700, anchor='middle')
+    d.text(175, 960, board, size=21, weight=700, anchor='middle')
     d.box(570, 930, 300, 160)
     d.text(720, 958, 'I²C level shifter', size=21, weight=700, anchor='middle')
     d.text(720, 985, '2 × BSS138', size=18, anchor='middle', color=MUTED)
     d.box(1155, 930, 210, 160, fill='#edf3f8')
     d.text(1260, 960, 'LCD backpack', size=20, weight=700, anchor='middle')
-    for y, pin, signal in [(1015, 4, 'SDA'), (1065, 5, 'SCL')]:
+    for y, pin, signal in [(1015, lcd_pins[0], 'SDA'), (1065, lcd_pins[1], 'SCL')]:
         d.text(90, y + 6, f'GPIO{pin} / {signal}', size=18)
         d.line([(280, y), (570, y)], BLUE)
         d.text(590, y + 6, f'LV {signal}', size=17)
@@ -297,10 +289,60 @@ def parent_wiring(png):
         d.text(x + 16, 930, '4.7 kΩ', size=16)
         d.line([(x, 942), (x, y)], color, width=2)
         d.dot(x, y, color)
-    d.text(70, 1130, 'Shifter: LV supply to parent 3V3; HV supply to regulated +5 V; GND to common ground.', size=18)
+    d.text(70, 1130, f'Shifter: LV supply to {board.lower()} 3V3; HV supply to regulated +5 V; GND to common ground.', size=18)
     d.text(70, 1160, 'Each MOSFET: gate to 3.3 V; source to LV signal; drain to matching HV signal.', size=18)
     d.text(70, 1190, 'LCD VCC to +5 V; GND to common ground. Address 0x27 assumed; verify backpack and contrast.', size=18)
     d.text(70, 1220, 'Pull-ups shown are TOTAL per line/side: reuse fitted resistors, do not blindly add parallel sets.', size=18, color=MUTED)
+
+
+def standalone_wiring(png):
+    d = Diagram('XIAO ESP32-C5 standalone / choose your indicators',
+                'One board + antenna • manual parent role • fit any combination of the three optional blocks below.', 1920)
+    d.note(182, 'XIAO header labels -> GPIO numbers / standalone-wiring example', [
+        'LEDs: D0 -> GPIO1 increasing; D1 -> GPIO0 decreasing; D2 -> GPIO25 steady. Buzzer: D3 -> GPIO7.',
+        'Display: D4 -> GPIO23 SDA; D5 -> GPIO24 SCL. D6–D10 remain free with all indicators fitted.',
+        'Omit any LED: set its pin to -1. Omit display or buzzer: set that section enabled=false. Rebuild and flash.',
+    ])
+    indicator_wiring(d, led_pins=(1, 0, 25), buzzer_pin=7, lcd_pins=(23, 24), board='XIAO')
+    d.box(48, 1275, 1344, 350)
+    d.text(70, 1316, 'Power + antenna / common ground for every fitted block', size=25, weight=700)
+    d.box(70, 1360, 310, 165, fill='#edf3f8')
+    d.text(95, 1395, 'Computer / USB supply', size=22, weight=700)
+    d.text(95, 1430, 'USB-C power', size=20)
+    d.text(95, 1460, '+ data for flash / console', size=18)
+    d.box(600, 1360, 310, 165, fill='#edf3f8')
+    d.text(625, 1395, 'XIAO ESP32-C5', size=23, weight=700)
+    d.line([(380, 1440), (600, 1440)], BLUE)
+    d.text(490, 1420, 'USB-C', size=18, anchor='middle')
+    d.text(625, 1435, '3V3 -> shifter LV', size=19)
+    d.text(625, 1470, 'GND -> common ground', size=19)
+    d.text(625, 1500, '5V / VBUS: leave open', size=18, color=MUTED)
+    d.box(1060, 1360, 305, 165)
+    d.text(1080, 1395, 'Supplied antenna', size=22, weight=700)
+    d.text(1080, 1460, 'U.FL connector', size=20)
+    d.line([(910, 1405), (1060, 1405)], GREEN)
+    d.text(95, 1560, 'Separate regulated +5 V -> LCD VCC + shifter HV + buzzer positive; supply GND -> XIAO GND.', size=19)
+    d.text(95, 1595, '100 nF at LCD VCC/GND; 10 µF across the local +5 V/GND rail. Keep independently powered +5 V rails apart.', size=18)
+    d.note(1650, 'Compact build choices', [
+        'Bare board: antenna + USB only. Display uses 2 GPIOs; buzzer uses 1; each LED uses 1 (6 GPIOs total).',
+        '1 LED shows only its assigned trend; it does not combine all states. Unknown/stale signal turns LEDs off.',
+        'No indicators: disable display, buzzer and signal_trend. GPS and microSD are disabled in this example.',
+        'LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.',
+        'Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.',
+    ], ORANGE)
+    d.save('xiao-standalone-wiring', png)
+
+
+def parent_wiring(png):
+    d = Diagram('Parent LEDs, buzzer, LCD, GPS and microSD',
+                'ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.', 2190)
+    d.note(182, 'N32R8 parent GPIO map — config/settings.parent-wiring.example.json', [
+        'LEDs: GPIO0 increasing / GPIO1 decreasing / GPIO8 steady. Buzzer PWM: GPIO9.',
+        'LCD: GPIO4 SDA / GPIO5 SCL. GPS: GPIO10 RX (UART0). GPS RX is unused; tx_pin = -1.',
+        'Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.',
+    ])
+
+    indicator_wiring(d)
 
     d.box(48, 1275, 1344, 235)
     d.text(70, 1316, '4  Grove GPS Air530 — receive-only UART0 at 9600 baud', size=25, weight=700)
@@ -412,12 +454,24 @@ def main():
     for section, values in expected.items():
         if any(parent[section][key] != value for key, value in values.items()):
             parser.error(f'Parent example {section} changed; update the peripheral diagram before regenerating.')
+    standalone = json.loads((ROOT / 'config/settings.standalone-wiring.example.json').read_text())
+    expected_standalone = {
+        'node': {'role': 'parent', 'id': 0}, 'standalone': {'enabled': True},
+        'bus': {'enabled': False}, 'gps': {'enabled': False}, 'sd': {'enabled': False},
+        'display': {'enabled': True, 'sda_pin': 23, 'scl_pin': 24, 'i2c_address': 39},
+        'buzzer': {'enabled': True, 'pin': 7},
+        'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 0, 'steady_pin': 25},
+    }
+    for section, values in expected_standalone.items():
+        if any(standalone[section][key] != value for key, value in values.items()):
+            parser.error(f'Standalone example {section} changed; update the standalone diagram before regenerating.')
     OUT.mkdir(parents=True, exist_ok=True)
     node_wiring(args.png)
     bus_wiring(args.png)
     power_wiring(args.png)
     parent_wiring(args.png)
     parent_headers(args.png)
+    standalone_wiring(args.png)
 
 
 if __name__ == '__main__':
