@@ -46,7 +46,7 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | --- | --- | --- | --- |
 | Display | D4 / GPIO23; D5 / GPIO24 | SDA; SCL through bidirectional BSS138 level shifter to LCD | 2 |
 | Grove Air530 GPS | D7 / GPIO12 | GPS TX → UART0 RX; GPS RX left disconnected | 1 |
-| Native 3.3 V SPI microSD breakout | D8 / GPIO8; D9 / GPIO9; D10 / GPIO10; D6 / GPIO11 | SCK; MISO/DO; MOSI/DI; CS respectively | 4 |
+| HiLetgo SPI microSD reader (5 V VCC) | D8 / GPIO8; D9 / GPIO9; D10 / GPIO10; D6 / GPIO11 | SCK; MISO/DO; MOSI/DI; CS respectively | 4 |
 | Buzzer | D3 / GPIO7 | 1 kΩ to 2N3904 base; driver circuit as drawn | 1 |
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
 | Decreasing LED (red) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
@@ -85,10 +85,11 @@ Choose the parts before building:
 
 Power the XIAO through USB-C (use a data cable for flashing/console). In the drawn
 arrangement, a separate regulated 5 V supply powers the LCD, shifter HV and buzzer;
-join its ground to XIAO GND and leave the XIAO **5V/VBUS header unconnected**.
-Use XIAO **3V3_OUT** for GPS VCC, microSD VDD and shifter LV, never as an external
-power input. Allow regulator headroom for the radio, GPS and card write-current
-peaks; verify the assembled supply under load. If neither display nor buzzer is
+join its ground to XIAO GND. Connect XIAO **5V/VBUS to the HiLetgo SD module VCC**;
+USB supplies this rail. Keep it separate from the external LCD/buzzer 5 V rail.
+Use XIAO **3V3_OUT** for GPS VCC and shifter LV, never as an external power input.
+Budget USB power for the board, radio and card write-current peaks; verify the
+assembled supply under load. If neither display nor buzzer is
 fitted, omit the external 5 V load supply. For a USB-free
 build, one regulated 5 V source may instead feed XIAO 5V/VBUS and the fitted 5 V
 loads with common ground; disconnect that source before attaching powered USB.
@@ -106,14 +107,16 @@ to D7; leave GPS RX disconnected (`gps.tx_pin: -1`). Add 100 nF at GPS VCC/GND.
 Use connector labels to identify signals, not wire colors. GPS supplies receiver
 coordinates and UTC from valid NMEA fixes; it does not locate arbitrary transmitters.
 
-Use a **native 3.3 V SPI microSD breakout**, with VDD to XIAO 3V3 and VSS to GND.
-Fit 10 kΩ pull-ups to 3.3 V on CMD and DAT0–DAT3 (including unused DAT1 and DAT2),
-accounting for resistors already fitted; no pull-up on CLK. Add 100 nF plus 10 µF
-near the card supply and keep SPI wires short. See the [GPS and card circuit
-details and sources below](#parent-leds-buzzer-screen-and-gps), but use the XIAO
-pins in this table. The unconfirmed HW-125 is not assumed compatible: verify its
-supply and 3.3 V logic before substitution. GPIO25 remains the steady LED; it is
-an SDIO edge-selection strap, and this profile uses SPI2, not SDIO.
+Use the **HiLetgo B07BJ2P6X6 SPI microSD reader**, with module **VCC to XIAO
+5V/VBUS** and **GND to XIAO GND**. Its onboard regulator supplies the card at
+3.3 V; feeding this module's VCC with 3.3 V can cause initialization timeouts.
+Its onboard level conversion accepts XIAO 3.3 V SPI signals: connect the four
+SPI wires directly, without an external I²C/IIC level converter. Signal pull-ups
+remain at **3.3 V**, never 5 V. Account for card-side resistors already fitted;
+CMD and DAT0–DAT3 need separate 10 kΩ pull-ups, including unused DAT1/DAT2.
+No pull-up or pull-down is needed on CLK. Keep SPI wires short.
+See the [module details and sources below](#parent-leds-buzzer-screen-and-gps).
+GPIO25 remains the steady LED; this profile uses SPI2, not SDIO.
 
 Insert a FAT-formatted card before boot. Firmware never auto-formats a card;
 mount errors appear on the USB console and scanning continues. The example keeps
@@ -171,8 +174,8 @@ used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
 | GPIO24 / P2.4 | microSD MOSI / DI / CMD |
 | GPIO2 / P1.3 | microSD MISO / DO / DAT0 |
 | GPIO25 / P1.13 | microSD CS / DAT3 |
-| Parent 3V3 | GPS VCC, level shifter LV supply, native 3.3 V microSD breakout |
-| External regulated +5 V | LCD VCC, buzzer positive and level shifter HV supply |
+| Parent 3V3 | GPS VCC and level shifter LV supply |
+| External regulated +5 V | LCD VCC, buzzer positive, level shifter HV and HiLetgo SD module VCC |
 | Common GND | Parent, external supply, GPS, LCD, microSD, level shifter and Q1 emitter |
 
 For the parent transceiver: P2.2 / GPIO11 → DI, P1.4 / GPIO3 ← RO,
@@ -210,27 +213,32 @@ and up to 60 mA working current for the
 headroom on the parent's 3V3 regulator. No parent TX connection is needed for NMEA
 reception. Coordinates identify the receiver's location.
 
-Use a **native 3.3 V SPI microSD breakout** for the shown card circuit. VDD goes
-to 3V3, VSS to common ground. Card contact numbers are CLK=5, CMD=3, DAT0=7,
-DAT3/CS=2, VDD=4 and VSS=6; these are not the adapter header order. Fit 10 kΩ
-pull-ups to 3.3 V on CMD and DAT0–DAT3, including unused DAT1 (contact 8) and DAT2
-(contact 1), accounting for resistors already on the breakout. No pull-up goes on
-CLK. See [Espressif's SD pull-up requirements](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/sd_pullup_requirements.html).
-GPIO25's pull-up affects an SDIO clock-edge strap; this firmware uses normal SPI
-boot and SPI2 for the card, with no SDIO slave interface. GPIO2/3 also serve pad
-JTAG/SDIO strap functions; this plan uses native USB JTAG and no SDIO interface.
-Keep wires short; the example uses a conservative 4 MHz SPI clock.
+The diagrams use the **[HiLetgo B07BJ2P6X6 reader](https://www.amazon.com/dp/B07BJ2P6X6)**
+(manufacturer part 3-01-0038). [HiLetgo specifies](https://hiletgo.com/5pcs-Micro-SD-Carte-TF-Adater-Reader-Module-PG2158021)
+a **4.5–5.5 V VCC input**, an onboard 3.3 V regulator, and level conversion for
+3.3 V or 5 V host interfaces. Connect the parent's external regulated **+5 V to
+module VCC**, and module GND to common ground. Connect SPI signals directly to
+the listed GPIOs; no external I²C/IIC converter is needed. The LCD still needs
+its separate I²C level shifter.
 
-The previously proposed **HW-125 is still unconfirmed**. Some adapter variants
-have an onboard regulator or different logic circuitry. Verify the actual module
-before choosing its input supply: feeding 3.3 V through a regulator intended for
-5 V can undervolt the card. Any module used must present 3.3 V SPI logic to the
-ESP32. The drawing does not assume a particular HW-125 supply pin.
+**Module VCC is not bare-card VDD.** Never apply 5 V to card contacts or ESP32
+GPIOs. A native 3.3 V breakout without this regulator must instead use 3.3 V;
+verify the actual board before substituting another module. The earlier HW-125
+identification was unconfirmed.
+
+On the card side, contact numbers are CLK=5, CMD=3, DAT0=7, DAT3/CS=2, VDD=4
+and VSS=6; these are not the module's header order. Account for fitted resistors:
+CMD and DAT0–DAT3 each need a 10 kΩ pull-up to **3.3 V**, including unused DAT1
+(contact 8) and DAT2 (contact 1). No pull-up/down goes on CLK. See
+[Espressif's SD pull-up requirements](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/sd_pullup_requirements.html).
+GPIO25's pull-up affects an SDIO clock-edge strap; this firmware uses normal SPI
+boot and SPI2, not SDIO. GPIO2/3 also serve pad JTAG/SDIO strap functions; this
+plan uses native USB JTAG. Keep wires short; the example uses a 4 MHz SPI clock.
 
 Fit 100 nF decoupling across VCC/GND near each GPS/LCD module, plus 10 µF across
 the local 5 V load rail; fit 100 nF plus 10 µF near microSD VDD/VSS as well (observe
 polarity for polarized capacitors). Power the parent through its native USB port;
-supply LCD/buzzer from a regulated 5 V rail with common ground. Leave P1.14 / 5V
+supply LCD/buzzer/SD module VCC from a regulated 5 V rail with common ground. Leave P1.14 / 5V
 unconnected in this arrangement; do not join independently powered 5 V rails or
 backfeed USB. VBAT is the battery rail, not a 5 V peripheral supply.
 
@@ -308,15 +316,14 @@ different boards' 3V3 outputs together or feed external power into those outputs
 See the [Seeed power/pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/).
 
 For the N32R8 parent, use its native USB power input. The diagram deliberately
-leaves its 5V header unconnected while an external 5 V rail supplies the LCD/buzzer.
+leaves its 5V header unconnected while an external 5 V rail supplies the LCD/buzzer/SD module.
 The ESP32-C5-WROOM-1 module itself is a 3.3 V device; a module supply pin must
 not be mistaken for a development board's regulated 5 V input. See the
 [Espressif module datasheet](https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html).
 
 Budget supply current for all boards, their transceivers and the parent's peripherals.
-The LCD backpack uses 5 V. Verify the probable HW-125 supply voltage before
-connecting it. Parent GPS, LCD, buzzer and LED connections are shown above;
-the separate header map includes microSD. The HW-125 variant still needs identification.
+The LCD backpack and identified HiLetgo SD module VCC use 5 V. Parent GPS, LCD, buzzer and LED connections are shown above;
+the separate header map includes microSD. The SD diagrams now use the identified HiLetgo reader with 5 V module VCC.
 
 ## Image sources
 

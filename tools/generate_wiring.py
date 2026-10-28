@@ -187,12 +187,12 @@ def power_wiring(png):
         d.text(x, 656, 'Local 3.3 V transceiver', size=18, anchor='middle', weight=700)
         d.text(x, 682, 'VCC from this XIAO only', size=16, color=MUTED, anchor='middle')
     d.note(730, 'N32R8 parent: native USB input; see parent header and peripheral diagrams', [
-        'Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer supply.',
+        'Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer/SD supply.',
         'For this non-isolated RS-485 bus, connect parent GND to the same common ground.',
     ], ORANGE)
     d.note(868, 'Keep the voltage rails separate', [
         'Do not feed external power into XIAO 3V3_OUT. Do not connect different boards’ 3V3 outputs together.',
-        'Do not attach the LCD backpack or HW-125 to a rail until its actual voltage requirements are confirmed.',
+        'HiLetgo SD module VCC needs 5 V; SPI signals remain 3.3 V. See the module-specific wiring diagrams.',
     ], RED)
     d.save('power-distribution', png)
 
@@ -333,23 +333,23 @@ def standalone_wiring(png):
     d.text(70, 1083, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
 
     d.box(48, 1135, 1344, 455)
-    d.text(70, 1176, '3  microSD / native 3.3 V SPI breakout / SPI2 at 4 MHz', size=25, weight=700)
+    d.text(70, 1176, '3  HiLetgo microSD reader / 5 V VCC / 3.3 V SPI at 4 MHz', size=25, weight=700)
     for y, left, right, color, incoming in [
-        (1220, 'D8 / GPIO8', 'SCK / CLK (card contact 5)', BLUE, False),
-        (1260, 'D10 / GPIO10', 'MOSI / DI / CMD (contact 3)', BLUE, False),
-        (1300, 'D9 / GPIO9', 'MISO / DO / DAT0 (contact 7)', BLUE, True),
-        (1340, 'D6 / GPIO11', 'CS / DAT3 (contact 2)', BLUE, False),
-        (1380, 'XIAO 3V3 output', 'VDD (contact 4)', RED, False),
-        (1420, 'XIAO GND', 'VSS (contact 6)', GROUND, False),
+        (1220, 'D8 / GPIO8', 'Module SCK / CLK', BLUE, False),
+        (1260, 'D10 / GPIO10', 'Module MOSI / DI', BLUE, False),
+        (1300, 'D9 / GPIO9', 'Module MISO / DO', BLUE, True),
+        (1340, 'D6 / GPIO11', 'Module CS', BLUE, False),
+        (1380, 'XIAO 5V / VBUS (USB)', 'Module VCC (5 V input)', RED, False),
+        (1420, 'XIAO GND', 'Module GND', GROUND, False),
     ]:
         d.text(90, y + 6, left, size=19)
         d.text(920, y + 6, right, size=19)
         points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
         d.line(points, color, arrow=(color == BLUE))
     d.text(70, 1464, '10 kΩ to 3.3 V on CMD and DAT0–DAT3, including unused DAT1 (8) and DAT2 (1); none on CLK.', size=18)
-    d.text(70, 1493, 'Account for fitted pull-ups. Contact numbers are for the card, not the adapter header order.', size=18)
-    d.text(70, 1522, '100 nF + 10 µF at VDD/VSS; keep SPI wires short. GPIO11 is CS: do not attach a UART console there.', size=18)
-    d.text(70, 1551, 'HW-125 variants need supply/logic verification; this drawing assumes a native 3.3 V breakout.', size=18, color=MUTED)
+    d.text(70, 1493, 'Account for fitted pull-ups on the card side. Keep all signal pull-ups at 3.3 V, never 5 V.', size=18)
+    d.text(70, 1522, 'Onboard regulator supplies card at 3.3 V. Keep wires short; GPIO11 is CS, not a UART console.', size=18)
+    d.text(70, 1551, 'HiLetgo B07BJ2P6X6 has level conversion: direct SPI GPIO wiring; no external IIC converter.', size=18, color=MUTED)
 
     d.parts.append('<g transform="translate(-672,1265)">')
     buzzer_wiring(d, 7, '4  Buzzer / passive + NPN driver')
@@ -368,16 +368,16 @@ def standalone_wiring(png):
     d.text(625, 2155, 'XIAO ESP32-C5', size=23, weight=700)
     d.line([(380, 2200), (600, 2200)], BLUE)
     d.text(490, 2180, 'USB-C', size=18, anchor='middle')
-    d.text(625, 2195, '3V3 -> GPS + SD + LV', size=18)
+    d.text(625, 2195, '3V3 -> GPS + shifter LV', size=18)
     d.text(625, 2230, 'GND -> common ground', size=19)
-    d.text(625, 2260, '5V / VBUS: leave open', size=18, color=MUTED)
+    d.text(625, 2260, '5V / VBUS -> SD VCC', size=18, color=MUTED)
     d.box(1060, 2120, 305, 165)
     d.text(1080, 2155, 'Supplied antenna', size=22, weight=700)
     d.text(1080, 2220, 'U.FL connector', size=20)
     d.line([(910, 2165), (1060, 2165)], GREEN)
     d.text(70, 2324, 'Separate regulated +5 V -> LCD VCC + shifter HV + buzzer positive; supply GND -> XIAO GND.', size=19)
     d.text(70, 2353, '100 nF at LCD VCC/GND; 10 µF across local +5 V/GND. Keep independently powered +5 V rails apart.', size=18)
-    d.text(70, 2382, 'Allow regulator headroom for board/radio peaks, GPS and card writes; verify stable 3.3 V under load.', size=18)
+    d.text(70, 2382, 'Budget USB power for board/radio + SD writes; verify module card-side 3.3 V remains stable.', size=18)
     d.text(70, 2411, 'Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.', size=18)
     d.note(2470, 'Build in priority order / remove optional blocks as needed', [
         'Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.',
@@ -413,23 +413,23 @@ def parent_wiring(png):
         d.line(list(reversed(points)) if reverse else points, color, arrow=reverse)
     d.text(70, 1484, 'GPS RX: leave disconnected. Use connector signal labels; check orientation rather than cable color.', size=18, color=MUTED)
     d.box(48, 1535, 1344, 345)
-    d.text(70, 1576, '5  microSD over SPI2 — 3.3 V logic and card supply', size=25, weight=700)
+    d.text(70, 1576, '5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic', size=25, weight=700)
     for y, left, right, reverse in [
-        (1620, 'GPIO23 / P2.5', 'SCK / CLK (card pin 5)', False),
-        (1660, 'GPIO24 / P2.4', 'MOSI / DI / CMD (card pin 3)', False),
-        (1700, 'GPIO2 / P1.3', 'MISO / DO / DAT0 (card pin 7)', True),
-        (1740, 'GPIO25 / P1.13', 'CS / DAT3 (card pin 2)', False),
+        (1620, 'GPIO23 / P2.5', 'Module SCK / CLK', False),
+        (1660, 'GPIO24 / P2.4', 'Module MOSI / DI', False),
+        (1700, 'GPIO2 / P1.3', 'Module MISO / DO', True),
+        (1740, 'GPIO25 / P1.13', 'Module CS', False),
     ]:
         d.text(70, y + 6, left, size=19, weight=700)
         d.text(930, y + 6, right, size=19)
         points = [(370, y), (900, y)]
         d.line(list(reversed(points)) if reverse else points, BLUE, arrow=True)
-    d.text(70, 1780, '3V3 to card VDD (pin 4); GND to VSS (pin 6). Add 100 nF + 10 µF near the socket.', size=18)
+    d.text(70, 1780, 'External regulated +5 V -> module VCC; common GND -> module GND. Card uses onboard 3.3 V.', size=18)
     d.text(70, 1810, '10 kΩ pull-ups to 3.3 V: CS, CMD, DAT0, DAT1 (pin 8), DAT2 (pin 1); no pull-up on CLK.', size=18)
-    d.text(70, 1840, 'Use a native 3.3 V SPI breakout. HW-125 supply / regulator / level-shifter variant must be checked.', size=18, color=MUTED)
-    d.text(70, 1868, 'Pull-ups may already be fitted. Card contact numbers are not the adapter header order.', size=17, color=MUTED)
+    d.text(70, 1840, 'HiLetgo B07BJ2P6X6 includes level conversion; direct SPI GPIO wiring, no external IIC converter.', size=18, color=MUTED)
+    d.text(70, 1868, 'Account for card-side pull-ups already fitted. Never connect 5 V to GPIOs or bare card VDD.', size=17, color=MUTED)
     d.note(1905, 'Power, parts and configuration', [
-        'Parent via documented USB input. External regulated +5 V feeds LCD and buzzer; join its GND to parent GND.',
+        'Parent via documented USB input. External +5 V feeds LCD, buzzer and SD VCC; join GND to parent GND.',
         'Leave parent P1.14 / 5V unconnected with this external load supply. Keep +5 V off ESP32 GPIOs.',
         'Add 100 nF across VCC/GND at GPS and LCD, plus 10 µF across the local +5 V/GND load rail.',
         'Use efficient red/green/amber LEDs (~2–3 mA with 470 Ω). Verify parent 3V3 regulator headroom for GPS.',
@@ -442,7 +442,7 @@ def parent_wiring(png):
 def parent_headers(png):
     d = Diagram('N32R8 parent header connection map',
                 'Component side up • antenna at top • USB connectors at bottom • P1/P2 numbers from board schematic.', 1250)
-    left = [('3V3', 'GPS + shifter LV + native SD supply'), ('RST', 'Leave available'),
+    left = [('3V3', 'GPS + shifter LV (not SD VCC)'), ('RST', 'Leave available'),
             ('GPIO2', 'SD MISO / DO'), ('GPIO3', 'Parent RS-485 RO / RX'),
             ('GPIO0', 'Green LED through 470 Ω'), ('GPIO1', 'Red LED through 470 Ω'),
             ('GPIO6', 'Reserved: battery ADC'), ('GPIO7', 'RS-485 DE + /RE'),
@@ -483,7 +483,7 @@ def parent_headers(png):
     d.text(910, 307, 'P2 / RIGHT', size=21, weight=700)
     d.note(1020, 'Board-specific details', [
         'Native USB port is left in the supplied pinout. GPIO12 is tied to CH343 TX; parent bus RX uses GPIO3.',
-        'Use USB power for parent, external regulated +5 V for LCD/buzzer, common ground; do not tie +5 V rails.',
+        'Use USB power for parent, external +5 V for LCD/buzzer/SD VCC, common ground; do not tie +5 V rails.',
         'GPIO25 pull-up selects an SDIO clock strap; firmware uses SPI boot and SPI2 SD, not the SDIO peripheral.',
         'GPIO0/1 need optional 32 kHz crystal unpopulated. Compare silkscreen before using a different board revision.',
     ], ORANGE)
