@@ -35,9 +35,15 @@ Supported predicates:
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
 | `manufacturer_prefix` | Hex prefix of BLE AD type `0xff`, including little-endian company ID bytes |
 | `service_uuid16` | Conventional 16-bit UUID text, e.g. `180F`; compared against little-endian AD bytes |
+| `rid_valid` | String `"true"`: at least one structurally valid supported decoded Remote ID message |
+| `rid_message_type` | `basic_id`, `location`, `authentication`, `self_id`, `system`, or `operator_id` |
+| `rid_basic_id` | Exact, case-sensitive Basic ID text, 1–20 printable ASCII characters; serial (type 1) and CAA registration (type 2) only |
+| `rid_basic_id_type` | String `"1"` (serial), `"2"` (CAA registration), `"3"` (UTM UUID), or `"4"` (specific session ID) |
+| `rid_position_valid` | String `"true"`: Location message has in-range aircraft coordinates, with the unavailable `(0, 0)` pair excluded |
 
-Only Wi-Fi beacons/probe responses and complete BLE advertising reports up to
-255 bytes are parsed initially. Text matching retains up to 32 received bytes of
+Wi-Fi beacons/probe responses, supported passive NAN Remote ID action frames,
+and complete BLE advertising reports are parsed within the 255-byte observation
+payload limit. Oversized payloads are rejected without truncation. Text matching retains up to 32 received bytes of
 the name/SSID, stopping at the first NUL byte. Prefixes match those bytes exactly,
 including UTF-8; they cannot contain ASCII control characters or exceed the
 32-byte limit. Regex is not supported. Match evidence is retained as SSID/name,
@@ -54,10 +60,45 @@ Share it alongside observation logs to explain the signatures behind each rule I
 Keep the manifest from the same build as the observations; a later rebuild can
 change a rule while retaining its ID.
 
+## Decoded Remote ID alert rules
+
+The `rid_*` predicates work for both `wifi` (beacon and supported NAN) and `ble` using the same bounded
+[Remote ID decoder](../docs/remote-id.md) as telemetry logging. They require a
+supported version-2 message in a valid envelope. A UUID or OUI association alone
+does not satisfy them. `rid_valid` means structural decoding succeeded; it does
+not assert that every optional field is available, validate authentication pages,
+or prove aircraft identity or location. Basic ID text does not guarantee a vendor
+or model name. Binary UTM/session IDs can be selected by type but are not treated
+as text. Text matches require the complete value, including valid zero padding;
+there is no implicit prefix matching.
+
+For an `all` rule, **all RID predicates must match the same individual decoded
+message**. Ordinary predicates still apply to the observation. Two Basic IDs in
+one pack cannot supply each other's ID type/value. An ID predicate combined with
+a Location/position predicate cannot match, even when the pack contains both:
+there is deliberately no cross-message or cross-observation identity correlation.
+Messages from earlier sightings are never consulted. For an `any` rule each
+predicate is an independent alternative. In particular, `any` with a UUID and
+`rid_valid` still allows UUID-only traffic; use `all` to require decoded evidence.
+Aircraft position never uses the operator or receiver coordinates.
+
+`examples/remote-id.json` supplies inactive, reviewed synthetic rules for any
+valid RID and serial ID `WI-KNOW-TEST-001`, each for BLE and Wi-Fi. Copy it into
+this directory, enable the desired entries, and enable the `drones` category.
+The specific ID rule has higher priority than the general rule. All matches
+produce classification records; only the highest-priority match controls buzzer
+and follower actions. Existing observation timing/freshness and follower selection
+remain applicable. Repeated sightings continue to match without bypassing the
+**shared `buzzer.cooldown_ms`** rate limit (10 seconds in the supplied settings).
+Enable and wire the buzzer before testing; keep a nonzero cooldown such as 10000.
+The same cooldown is shared with following alerts, not reset for each message or
+rule in a pack. Rules do not introduce a second alert path or a separate cache.
+Schema version 1 and existing predicates remain compatible; new fields are
+additive and preserved in the generated provenance manifest.
+
 Potential upstream sources: [Eye Spy](https://github.com/simeononsecurity/eye-spy),
 [OUI Spy](https://github.com/colonelpanichacks/oui-spy-unified-blue), and
 [OpenDroneID](https://github.com/opendroneid/opendroneid-core-c). Review licensing,
 fix the exact revision, and retain attribution when importing. Enable Flock, Axon,
 ALPR, Ring, or drone categories only with reviewed signatures appropriate to the
-radio/parser. Category switches alone do not add signatures. Drone telemetry
-payload decoding is not implemented in this first version.
+radio/parser. Category switches alone do not add signatures. Decoded drone telemetry and rule predicates are documented in [Remote ID](../docs/remote-id.md).

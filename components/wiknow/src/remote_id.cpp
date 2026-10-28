@@ -1,4 +1,5 @@
 #include "wiknow/remote_id.hpp"
+#include <algorithm>
 #include <cstring>
 
 namespace wiknow {
@@ -104,5 +105,53 @@ RemoteIdMessages remote_id_messages(const Observation &o) {
         at += n + 1;
     }
     return out;
+}
+bool is_remote_id_field(Field field) {
+    return field == Field::rid_valid || field == Field::rid_message_type ||
+           field == Field::rid_basic_id || field == Field::rid_basic_id_type ||
+           field == Field::rid_position_valid;
+}
+bool remote_id_predicate(const Predicate &p, const uint8_t *m) {
+    if (!m || (m[0] & 15) != 2 || (m[0] >> 4) > 5)
+        return false;
+    const unsigned type = m[0] >> 4;
+    switch (p.field) {
+    case Field::rid_valid:
+        return p.value == "true";
+    case Field::rid_message_type: {
+        constexpr std::string_view names[]{"basic_id", "location", "authentication",
+                                           "self_id",  "system",   "operator_id"};
+        return p.value == names[type];
+    }
+    case Field::rid_basic_id_type:
+        return type == 0 && p.value.size() == 1 && p.value[0] >= '1' && p.value[0] <= '4' &&
+               unsigned(p.value[0] - '0') == (m[1] >> 4);
+    case Field::rid_basic_id: {
+        // Only serial and CAA registration types contain text. Other types may be binary.
+        if (type != 0 || ((m[1] >> 4) != 1 && (m[1] >> 4) != 2) || p.value.empty() ||
+            p.value.size() > 20)
+            return false;
+        const auto *end = std::find(m + 2, m + 22, uint8_t(0));
+        if (!std::all_of(m + 2, end, [](uint8_t c) { return c >= 32 && c <= 126; }) ||
+            !std::all_of(end, m + 22, [](uint8_t c) { return c == 0; }))
+            return false;
+        return p.value == std::string_view(reinterpret_cast<const char *>(m + 2), end - (m + 2));
+    }
+    case Field::rid_position_valid: {
+        // Aircraft Location only, never operator/receiver coordinates. Zero pair is unavailable.
+        if (type != 1 || p.value != "true")
+            return false;
+        auto coordinate = [&](size_t at) {
+            uint32_t raw = uint32_t(m[at]) | uint32_t(m[at + 1]) << 8 | uint32_t(m[at + 2]) << 16 |
+                           uint32_t(m[at + 3]) << 24;
+            return raw <= 0x7fffffffu ? int64_t(raw) : int64_t(raw) - 0x100000000ll;
+        };
+        const auto lat = coordinate(5), lon = coordinate(9);
+        return lat >= -900000000ll && lat <= 900000000ll && lon >= -1800000000ll &&
+               lon <= 1800000000ll && (lat != 0 || lon != 0);
+    }
+    default:
+        return false;
+    }
 }
 } // namespace wiknow

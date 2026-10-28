@@ -4,6 +4,7 @@
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "wiknow/alert_cooldown.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
 #include "wiknow/scan_status.hpp"
@@ -155,8 +156,8 @@ static uint64_t following_alert_at{};
 static char following_address[18]{};
 static Observation target{};
 static const Rule *target_rule{};
-static uint64_t target_seen{}, last_beep{};
-static bool has_beeped{};
+static uint64_t target_seen{};
+static AlertCooldown alert_cooldown;
 static int target_peak{};
 static Trend target_trend{Trend::unknown};
 static bool same_target(const Observation &a, const Observation &b) {
@@ -216,10 +217,8 @@ static void consume(Observation o) {
             platform::write_log(event, log_class);
         else
             ++platform::dropped;
-        if (!has_beeped || received - last_beep >= uint64_t(c::buzzer_cooldown_ms)) {
+        if (alert_cooldown.request(received, c::buzzer_cooldown_ms)) {
             platform::indicators(target_trend, true);
-            last_beep = received;
-            has_beeped = true;
         }
     }
     // Preserve matching target state even when logging is matches-only.
@@ -257,11 +256,8 @@ static void consume(Observation o) {
                 target_seen = std::max(target_seen, o.at_ms);
         }
         uint64_t now = platform::now_ms();
-        if (match.rule->buzzer &&
-            (!has_beeped || now - last_beep >= uint64_t(c::buzzer_cooldown_ms))) {
+        if (match.rule->buzzer && alert_cooldown.request(now, c::buzzer_cooldown_ms)) {
             platform::indicators(target_trend, true);
-            last_beep = now;
-            has_beeped = true;
         }
     }
     char json[log_line_capacity];

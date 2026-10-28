@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "rid-ble-any-valid",
+      "category": "drones",
+      "enabled": false,
+      "radio": "ble",
+      "match": "all",
+      "priority": 100,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_valid",
+          "value": "true"
+        }
+      ],
+      "source": {
+        "url": "local:synthetic-remote-id-fixture",
+        "revision": "1",
+        "license": "CC0-1.0",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "rid-ble-test-aircraft",
+      "category": "drones",
+      "enabled": false,
+      "radio": "ble",
+      "match": "all",
+      "priority": 150,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_basic_id_type",
+          "value": "1"
+        },
+        {
+          "field": "rid_basic_id",
+          "value": "WI-KNOW-TEST-001"
+        }
+      ],
+      "source": {
+        "url": "local:synthetic-remote-id-fixture",
+        "revision": "1",
+        "license": "CC0-1.0",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "rid-wifi-any-valid",
+      "category": "drones",
+      "enabled": false,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 100,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_valid",
+          "value": "true"
+        }
+      ],
+      "source": {
+        "url": "local:synthetic-remote-id-fixture",
+        "revision": "1",
+        "license": "CC0-1.0",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "rid-wifi-test-aircraft",
+      "category": "drones",
+      "enabled": false,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 150,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_basic_id_type",
+          "value": "1"
+        },
+        {
+          "field": "rid_basic_id",
+          "value": "WI-KNOW-TEST-001"
+        }
+      ],
+      "source": {
+        "url": "local:synthetic-remote-id-fixture",
+        "revision": "1",
+        "license": "CC0-1.0",
+        "reviewed": "2026-10-28"
+      }
+    }
+  ]
+}

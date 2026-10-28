@@ -105,6 +105,12 @@ bool predicate(const Predicate &p, const Observation &o) {
     uint8_t bytes[32]{};
     size_t size{};
     switch (p.field) {
+    case Field::rid_valid:
+    case Field::rid_message_type:
+    case Field::rid_basic_id:
+    case Field::rid_basic_id_type:
+    case Field::rid_position_valid:
+        return false; // Evaluated together against one decoded message in matches().
     case Field::ssid_prefix:
         return starts(text_view(o.ssid), p.value);
     case Field::name_prefix:
@@ -365,14 +371,36 @@ bool matches(const Rule &r, const Observation &o) {
     if (o.payload_size > o.payload.size() || !r.enabled || r.radio != o.radio ||
         !r.predicate_count || r.predicate_count > r.predicates.size())
         return false;
+    bool has_rid = false;
     for (size_t i = 0; i < r.predicate_count; ++i) {
-        bool hit = predicate(r.predicates[i], o);
+        if (is_remote_id_field(r.predicates[i].field)) {
+            has_rid = true;
+            continue;
+        }
+        const bool hit = predicate(r.predicates[i], o);
         if (r.require_all && !hit)
             return false;
         if (!r.require_all && hit)
             return true;
     }
-    return r.require_all;
+    if (!has_rid)
+        return r.require_all;
+    const auto decoded = remote_id_messages(o);
+    for (size_t message = 0; message < decoded.count; ++message) {
+        bool all = true;
+        for (size_t i = 0; i < r.predicate_count; ++i) {
+            const auto &p = r.predicates[i];
+            if (!is_remote_id_field(p.field))
+                continue;
+            const bool hit = remote_id_predicate(p, decoded.messages[message]);
+            if (!r.require_all && hit)
+                return true;
+            all = all && hit;
+        }
+        if (r.require_all && all)
+            return true;
+    }
+    return false;
 }
 Match best_match(const Rule *rules, size_t count, const Observation &o) {
     Match best{};
