@@ -5,10 +5,12 @@
 #include <cstring>
 
 namespace platform {
+enum class LogClass { unmatched, matched };
+
 // Only files created by this logger belong to its retention policy.
 inline bool log_file_id(const char *name, uint32_t &id) {
-    if (std::strlen(name) != 14 || name[0] != 'W' || name[1] != 'K' ||
-        std::strcmp(name + 10, ".LOG") != 0)
+    if (std::strlen(name) != 14 || name[0] != 'W' ||
+        (name[1] != 'K' && name[1] != 'M' && name[1] != 'U') || std::strcmp(name + 10, ".LOG") != 0)
         return false;
     uint32_t value = 0;
     for (size_t i = 2; i < 10; ++i) {

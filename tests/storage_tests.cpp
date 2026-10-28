@@ -16,10 +16,12 @@ int main() {
     uint32_t id = 99;
     CHECK(platform::log_file_id("WK00000001.LOG", id) && id == 1);
     CHECK(platform::log_file_id("WK99999999.LOG", id) && id == 99999999);
+    CHECK(platform::log_file_id("WM00000003.LOG", id) && id == 3);
+    CHECK(platform::log_file_id("WU00000004.LOG", id) && id == 4);
     // Stray files must not join retention or prevent logging from opening a new file.
     for (const char *name : {"WK1.LOG", "WK0000001.LOG", "WK000000001.LOG", "WK+000001.LOG",
                              "WK 0000001.LOG", "WK-0000001.LOG", "WK00000001.LOG.bak",
-                             "WK00000001.log", "WK0000000a.LOG", "WK00000001.TXT", ""})
+                             "WX00000001.LOG", "WM0000000x.LOG", "WU00000001.LOG.bak", "WK00000001.log", "WK0000000a.LOG", "WK00000001.TXT", ""})
         CHECK(!platform::log_file_id(name, id));
 
     wiknow::Observation observation{};

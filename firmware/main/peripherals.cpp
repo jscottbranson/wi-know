@@ -9,6 +9,9 @@
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
+#include "diskio_sdmmc.h"
+#include "diskio_wl.h"
+#include "ff.h"
 #include "log_helpers.hpp"
 #include "log_storage.hpp"
 #include "nvs.h"
@@ -78,6 +81,7 @@ static const char *log_root = "/sdcard";
 static LogLimits limits{size_t(c::logging_rotate_bytes), size_t(c::logging_max_files)};
 struct LogLine {
     char data[wiknow::log_line_capacity];
+    LogClass classification{LogClass::unmatched};
 };
 static void uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) {
     uart_config_t cfg{};
@@ -290,7 +294,7 @@ static bool mount_flash() {
         });
     esp_vfs_fat_mount_config_t mount{};
     mount.format_if_mount_failed = blank;
-    mount.max_files = 2;
+    mount.max_files = 3;
     mount.allocation_unit_size = CONFIG_WL_SECTOR_SIZE;
     if (blank)
         ESP_LOGI("storage", "Initializing erased flash log partition");
@@ -303,42 +307,56 @@ static bool mount_flash() {
     }
     return true;
 }
-static FILE *next_log() {
-    return open_next_log(log_root, limits.max_files, [] {
-        uint64_t total{}, free{};
-        if (esp_vfs_fat_info(log_root, &total, &free) != ESP_OK)
-            return -1;
-        // Reserve one complete file plus metadata headroom before opening it.
-        return free >= limits.rotate_bytes + 8192 ? 1 : 0;
-    });
+static bool storage_free(uint64_t &free) {
+    const BYTE number = std::strcmp(log_root, "/sdcard") == 0
+                            ? ff_diskio_get_pdrv_card(sd_card)
+                            : ff_diskio_get_pdrv_wl(flash_handle);
+    if (number == 0xff)
+        return false;
+    char drive[8];
+    std::snprintf(drive, sizeof(drive), "%u:", unsigned(number));
+    FATFS *fs = nullptr;
+    DWORD clusters = 0;
+    if (f_getfree(drive, &clusters, &fs) != FR_OK)
+        return false;
+    size_t sector = FF_MIN_SS;
+#if FF_MAX_SS != FF_MIN_SS
+    sector = fs->ssize;
+#endif
+    limits.cluster_bytes = size_t(fs->csize) * sector;
+    free = uint64_t(clusters) * limits.cluster_bytes;
+    return limits.cluster_bytes != 0;
+}
+static bool readable_logs() {
+    LogFiles index;
+    uint64_t free{};
+    return scan_logs(log_root, index) && storage_free(free);
 }
 static void logger(void *) {
-    FILE *file = nullptr;
-    size_t bytes = 0;
-    bool dirty = false;
-    uint64_t last_flush = now_ms();
+    LogWriter writer;
+    uint64_t last_flush = now_ms(), last_drop_report = 0;
+    uint32_t retention_drops = 0;
     const Storage selected = select_storage(
         c::sd_enabled,
         [&] {
             if (!mount_sd())
                 return false;
-            file = next_log();
-            if (!file) {
-                ESP_LOGW("storage", "SD log open failed; trying flash");
-                esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
-                spi_bus_free(SPI2_HOST);
-            }
-            return file != nullptr;
+            if (readable_logs())
+                return true;
+            ESP_LOGW("storage", "SD log directory unavailable; trying flash");
+            esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
+            spi_bus_free(SPI2_HOST);
+            return false;
         },
         [&] {
             if (!mount_flash())
                 return false;
             log_root = "/flashlog";
             limits = log_limits(Storage::flash, c::logging_rotate_bytes, c::logging_max_files);
-            file = next_log();
-            if (!file)
-                esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
-            return file != nullptr;
+            if (readable_logs())
+                return true;
+            esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
+            return false;
         });
     active_storage = selected;
     ESP_LOGI("storage", "Logging=%s rotate=%u max_files=%u", storage_label(selected),
@@ -346,28 +364,29 @@ static void logger(void *) {
     LogLine line{};
     for (;;) {
         if (xQueueReceive(log_queue, &line, ticks(100)) == pdTRUE) {
-            size_t size = std::strlen(line.data);
-            if (file && bytes + size > limits.rotate_bytes) {
-                bool clean = std::fclose(file) == 0;
-                file = clean ? next_log() : nullptr;
-                bytes = 0;
-                dirty = false;
-                active_storage = file ? selected : Storage::off;
-                if (!file)
-                    ESP_LOGE("storage", "%s rotation failed; logging disabled until reboot",
-                             storage_label(selected));
-            }
-            if (file) {
-                if (std::fwrite(line.data, 1, size, file) != size) {
-                    ESP_LOGE("storage", "%s write failed; logging disabled until reboot",
-                             storage_label(selected));
-                    std::fclose(file);
-                    file = nullptr;
-                    active_storage = Storage::off;
+            if (active_storage != Storage::off) {
+                const auto result = writer.append(log_root, limits, line.classification, line.data,
+                    [](size_t reserve) {
+                        uint64_t free{};
+                        if (!storage_free(free))
+                            return -1;
+                        return free >= reserve ? 1 : 0;
+                    });
+                if (result != LogResult::stored)
                     ++dropped;
-                } else {
-                    bytes += size;
-                    dirty = true;
+                if (result == LogResult::blocked) {
+                    ++retention_drops;
+                    if (!last_drop_report || now_ms() - last_drop_report >= 5000) {
+                        ESP_LOGW("storage", "Retention dropped %s record; total=%u (protected logs or no space)",
+                                 line.classification == LogClass::matched ? "matched" : "unmatched",
+                                 unsigned(retention_drops));
+                        last_drop_report = now_ms();
+                    }
+                } else if (result == LogResult::error) {
+                    ESP_LOGE("storage", "%s write/rotation failed; logging disabled until reboot",
+                             storage_label(selected));
+                    writer.close_all();
+                    active_storage = Storage::off;
                 }
             } else
                 ++dropped;
@@ -376,16 +395,14 @@ static void logger(void *) {
             selected == Storage::flash
                 ? std::max(uint64_t(c::logging_flush_interval_ms), uint64_t(5000))
                 : uint64_t(c::logging_flush_interval_ms);
-        if (file && dirty && now_ms() - last_flush >= flush_ms) {
-            if (std::fflush(file) != 0 || fsync(fileno(file)) != 0) {
+        if (active_storage != Storage::off && now_ms() - last_flush >= flush_ms) {
+            if (!writer.flush([](FILE *file) { return fsync(fileno(file)) == 0; })) {
                 ESP_LOGE("storage", "%s flush failed; logging disabled until reboot",
                          storage_label(selected));
-                std::fclose(file);
-                file = nullptr;
+                writer.close_all();
                 active_storage = Storage::off;
                 ++dropped;
             }
-            dirty = false;
             last_flush = now_ms();
         }
     }
@@ -396,7 +413,7 @@ static void console_writer(void *) {
         if (xQueueReceive(console_queue, &line, portMAX_DELAY) == pdTRUE)
             std::fputs(line.data, stdout);
 }
-void write_log(const char *json) {
+void write_log(const char *json, LogClass classification) {
     // Both output paths are bounded and independent of the parent polling task.
     LogLine line{};
     size_t n = std::strlen(json);
@@ -405,6 +422,7 @@ void write_log(const char *json) {
         return;
     }
     std::memcpy(line.data, json, n + 1);
+    line.classification = classification;
     if (console_queue && xQueueSend(console_queue, &line, 0) != pdTRUE)
         ++dropped;
     if (log_queue && xQueueSend(log_queue, &line, 0) != pdTRUE)

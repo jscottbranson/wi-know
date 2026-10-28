@@ -76,10 +76,10 @@ def main(argv=None):
         subprocess.run([idf[0], str(extractor), '--wl-layer', 'enabled', str(backup)],
                        cwd=extracted, check=True)
         logs = sorted((path for path in extracted.rglob('*')
-                       if path.is_file() and re.fullmatch(r'WK[0-9]{8}\.LOG', path.name, re.IGNORECASE)),
-                      key=lambda path: str(path).upper())
+                       if path.is_file() and re.fullmatch(r'W[KMU][0-9]{8}\.LOG', path.name, re.IGNORECASE)),
+                      key=lambda path: (str(path.parent).upper(), path.name[2:10], path.name.upper()))
         if not logs:
-            raise ValueError('No WK########.LOG files found; raw backup retained')
+            raise ValueError('No WK/WM/WU########.LOG files found; raw backup retained')
         destination = directory / f'detections.{args.format}'
         options = [str(path) for path in logs] + ['-o', str(destination), '--location', args.location]
         for flag in ('matches_only', 'skip_invalid'):
