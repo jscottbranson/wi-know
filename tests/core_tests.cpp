@@ -109,6 +109,104 @@ static void parser_match_test() {
         parse_ble(ad, n, scratch);
     }
 }
+static void mac_test() {
+    Rule rule{};
+    rule.id = "exact-address";
+    rule.category = "lab";
+    rule.enabled = true;
+    rule.priority = 100;
+    rule.buzzer = rule.follow = true;
+    rule.predicate_count = 1;
+    rule.predicates[0] = {Field::mac, "02:ab:34:cd:56:ef"};
+    auto o = obs(-50, 100);
+    o.address = {2, 0xab, 0x34, 0xcd, 0x56, 0xef};
+    for (Radio radio : {Radio::wifi, Radio::ble}) {
+        rule.radio = o.radio = radio;
+        for (uint8_t type : {0, 1}) {
+            if (radio == Radio::wifi && type != 0)
+                continue;
+            o.address_type = type;
+            CHECK(matches(rule, o));
+            for (size_t i = 0; i < o.address.size(); ++i) {
+                o.address[i] ^= 1;
+                CHECK(!matches(rule, o)); // includes same-OUI near misses
+                o.address[i] ^= 1;
+            }
+            rule.predicates[0].value = "02:AB:34:CD:56:EF";
+            CHECK(matches(rule, o));
+            rule.predicates[0] = {Field::oui, "02:ab:34"};
+            CHECK(matches(rule, o) == (radio == Radio::ble && type == 0));
+            rule.predicates[0] = {Field::mac, "02:ab:34:cd:56:ef"};
+            Rule choices[] = {rule, rule};
+            choices[0].priority = 1;
+            choices[0].buzzer = choices[0].follow = false;
+            CHECK(best_match(choices, 2, o).rule == &choices[1]);
+            // Exercise the exact retained worker -> wire -> parent path.
+            RetainedObservation retained;
+            CHECK(retained.retain(o));
+            Report report{};
+            retained.report(report, 150);
+            Packet packet{};
+            CHECK(pack_report(report, packet));
+            uint8_t bytes[max_frame]{};
+            const auto n = encode_packet(packet, bytes, sizeof(bytes));
+            CHECK(n > 0 && bytes[2] == protocol_version);
+            Decoder decoder;
+            Packet decoded{};
+            for (size_t i = 0; i < n; ++i)
+                CHECK(decoder.feed(bytes[i], decoded) == (i + 1 == n));
+            Report forwarded{};
+            CHECK(unpack_report(decoded, forwarded));
+            CHECK(forwarded.observation.address == o.address);
+            CHECK(forwarded.observation.address_type == o.address_type);
+            CHECK(best_match(choices, 2, forwarded.observation).rule == &choices[1]);
+            CHECK(best_match(choices, 2, forwarded.observation).rule->buzzer);
+            CHECK(best_match(choices, 2, forwarded.observation).rule->follow);
+            Tracker tracker;
+            Gps gps;
+            auto &track = tracker.observe(forwarded.observation, {});
+            char json[log_line_capacity];
+            CHECK(observation_json(forwarded.observation, track, {&rule}, {}, gps,
+                                   json, sizeof(json)));
+            CHECK(std::strstr(json, "\"address\":\"02:ab:34:cd:56:ef\""));
+            CHECK(std::strstr(json, "\"rule_id\":\"exact-address\""));
+        }
+    }
+    for (const char *value : {"", "02:ab:34", "02:ab:34:cd:56", "02:ab:34:cd:56:ef:00",
+                              "02:ab:34:cd:56:eg", "02:ab:34:cd:56:*", "02:ab:34:cd:56:ef/48",
+                              "02ab34cd56ef", "02-ab-34-cd-56-ef", "02 ab 34 cd 56 ef",
+                              " 02:ab:34:cd:56:ef", "02:ab:34:cd:56:ef ", "0:2ab:34:cd:56:ef"}) {
+        rule.predicates[0].value = value;
+        CHECK(!matches(rule, o));
+    }
+    rule.predicates[0].value = "02:ab:34:cd:56:ef";
+    rule.predicates[1] = {Field::name_prefix, "fixture"};
+    rule.predicate_count = 2;
+    CHECK(!matches(rule, o));
+    rule.require_all = false;
+    CHECK(matches(rule, o));
+    std::strcpy(o.name.data(), "fixture");
+    rule.require_all = true;
+    CHECK(matches(rule, o));
+    o.address[5] ^= 1;
+    CHECK(!matches(rule, o));
+    rule.require_all = false;
+    CHECK(matches(rule, o));
+    rule.radio = Radio::wifi;
+    CHECK(!matches(rule, o));
+    // Wi-Fi matching uses transmitter address 2, never receiver or BSSID.
+    uint8_t frame[36]{};
+    frame[0] = 0x80;
+    const uint8_t target[] = {2, 0xab, 0x34, 0xcd, 0x56, 0xef};
+    std::memcpy(frame + 4, target, 6);
+    std::memcpy(frame + 16, target, 6);
+    CHECK(parse_wifi(frame, sizeof(frame), o));
+    rule.predicate_count = 1;
+    CHECK(!matches(rule, o));
+    std::memcpy(frame + 10, target, 6);
+    CHECK(parse_wifi(frame, sizeof(frame), o));
+    CHECK(matches(rule, o));
+}
 static void gps_test() {
     Gps g;
     int64_t utc{};
@@ -551,6 +649,7 @@ int main() {
     following_test();
     membership_test();
     parser_match_test();
+    mac_test();
     gps_test();
     gps_tagging_test();
     tracking_test();
