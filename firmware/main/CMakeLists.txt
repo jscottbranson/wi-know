@@ -1,5 +1,5 @@
 set(WIKNOW_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../../config/settings.json" CACHE FILEPATH "wi-know JSON settings")
-set(WIKNOW_ROLE "" CACHE STRING "Override role: parent, child, follower")
+set(WIKNOW_ROLE "" CACHE STRING "Override role: universal, parent, child, follower")
 set(WIKNOW_NODE_ID "" CACHE STRING "Override node ID (children/followers 1..16)")
 set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(GENERATOR "${CMAKE_CURRENT_LIST_DIR}/../../tools/generate_config.py")

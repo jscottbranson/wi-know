@@ -15,6 +15,35 @@ spec.loader.exec_module(generate)
 class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
+        self.settings['node']['role'] = 'parent'
+    def test_universal_profiles_and_strap_conflicts(self):
+        for name in ('settings.json', 'settings.universal.example.json'):
+            settings, rules = generate.validate(generate.load(ROOT/'config'/name))
+            self.assertEqual(settings['node']['role'], 'universal')
+            header = generate.emit(settings, rules)
+            self.assertIn('universal_enabled = true', header)
+            self.assertIn('universal_parent_rx_pin = 3', header)
+            self.assertIn('universal_worker_rx_pin = 12', header)
+            self.assertIn('universal_strap_pin = 10', header)
+        settings = generate.load(ROOT/'config/settings.universal.example.json')
+        settings['gps']['rx_pin'] = 10
+        with self.assertRaisesRegex(ValueError, 'GPIO 10 used'):
+            generate.validate(settings)
+        settings['gps']['rx_pin'] = 3
+        with self.assertRaisesRegex(ValueError, 'GPIO 3 used'):
+            generate.validate(settings)
+
+    def test_universal_rejects_invalid_identity_and_profile(self):
+        settings = generate.load(ROOT/'config/settings.json')
+        for change in ({'node': {'role': 'universal', 'id': 1}},
+                       {'bus': {**settings['bus'], 'enabled': False}}):
+            with self.assertRaises(ValueError):
+                generate.validate({**settings, **change})
+        settings, _ = generate.validate(settings)
+        settings['universal']['strap_pin'] = 6
+        with self.assertRaisesRegex(ValueError, 'verified GPIO10'):
+            generate.validate(settings)
+
     def test_following_alert(self):
         self.settings['following_alert']['enabled'] = True
         with self.assertRaises(ValueError):
@@ -194,6 +223,20 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(manifest['rules'][0]['predicates'], document['rules'][0]['predicates'])
             self.assertFalse(manifest['rules'][0]['enabled'])
             self.assertIn('no enabled rules for categories: other', result.stdout)
+    def test_universal_discovery_budget(self):
+        self.settings['node']['role'] = 'universal'
+        self.settings['bus'].update(baud=9600, poll_timeout_ms=600, last_node_id=16,
+                                    membership_lease_ms=20000, assignment_lease_ms=30000)
+        with self.assertRaisesRegex(ValueError, 'two worst-case bus sweeps'):
+            generate.validate(self.settings)
+        self.settings['bus'].update(membership_lease_ms=60000, assignment_lease_ms=60000)
+        # At 9600 baud the fully populated discovery schedule cannot fit valid leases.
+        with self.assertRaises(ValueError):
+            generate.validate(self.settings)
+        self.settings['bus'].update(last_node_id=2, membership_lease_ms=10000,
+                                    assignment_lease_ms=20000)
+        generate.validate(self.settings)
+
     def test_unknown_setting_and_wrong_type(self):
         self.settings['gps']['enabled'] = 1
         with self.assertRaises(ValueError):

@@ -9,6 +9,7 @@ struct CapturePolicy {
     Role role{Role::parent};
     Command assignment{};
     uint64_t expires{};
+    uint16_t node{};
 
     bool accepts(const Observation &observation) const {
         if (role == Role::parent)

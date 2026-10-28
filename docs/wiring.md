@@ -1,5 +1,10 @@
 # Wiring diagrams
 
+**The illustrations below show the manual legacy profile.** Universal images use
+[the additional identification harness and GPS RX change](universal.md): GPIO10
+is reserved for detection, and parent GPS RX moves from GPIO10 to GPIO26. Do not
+connect the legacy GPS wire to GPIO10 when using universal firmware.
+
 The parent is the **ESP32-C5 WiFi6 Dev Board N32R8**, with 32 MB flash and 8 MB
 PSRAM. The supplied product pinout matches the Waveshare WIFI6-KIT header layout.
 The children and dedicated follower are **mini Seeed XIAO ESP32-C5 boards**.
@@ -169,9 +174,9 @@ use one appropriate bias network if required. See the
 [TI RS-485 transceiver datasheet](https://www.ti.com/lit/ds/symlink/thvd1450.pdf)
 for bus topology and termination guidance.
 
-Do not tie bare ESP32 TX pins together. Give the parent ID 0 and each child/follower
-a unique nonzero ID within the parent's configured discovery range. Node roles
-and IDs are set when building; see [firmware instructions](firmware.md).
+Do not tie bare ESP32 TX pins together. Universal images assign worker roles and
+IDs at runtime. Explicit manual builds use parent ID 0 and unique nonzero worker
+IDs on a separate bus; see [firmware instructions](firmware.md).
 
 ## Power distribution
 

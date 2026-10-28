@@ -6,17 +6,15 @@ Use the local helper from the repository root:
 python3 tools/flash.py
 ```
 
-It asks you to select:
+The helper asks only for the USB port. It builds the **same universal image** for
+all boards: hardware identification selects the parent profile, and the parent
+assigns worker IDs and child/follower roles over RS-485. Fit the identification
+harness described in [universal wiring](universal.md) before first boot.
 
-1. **Parent**, **child**, or **follower**.
-2. A node ID for a child/follower; the parent always uses ID 0.
-3. The connected USB serial port, with a rescan option.
-
-It validates configuration/rules, checks the SDK version, builds the selected
-firmware, and flashes only after the build succeeds. The repo's settings file is
-not rewritten. Connect one board at a time for the simplest setup. Every child
-and follower needs a different ID within the configured discovery range (currently
-1–8); the helper cannot detect IDs already assigned to disconnected boards.
+It validates settings/rules and builds successfully before flashing. Connect each
+board in turn and run the same command with the same configuration. For wired
+parent peripherals use `--config config/settings.universal.example.json` on **every**
+board. Do not pass role or node-ID arguments. The default leaves peripherals off.
 
 ## One-time prerequisites
 
@@ -35,7 +33,16 @@ It does not download/install the SDK, change your shell environment, or run a fu
 
 ## Commands without the menu
 
-Parent:
+Universal image (repeat for every board, changing only the USB port):
+
+```sh
+python3 tools/flash.py --port /dev/ttyACM0 --config config/settings.universal.example.json
+python3 tools/flash.py --build-only --config config/settings.universal.example.json
+python3 tools/flash.py --dry-run
+```
+
+The following explicit roles retain manual provisioning for a **separate legacy
+bus**. Manual and universal nodes must not share a bus. Parent:
 
 ```sh
 python3 tools/flash.py --role parent --port /dev/ttyACM0

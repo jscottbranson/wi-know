@@ -5,7 +5,12 @@
 settings are relative to the repository root unless absolute. Detection rules
 live separately in `../rules/`.
 
-`settings.parent-wiring.example.json` is a separate N32R8 parent peripheral
+The default role is `universal` with ID 0 as an unassigned build placeholder.
+`settings.universal.example.json` enables all parent peripherals with GPS RX on
+GPIO26, reserving GPIO10 for the passive identification harness. Flash the same
+configuration onto all boards. See [universal provisioning](../docs/universal.md).
+
+`settings.parent-wiring.example.json` is a separate **manual legacy** N32R8 parent peripheral
 profile matching the [LED/buzzer/LCD/GPS/microSD wiring diagram](../docs/wiring.md#parent-leds-buzzer-screen-and-gps).
 It enables those peripherals and changes parent bus RX to GPIO3, avoiding the
 onboard USB-UART TX connected to GPIO12. Check the board revision before using it with
@@ -29,15 +34,16 @@ The generator rejects unknown/missing settings, wrong types, duplicate JSON keys
 invalid channels, duplicate rule IDs, invalid predicates, UART conflicts, duplicate
 active GPIOs, and enabled peripherals with unassigned GPIOs.
 
-The RS-485 bus is enabled on UART1 with TX GPIO11 (D6), RX GPIO12 (D7), and
-RTS GPIO7 (D3). GPS, SD, LCD, buzzer and LEDs remain disabled with GPIO `-1`.
+Universal mode selects UART1 TX GPIO11, RTS GPIO7 and parent RX GPIO3 or
+worker RX GPIO12 before initializing the bus. GPS, SD, LCD, buzzer and LEDs remain disabled with GPIO `-1`.
 BLE is enabled on the parent. GPIO numbers are **SoC GPIO numbers**, not
 XIAO `D` labels. The validator checks numeric bounds/conflicts, not your board's
 reserved pins or exposed pads. Confirm the parent board and wiring before enabling.
 
 | Section | Key settings |
 | --- | --- |
-| `node` | Role `parent`/`child`/`follower`; parent ID 0, other IDs unique in 1–16 |
+| `node` | Default `universal`, ID 0 placeholder; explicit manual `parent`/`child`/`follower` remain available |
+| `universal` | Optional verified hardware profile: strap GPIO10; parent bus 11/3/7; worker bus 11/12/7 |
 | `wifi` | US receive channel allowlist and dwell milliseconds; initial policy excludes DFS |
 | `ble` | Passive BLE scan switch, used by parent and follower |
 | `bus` | RS-485 UART/pins/baud, discoverable node ID range, poll timeout, membership/assignment leases |
@@ -50,12 +56,13 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
 | `signal_trend` | Three active-high LED pins, median window, samples, deadband and confirmations |
 
-For multiple boards, use one config with CLI role/ID overrides or pass a separate
-config with `-DWIKNOW_CONFIG=/absolute/path/settings.json`. Parent peripherals are
-only initialized in parent firmware. Each worker's node ID must be in the parent's
-configured bus range. All nodes should share the country/channel policy. Use USB
-Serial/JTAG for the console, leaving UART0 for GPS and UART1 for the bus. Firmware
-currently targets ESP32-C5; a different parent chip needs a platform port.
+For multiple boards, flash the same universal config and binary onto every board.
+Only detected parents initialize the configured peripherals. The generator checks
+the strap against active parent peripheral pins and the selected parent bus pins.
+The optional `universal` section defaults to the verified profiles above; changing
+those pins requires a reviewed hardware port, not a per-board build override.
+Manual role/ID overrides disable universal provisioning and require an isolated
+legacy bus. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-485.
 
 The default LCD address 39 (`0x27`) and PCF8574 mapping are assumptions to verify.
 Do not infer HW-125 supply voltage from its header labels. The RS-485 bus requires
@@ -115,6 +122,10 @@ transmitters can produce false alerts. Randomized Wi-Fi/BLE addresses can break
 continuity and require ignore-list updates; rotating identities are not linked.
 
 ## Standalone parent
+
+Universal parents use automatic local fallback with the bus enabled; see
+[the universal scheduling policy](../docs/universal.md). The following configuration
+is the optional **manual**, bus-disabled standalone mode.
 
 For a single board, set `standalone.enabled` to `true` and `bus.enabled` to
 `false`, keeping role `parent` and ID `0`. Or build with

@@ -4,7 +4,9 @@ A distributed wireless observation system built around ESP32 microcontrollers.
 Children divide the configured 2.4 GHz and 5 GHz Wi-Fi channels; a parent
 coordinates them, scans BLE, evaluates detection rules, and records observations.
 A dedicated follower spends additional receive time on a selected matching signal.
-An optional [standalone parent](config/README.md#standalone-parent) alternates BLE
+A [universal image](docs/universal.md) detects the parent from passive harness
+identification and assigns worker identities automatically. A parent alone scans
+locally and transitions as workers join. An optional manual [standalone parent](config/README.md#standalone-parent) alternates BLE
 and Wi-Fi scanning on one board, trading scan coverage for fewer devices.
 
 ## Project status
@@ -77,8 +79,9 @@ After installing and activating ESP-IDF v5.5.1, connect a board by USB and run:
 python3 tools/flash.py
 ```
 
-Select **parent**, **child**, or **follower**, choose its node ID and serial port,
-and the helper builds and flashes it. See [easy flashing instructions](docs/flashing.md)
+Select the USB port; repeat with the same settings for every board. The helper
+builds and flashes the universal image, with no per-board role or ID arguments.
+First fit the [parent identification harness](docs/universal.md). See [easy flashing instructions](docs/flashing.md)
 for setup, command-line options, dry runs and troubleshooting.
 
 For a manual build without flashing:
@@ -87,16 +90,16 @@ With ESP-IDF v5.5.1 activated, run from this directory:
 
 ```sh
 python3 tools/generate_config.py
-idf.py -C firmware -B build-parent -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 build
+idf.py -C firmware -B build-universal -DIDF_TARGET=esp32c5 build
 ```
 
-The RS-485 bus is enabled on TX GPIO11 (D6), RX GPIO12 (D7), and RTS GPIO7 (D3).
-Unassigned peripherals remain disabled. The default
-ruleset is empty; a disabled test template is in `rules/examples/`. See the build
-instructions for child/follower builds, flashing, and current implementation limits.
-For the N32R8 parent, use `config/settings.parent-wiring.example.json` as described
-in the wiring guide: it enables the peripherals and moves parent bus RX to GPIO3
-to avoid the onboard USB-UART output connected to GPIO12.
+Universal firmware selects TX GPIO11 and RTS GPIO7 on both boards, parent RX
+GPIO3 or worker RX GPIO12 before starting UART1. Unassigned peripherals remain
+disabled. Use `config/settings.universal.example.json` on every board to enable
+the parent peripherals; its GPS RX is GPIO26, reserving GPIO10 for identification.
+The existing wiring illustrations describe the manual profile; follow the
+[universal wiring changes](docs/universal.md) for the new image.
+The default ruleset is empty; a disabled test template is in `rules/examples/`.
 
 ## Primary references
 

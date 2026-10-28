@@ -10,8 +10,8 @@
 #include "platform.hpp"
 #include "wiknow/capture_policy.hpp"
 #include "wiknow/observation_queue.hpp"
-#include "wiknow/standalone_scan.hpp"
 #include "wiknow/remote_id.hpp"
+#include "wiknow/standalone_scan.hpp"
 #include <algorithm>
 #include <cstring>
 
@@ -24,7 +24,27 @@ static bool wifi_receiving{};
 static wiknow::ObservationQueue observation_queue;
 static portMUX_TYPE observation_lock = portMUX_INITIALIZER_UNLOCKED;
 static wiknow::CapturePolicy capture_policy{wiknow::config::role};
+static std::atomic<bool> local_scan_requested{};
+void local_scanning(bool enabled) {
+    local_scan_requested = enabled;
+}
+bool local_scanning() {
+    return local_scan_requested.load();
+}
+bool standalone_scheduler() {
+    return wiknow::config::standalone_enabled ||
+           (wiknow::config::universal_enabled && role == wiknow::Role::parent);
+}
 static portMUX_TYPE capture_lock = portMUX_INITIALIZER_UNLOCKED;
+void set_runtime_role(wiknow::Role value, uint16_t node) {
+    portENTER_CRITICAL(&capture_lock);
+    role = value;
+    node_id = node;
+    capture_policy.role = value;
+    capture_policy.node = node;
+    capture_policy.expires = 0;
+    portEXIT_CRITICAL(&capture_lock);
+}
 void set_capture_assignment(const wiknow::Command &assignment, uint64_t expires) {
     portENTER_CRITICAL(&capture_lock);
     capture_policy.assignment = assignment;
@@ -63,17 +83,19 @@ uint64_t now_ms() {
 void submit(wiknow::Observation &o) {
     if (o.rssi > 0 || o.rssi == -128)
         return;
-    o.node = wiknow::config::node_id;
+    const auto policy = capture_snapshot();
+    o.node = policy.node;
     o.boot = boot_id;
     o.sequence = ++sequence;
     o.at_ms = now_ms();
-    if (capture_snapshot().accepts(o))
+    if (policy.accepts(o))
         enqueue_observation(o);
 }
 // Driver callback copies bounded packets only; parsing happens in a worker task.
 struct RawWifi {
     wiknow::CapturePolicy policy;
     uint64_t at;
+    uint16_t node;
     int8_t rssi;
     uint8_t channel;
     uint16_t size;
@@ -92,6 +114,7 @@ static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
     RawWifi raw{};
     raw.at = now_ms();
     raw.policy = capture_snapshot();
+    raw.node = raw.policy.node;
     raw.rssi = packet->rx_ctrl.rssi;
     raw.channel = packet->rx_ctrl.channel;
     raw.size = uint16_t(size - 4);
@@ -107,7 +130,7 @@ static void wifi_worker(void *) {
             o.channel = raw.channel;
             o.rssi = raw.rssi;
             if (wiknow::parse_wifi(raw.frame, raw.size, o)) {
-                o.node = wiknow::config::node_id;
+                o.node = raw.node;
                 o.boot = boot_id;
                 o.sequence = ++sequence;
                 o.at_ms = raw.at;
@@ -169,10 +192,10 @@ static int gap_event(struct ble_gap_event *event, void *) {
         if (wiknow::parse_ble(d.data, d.length_data, o))
             submit(o);
     }
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !wiknow::config::standalone_enabled)
+    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !standalone_scheduler())
         scan_ble();
 #else
-    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !wiknow::config::standalone_enabled)
+    if (event->type == BLE_GAP_EVENT_DISC_COMPLETE && !standalone_scheduler())
         scan_ble();
 #endif
     return 0;
@@ -198,6 +221,14 @@ static void scan_ble() {
 static void standalone_step() {
     namespace c = wiknow::config;
     const auto now = now_ms();
+    if (c::universal_enabled && !local_scanning()) {
+        pause_wifi();
+        if (ble_ready && !ble_gap_disc_active())
+            scan_ble();
+        standalone_channel = ble_ready && ble_gap_disc_active() ? 0 : -1;
+        standalone_scan = {};
+        return;
+    }
     if (!standalone_scan.due(now))
         return;
     // Do not tune Wi-Fi until cancellation has succeeded. A failed cancellation
@@ -238,12 +269,12 @@ static void standalone_wifi_task(void *) {
 }
 static void ble_sync() {
     ble_ready = ble_hs_id_infer_auto(0, &own_type) == 0;
-    if (ble_ready && !wiknow::config::standalone_enabled)
+    if (ble_ready && !standalone_scheduler())
         scan_ble();
 }
 static void ble_reset(int reason) {
     ble_ready = false;
-    if (wiknow::config::standalone_enabled && standalone_channel == 0)
+    if (standalone_scheduler() && standalone_channel == 0)
         standalone_channel = -1;
     ESP_LOGW("ble", "Host reset: %d", reason);
 }
@@ -252,7 +283,9 @@ static void ble_task(void *) {
     nimble_port_freertos_deinit();
 }
 void start_radios() {
-    if (wiknow::config::role != wiknow::Role::parent || wiknow::config::standalone_enabled) {
+    set_runtime_role(role.load(), node_id.load());
+    local_scanning(standalone_scheduler());
+    if (role != wiknow::Role::parent || standalone_scheduler()) {
         ESP_ERROR_CHECK(esp_netif_init());
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
@@ -272,18 +305,19 @@ void start_radios() {
         ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_rx));
         // Reception starts when the first nonempty assignment is applied.
     }
-    if (wiknow::config::ble_enabled && wiknow::config::role != wiknow::Role::child) {
+    if (wiknow::config::ble_enabled &&
+        (wiknow::config::universal_enabled || role != wiknow::Role::child)) {
         ESP_ERROR_CHECK(nimble_port_init());
         ble_hs_cfg.sync_cb = ble_sync;
         ble_hs_cfg.reset_cb = ble_reset;
-        if (wiknow::config::standalone_enabled) {
+        if (standalone_scheduler()) {
             ble_npl_callout_init(&standalone_timer, nimble_port_get_dflt_eventq(), standalone_tick,
                                  nullptr);
             ble_npl_callout_reset(&standalone_timer, ble_npl_time_ms_to_ticks32(10));
         }
         nimble_port_freertos_init(ble_task);
     }
-    if (wiknow::config::standalone_enabled && !wiknow::config::ble_enabled)
+    if (standalone_scheduler() && !wiknow::config::ble_enabled)
         configASSERT(xTaskCreate(standalone_wifi_task, "local_scan", 4096, nullptr, 4, nullptr) ==
                      pdPASS);
 }
