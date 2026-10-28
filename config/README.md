@@ -131,11 +131,18 @@ For a single board, set `standalone.enabled` to `true` and `bus.enabled` to
 `false`, keeping role `parent` and ID `0`. Or build with
 `-DWIKNOW_CONFIG=/absolute/path/config/settings.standalone.example.json`.
 The example leaves peripherals disabled; copy your board's verified peripheral
-settings to retain GPS, storage, screen, LEDs and buzzer. For a mini XIAO with an
-optional display, buzzer and 1–3 LEDs, use
+settings to retain GPS, storage, screen, LEDs and buzzer. For a mini XIAO with
+**screen → GPS → microSD → buzzer → LEDs** in priority order, use
 [`settings.standalone-wiring.example.json`](settings.standalone-wiring.example.json)
 and the [standalone wiring and selection guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
+This profile enables all five: LCD on GPIO23/24, receive-only GPS on GPIO12,
+SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1/0/25.
+All 11 header GPIOs fit without changing the previous indicator wiring. For the
+compact screen/GPS/storage build, disable `buzzer` and `signal_trend`. Disable
+each other omitted peripheral through its `enabled` setting before rebuilding.
 Set individual omitted trend LED pins to `-1`; they are not initialized or driven.
+Use the native USB console; UART0 is reserved for GPS in this profile. The example
+keeps `logging.mode: "matches"`; choose `"all"` for a capture check with no rules.
 
 Flash the example with the normal helper (after activating ESP-IDF):
 

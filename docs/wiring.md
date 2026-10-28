@@ -25,12 +25,13 @@ left **USB** connector for native USB Serial/JTAG console/flashing, not the righ
 ## Standalone mini XIAO ESP32-C5
 
 Use one **Seeed Studio XIAO ESP32-C5** as a manual standalone parent, with
-its supplied antenna attached to U.FL. Choose any combination of the optional
-display, buzzer and **one, two or three trend LEDs** below. A bare board needs
-only antenna and USB power. This setup has **no RS-485 wiring and no identification
+its supplied antenna attached to U.FL. Fit peripherals in this priority order:
+**screen, GPS, microSD, buzzer, then LEDs**. All five fit together, including
+three trend LEDs, without changing the previous display/buzzer/LED wiring. A bare
+board needs only antenna and USB power. This setup has **no RS-485 wiring and no identification
 harness**; flash the explicit standalone profile rather than the universal image.
 
-![Standalone XIAO ESP32-C5 with optional display, buzzer and one to three LEDs](images/xiao-standalone-wiring.png)
+![Standalone XIAO ESP32-C5 with screen, GPS, microSD, buzzer and LEDs](images/xiao-standalone-wiring.png)
 
 [Editable SVG](images/xiao-standalone-wiring.svg) ·
 [Matching example configuration](../config/settings.standalone-wiring.example.json)
@@ -44,26 +45,40 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | Optional part | XIAO label / GPIO | Connection | GPIO cost |
 | --- | --- | --- | --- |
 | Display | D4 / GPIO23; D5 / GPIO24 | SDA; SCL through bidirectional BSS138 level shifter to LCD | 2 |
+| Grove Air530 GPS | D7 / GPIO12 | GPS TX → UART0 RX; GPS RX left disconnected | 1 |
+| Native 3.3 V SPI microSD breakout | D8 / GPIO8; D9 / GPIO9; D10 / GPIO10; D6 / GPIO11 | SCK; MISO/DO; MOSI/DI; CS respectively | 4 |
 | Buzzer | D3 / GPIO7 | 1 kΩ to 2N3904 base; driver circuit as drawn | 1 |
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
 | Decreasing LED (red) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
 | Steady LED (amber) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
 
-The full combination uses **6 of the 11 D0–D10 header GPIOs**. D6/GPIO11,
-D7/GPIO12, D8/GPIO8, D9/GPIO9 and D10/GPIO10 remain unassigned by this example.
+Screen + GPS + microSD use **7 GPIOs**; adding the buzzer uses 8; adding all
+three LEDs uses **all 11 D0–D10 header GPIOs**. GPS is receive-only, so it needs
+no TX pin on the XIAO. The example uses UART0 at 9600 baud and SPI2 at 4 MHz.
+USB Serial/JTAG remains available for flashing and console. D6/D7 are repurposed
+from the inactive bus, and D10 is microSD MOSI: **do not attach an RS-485 module
+or the universal identification harness to this setup**.
+Keep `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` (the repository default); a UART0
+console would conflict with GPS and card CS. GPIO11 can carry ROM UART TX during
+boot before SPI takes ownership, so leave GPS RX and external UART adapters off
+D6. The flash helper below uses an isolated build configuration.
 Labels and power pins follow the
 [Seeed pin map](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/).
 These are logical connections; compare the board silkscreen for physical pin positions.
 
 Choose the parts before building:
 
-- **Display + buzzer + three LEDs:** use the matching example as supplied.
+- **All five peripherals:** use the matching example as supplied.
+- **Screen + GPS + microSD (recommended compact build):** set `buzzer.enabled`
+  and `signal_trend.enabled` to `false`; keep the other three enabled.
+- **Screen + GPS:** also set `sd.enabled: false`. For **screen only**, disable
+  `gps` as well. Keep the same pin assignments as you add each higher-priority part.
 - **One or two LEDs:** keep `signal_trend.enabled: true`, and set each omitted
   LED's `increasing_pin`, `decreasing_pin` or `steady_pin` to `-1`. That GPIO is
   released. Each fitted LED still shows only its named trend; one LED does not
   encode all three states. Unknown or stale signal turns all fitted LEDs off.
 - **No LEDs:** set `signal_trend.enabled: false` and leave those branches unwired.
-- **No display or no buzzer:** set that section's `enabled` to `false` and omit
+- **No display, GPS, microSD or buzzer:** set that section's `enabled` to `false` and omit
   its entire circuit. The freed pins can be reassigned in a custom configuration.
 - **Bare board:** use [the original standalone example](../config/settings.standalone.example.json),
   which disables all peripherals. USB data provides the serial console.
@@ -71,8 +86,10 @@ Choose the parts before building:
 Power the XIAO through USB-C (use a data cable for flashing/console). In the drawn
 arrangement, a separate regulated 5 V supply powers the LCD, shifter HV and buzzer;
 join its ground to XIAO GND and leave the XIAO **5V/VBUS header unconnected**.
-Use XIAO **3V3_OUT** for shifter LV, never as an external power input. If neither
-display nor buzzer is fitted, omit the external 5 V load supply. For a USB-free
+Use XIAO **3V3_OUT** for GPS VCC, microSD VDD and shifter LV, never as an external
+power input. Allow regulator headroom for the radio, GPS and card write-current
+peaks; verify the assembled supply under load. If neither display nor buzzer is
+fitted, omit the external 5 V load supply. For a USB-free
 build, one regulated 5 V source may instead feed XIAO 5V/VBUS and the fitted 5 V
 loads with common ground; disconnect that source before attaching powered USB.
 Do not join independently powered 5 V rails. Budget the supply for board and loads.
@@ -80,9 +97,33 @@ Do not join independently powered 5 V rails. Budget the supply for board and loa
 Use a **5 V passive magnetic buzzer rated at no more than 20 mA**, with the shown
 2N3904, 1 kΩ base resistor, 10 kΩ base pull-down and 1N4148 flyback diode (band to
 +5 V). The LCD's 5 V I²C lines need the shown level shifter and pull-ups; never
-connect them directly to the XIAO GPIOs. GPS and microSD stay disabled in this
-example. Buzzer alerts require enabled matching rules with a buzzer action;
-the default ruleset is empty. LED trends describe signal strength, not direction.
+connect them directly to the XIAO GPIOs. Buzzer alerts require enabled matching
+rules with a buzzer action or enabled following-device alerts; the default ruleset
+is empty. LED trends describe signal strength, not direction.
+
+Power the **Grove Air530 at 3.3 V**, join GPS GND to XIAO GND, and connect its TX
+to D7; leave GPS RX disconnected (`gps.tx_pin: -1`). Add 100 nF at GPS VCC/GND.
+Use connector labels to identify signals, not wire colors. GPS supplies receiver
+coordinates and UTC from valid NMEA fixes; it does not locate arbitrary transmitters.
+
+Use a **native 3.3 V SPI microSD breakout**, with VDD to XIAO 3V3 and VSS to GND.
+Fit 10 kΩ pull-ups to 3.3 V on CMD and DAT0–DAT3 (including unused DAT1 and DAT2),
+accounting for resistors already fitted; no pull-up on CLK. Add 100 nF plus 10 µF
+near the card supply and keep SPI wires short. See the [GPS and card circuit
+details and sources below](#parent-leds-buzzer-screen-and-gps), but use the XIAO
+pins in this table. The unconfirmed HW-125 is not assumed compatible: verify its
+supply and 3.3 V logic before substitution. GPIO25 remains the steady LED; it is
+an SDIO edge-selection strap, and this profile uses SPI2, not SDIO.
+
+Insert a FAT-formatted card before boot. Firmware never auto-formats a card;
+mount errors appear on the USB console and scanning continues. The example keeps
+`logging.mode: "matches"`; with the empty default ruleset, ordinary observations
+will not populate logs. For a capture check, temporarily set it to `"all"`, then
+confirm `/sdcard/WK00000001.LOG` (and subsequent numbered files) contains
+JSON-line observations and fresh GPS fixes after acquiring a fix outdoors. See
+[log export](exporting.md). Reboot after correcting a mount/write failure; the
+driver does not remount automatically. Power down before removing the card;
+verify cold boots, sustained writes and GPS reception with every fitted peripheral active.
 
 After activating ESP-IDF, validate and flash from the repository root:
 

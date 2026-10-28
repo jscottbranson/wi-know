@@ -73,23 +73,23 @@
     "release_after_ms": 30000
   },
   "gps": {
-    "enabled": false,
+    "enabled": true,
     "model": "Grove GPS Air530",
     "backup_battery_present": true,
     "uart": 0,
-    "rx_pin": -1,
+    "rx_pin": 12,
     "tx_pin": -1,
     "baud": 9600,
     "max_fix_age_ms": 3000,
     "max_timing_uncertainty_ms": 250
   },
   "sd": {
-    "enabled": false,
-    "model": "HW-125 (probable, unconfirmed)",
-    "sck_pin": -1,
-    "mosi_pin": -1,
-    "miso_pin": -1,
-    "cs_pin": -1,
+    "enabled": true,
+    "model": "Native 3.3 V SPI microSD breakout",
+    "sck_pin": 8,
+    "mosi_pin": 10,
+    "miso_pin": 9,
+    "cs_pin": 11,
     "clock_khz": 4000
   },
   "logging": {
