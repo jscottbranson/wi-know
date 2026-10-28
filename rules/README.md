@@ -96,6 +96,7 @@ Supported predicates:
 
 | `field` | `value` format |
 | --- | --- |
+| `mac` | Exact six-byte transmitter/advertiser address, e.g. `02:11:22:33:44:55`; supports local/random addresses |
 | `oui` | Three address bytes, e.g. `00:11:22`; ignored for local/random addresses |
 | `ssid_prefix` | Case-sensitive UTF-8 Wi-Fi SSID prefix, at most 32 encoded bytes |
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
@@ -118,6 +119,24 @@ JSONL. Every matching rule produces a classification record with its category,
 confidence and priority; records for the same capture share the same observation
 identity and count. The highest-priority match controls alerts and target selection.
 OUI matches indicate a possible vendor association, not confirmed equipment identity.
+
+`mac` accepts exactly six colon-separated, two-digit hexadecimal octets, with
+uppercase or lowercase digits. The generator normalizes the value to lowercase
+in both C++ and the provenance manifest. Compact, hyphenated, space-separated,
+masked, wildcard, and partial addresses are rejected. Matching compares all six
+bytes of the Wi-Fi transmitter (address 2) or BLE advertiser; it does not inspect
+Wi-Fi receiver or BSSID addresses. The predicate is not address-type qualified:
+identical BLE bytes match on both public and random addresses, and locally
+administered Wi-Fi addresses match too. Existing `oui` exclusions are unchanged.
+Private addresses rotate and cannot establish persistent identity. A firmware-default
+MAC is neither vendor authentication nor proof of a particular device: defaults
+can be shared and addresses spoofed. Production signatures still require separate
+source and confidence review. No new vendor signatures are included by this capability.
+
+Exact address evidence already travels in the six-byte `Observation.address`
+field of protocol v2 reports and the JSONL `address` field; no wire or log format
+expansion is needed. Local/standalone and forwarded observations use the same
+matcher, priority selection, and action flags.
 
 Every build also writes `settings.rules.json` beside its generated `settings.hpp`.
 This manifest preserves all compiled rules, their predicates, confidence, actions,

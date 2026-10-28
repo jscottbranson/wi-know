@@ -363,6 +363,50 @@ class ConfigTests(unittest.TestCase):
                         with self.assertRaises(ValueError):
                             generate.validate(self.settings, base=base)
 
+    def test_mac_validation_canonicalization_and_manifest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            document['rules'] = document['rules'][:1]
+            rule = document['rules'][0]
+            for radio in ('wifi', 'ble'):
+                rule['radio'] = radio
+                for value in ('02:ab:34:cd:56:ef', '02:AB:34:CD:56:EF',
+                              '00:00:00:00:00:00', 'FF:FF:FF:FF:FF:FF'):
+                    with self.subTest(radio=radio, value=value):
+                        rule['predicates'] = [{'field': 'mac', 'value': value}]
+                        (base/'rule.json').write_text(json.dumps(document))
+                        settings, rules = generate.validate(self.settings, base=base)
+                        self.assertEqual(rules[0]['predicates'][0]['value'], value.lower())
+                        self.assertIn('Predicate{Field::mac,"'+value.lower()+'"}',
+                                      generate.emit(settings, rules))
+                for invalid in ('', '02:ab:34', '02:ab:34:cd:56', '02:ab:34:cd:56:ef:00',
+                                '02:ab:34:cd:56:eg', '02:ab:34:cd:56:*', '02:ab:34:cd:56:ef/48',
+                                '02ab34cd56ef', '02-ab-34-cd-56-ef', '02 ab 34 cd 56 ef',
+                                ' 02:ab:34:cd:56:ef', '02:ab:34:cd:56:ef ', '0:2ab:34:cd:56:ef',
+                                '02:ab:34:cd:56:ef\n', None, 123):
+                    with self.subTest(radio=radio, invalid=invalid):
+                        rule['predicates'] = [{'field': 'mac', 'value': invalid}]
+                        (base/'rule.json').write_text(json.dumps(document))
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings, base=base)
+            rule['predicates'] = [{'field': 'mac', 'value': '02:AB:34:CD:56:EF'}]
+            (base/'rule.json').write_text(json.dumps(document))
+            # Put the config outside the globbed rules directory.
+            settings_file = base/'config/settings.json'
+            settings_file.parent.mkdir()
+            settings_file.write_text(json.dumps(self.settings))
+            output = base/'generated/settings.hpp'
+            result = subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                                     '--config', str(settings_file), '--output', str(output)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = generate.load(output.with_suffix('.rules.json'))['rules'][0]
+            self.assertEqual(manifest['predicates'], [{'field': 'mac', 'value': '02:ab:34:cd:56:ef'}])
+            for field in ('source', 'actions', 'priority', 'confidence'):
+                self.assertEqual(manifest[field], rule[field])
+
     def test_manifest_preserves_provenance_and_effective_enablement(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)

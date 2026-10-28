@@ -27,7 +27,8 @@ enum class Field : uint8_t {
     rid_message_type,
     rid_basic_id,
     rid_basic_id_type,
-    rid_position_valid
+    rid_position_valid,
+    mac
 };
 struct Channel {
     uint8_t number{};
