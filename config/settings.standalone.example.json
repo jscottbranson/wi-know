@@ -85,7 +85,7 @@
   },
   "sd": {
     "enabled": false,
-    "format_if_mount_failed": false,
+    "format_if_mount_failed": true,
     "model": "HiLetgo B07BJ2P6X6 (5 V VCC, 3.3 V SPI)",
     "sck_pin": -1,
     "mosi_pin": -1,

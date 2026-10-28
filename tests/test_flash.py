@@ -40,6 +40,11 @@ class FlashTests(unittest.TestCase):
             status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')
             self.assertEqual(status, 0, output)
             self.assertIn('SD formatting is enabled', output)
+            settings['sd'].pop('format_if_mount_failed')
+            config.write_text(json.dumps(settings))
+            status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')
+            self.assertEqual(status, 0, output)
+            self.assertIn('SD formatting is enabled', output)
             settings['sd']['format_if_mount_failed'] = False
             config.write_text(json.dumps(settings))
             status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')

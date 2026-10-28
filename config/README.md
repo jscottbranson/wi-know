@@ -50,7 +50,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `detection` | Rules directory and enabled categories |
 | `follower` | Enable target commands; release after no fresh matching observation |
 | `gps` | Air530 UART (9600 baud), maximum fix age, capture-time uncertainty limit |
-| `sd` | SPI pins and conservative 4 MHz initial clock; optional destructive `format_if_mount_failed` (default false) |
+| `sd` | SPI pins and conservative 4 MHz initial clock; automatic destructive `format_if_mount_failed` (default true; false opts out) |
 | `logging` | `matches` or `all`; flush period, rotation bytes, retained files; flash fallback caps apply |
 | `display` | I²C pins/address and page period; 16×2 PCF8574 backpack driver |
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
@@ -68,7 +68,7 @@ The 5 V PCF8574 LCD backpack is configured at address 39 (`0x27`); verify its
 address and pin mapping against the driver configuration.
 Parents try enabled SD storage at boot, then fall back to internal flash if SD is
 disabled or unavailable. See [storage selection, limits and readback](../docs/storage.md).
-An unformatted card can be prepared with the explicit
+Unrecognized SD filesystems are automatically formatted by default; see the
 [`sd.format_if_mount_failed` option](../docs/storage.md#preparing-an-unformatted-sd-card).
 It may erase a damaged or unrecognized filesystem; turn it off again after setup.
 The documented HiLetgo SD reader needs 5 V at module VCC and uses 3.3 V SPI signals. The RS-485 bus requires

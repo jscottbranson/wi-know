@@ -203,7 +203,7 @@ def main(argv=None):
         node_id = args.node_id
         if node_id is None:
             node_id = select_id(role, first, last)
-        _, rules = generate_config.validate(raw, role, node_id)
+        validated, rules = generate_config.validate(raw, role, node_id)
         if role not in ('parent', 'universal') and not first <= node_id <= last:
             raise ValueError(f'Node ID {node_id} is outside the configured bus discovery range {first}–{last}.')
         port = args.port
@@ -215,7 +215,7 @@ def main(argv=None):
         planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor)
         print(f'\nDevice: {role} / node {node_id} / ESP32-C5')
         print(f'Config: {config}')
-        if raw['sd'].get('enabled') and raw['sd'].get('format_if_mount_failed', False):
+        if role in ('parent', 'universal') and validated['sd']['enabled'] and validated['sd']['format_if_mount_failed']:
             print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')
         print(f'Build:  {build_directory(role, node_id, config)}')
         if port:

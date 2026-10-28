@@ -118,8 +118,10 @@ No pull-up or pull-down is needed on CLK. Keep SPI wires short.
 See the [module details and sources below](#parent-leds-buzzer-screen-and-gps).
 GPIO25 remains the steady LED; this profile uses SPI2, not SDIO.
 
-Insert a FAT-formatted card before boot. Firmware never auto-formats a card;
-mount errors appear on the USB console and scanning continues. The example keeps
+Insert a card before boot. Unrecognized/damaged filesystems are automatically
+formatted by default, erasing existing data; back up the card first. Set
+`sd.format_if_mount_failed: false` to opt out. Mount errors appear on the USB
+console and scanning continues. The example keeps
 `logging.mode: "matches"`; with the empty default ruleset, ordinary observations
 will not populate logs. For a capture check, temporarily set it to `"all"`, then
 confirm `/sdcard/WK00000001.LOG` (and subsequent numbered files) contains
