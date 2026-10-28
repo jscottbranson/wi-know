@@ -68,6 +68,9 @@ void detect_identity() {
 static i2c_master_dev_handle_t lcd{};
 static uint64_t beep_until{};
 static QueueHandle_t log_queue{}, console_queue{};
+// Each line is 2304 bytes. Keep output queues bounded without consuming the
+// internal RAM needed to initialize Wi-Fi and BLE on boards without enabled PSRAM.
+static constexpr unsigned log_queue_depth = 2;
 static std::atomic<bool> sd_ready{};
 struct LogLine {
     char data[wiknow::log_line_capacity];
@@ -398,7 +401,7 @@ void start_peripherals() {
              c::signal_trend_enabled ? "enabled" : "disabled",
              c::buzzer_enabled ? "enabled" : "disabled",
              c::display_enabled ? "enabled" : "disabled");
-    console_queue = xQueueCreate(8, sizeof(LogLine));
+    console_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
     configASSERT(console_queue);
     configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) ==
                  pdPASS);
@@ -433,7 +436,7 @@ void start_peripherals() {
     if (c::display_enabled)
         init_lcd();
     if (c::sd_enabled) {
-        log_queue = xQueueCreate(8, sizeof(LogLine));
+        log_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
         configASSERT(log_queue);
         configASSERT(xTaskCreate(logger, "sd_writer", 6144, nullptr, 2, nullptr) == pdPASS);
     }

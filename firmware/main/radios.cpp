@@ -1,4 +1,5 @@
 #include "esp_event.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
 #include "esp_timer.h"
@@ -289,14 +290,30 @@ void start_radios() {
         ESP_ERROR_CHECK(esp_netif_init());
         ESP_ERROR_CHECK(esp_event_loop_create_default());
         wifi_init_config_t init = WIFI_INIT_CONFIG_DEFAULT();
-        ESP_ERROR_CHECK(esp_wifi_init(&init));
+        // Passive management-frame capture does not need throughput-oriented
+        // station buffers or aggregation. Apply here so existing sdkconfig
+        // caches also receive the bounded memory profile on rebuild.
+        init.static_rx_buf_num = 4;
+        init.dynamic_rx_buf_num = 16;
+        init.ampdu_rx_enable = 0;
+        init.ampdu_tx_enable = 0;
+        init.amsdu_tx_enable = 0;
+        ESP_LOGI("radio", "Before Wi-Fi: internal free=%u largest=%u",
+                 unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+        const esp_err_t wifi_error = esp_wifi_init(&init);
+        if (wifi_error != ESP_OK) {
+            ESP_LOGE("radio", "Wi-Fi init failed: %s", esp_err_to_name(wifi_error));
+            screen("Wi-Fi init fail", esp_err_to_name(wifi_error));
+        }
+        ESP_ERROR_CHECK(wifi_error);
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_RAM));
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
         ESP_ERROR_CHECK(esp_wifi_set_country_code(wiknow::config::wifi_country, false));
         ESP_ERROR_CHECK(esp_wifi_start());
         ESP_ERROR_CHECK(esp_wifi_set_band_mode(WIFI_BAND_MODE_AUTO));
         wifi_started = true;
-        raw_wifi = xQueueCreate(16, sizeof(RawWifi));
+        raw_wifi = xQueueCreate(8, sizeof(RawWifi));
         configASSERT(raw_wifi);
         configASSERT(xTaskCreate(wifi_worker, "wifi_parse", 4096, nullptr, 4, nullptr) == pdPASS);
         wifi_promiscuous_filter_t filter{};
@@ -307,7 +324,15 @@ void start_radios() {
     }
     if (wiknow::config::ble_enabled &&
         (wiknow::config::universal_enabled || role != wiknow::Role::child)) {
-        ESP_ERROR_CHECK(nimble_port_init());
+        ESP_LOGI("radio", "Before BLE: internal free=%u largest=%u",
+                 unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+        const esp_err_t ble_error = nimble_port_init();
+        if (ble_error != ESP_OK) {
+            ESP_LOGE("radio", "BLE init failed: %s", esp_err_to_name(ble_error));
+            screen("BLE init fail", esp_err_to_name(ble_error));
+        }
+        ESP_ERROR_CHECK(ble_error);
         ble_hs_cfg.sync_cb = ble_sync;
         ble_hs_cfg.reset_cb = ble_reset;
         if (standalone_scheduler()) {
@@ -320,5 +345,8 @@ void start_radios() {
     if (standalone_scheduler() && !wiknow::config::ble_enabled)
         configASSERT(xTaskCreate(standalone_wifi_task, "local_scan", 4096, nullptr, 4, nullptr) ==
                      pdPASS);
+    ESP_LOGI("radio", "Startup complete: internal free=%u largest=%u",
+             unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+             unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
 }
 } // namespace platform

@@ -150,6 +150,17 @@ are lost if their worker reboots. Parent deduplication state is also in RAM, so 
 parent reboot may process an unacknowledged observation again. RSSI peaks represent
 observations that reach the parent.
 
+The passive Wi-Fi memory profile uses four static RX buffers, at most sixteen
+dynamic RX buffers, and disables AMPDU/AMSDU aggregation. The raw Wi-Fi parsing
+queue holds eight frames. Console and SD output queues each hold two 2304-byte
+lines; slow output or bursts can drop records, counted by the existing local loss
+counter. These bounds trade burst capacity for RAM available to Wi-Fi/BLE startup
+without requiring PSRAM. Serial startup logs report free internal heap and the
+largest available block before each radio and after initialization. Radio init
+errors are also written to an enabled parent LCD before the normal fatal error
+handler runs. Hardware testing must verify startup headroom and capture loss under
+load; successful builds do not measure either.
+
 Parent status separates online children, planned channels, and channels confirmed
 by successful tuning. Each report echoes the applied assignment generation and a
 bitmap of channels actually visited; a first-channel success does not confirm the
