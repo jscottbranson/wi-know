@@ -213,8 +213,20 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             for pred in rule['predicates']:
                 require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
-                require(field in ('oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16'), 'unknown predicate field')
+                require(field in ('oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16',
+                                  'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
+                                  'rid_position_valid'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= 96, 'invalid predicate value')
+                if field in ('rid_valid', 'rid_position_valid'):
+                    require(value == 'true', f'{field} must be "true"')
+                if field == 'rid_message_type':
+                    require(value in ('basic_id', 'location', 'authentication', 'self_id', 'system', 'operator_id'),
+                            'invalid Remote ID message type')
+                if field == 'rid_basic_id_type':
+                    require(value in ('1', '2', '3', '4'), 'Remote ID Basic ID type must be 1..4')
+                if field == 'rid_basic_id':
+                    require(1 <= len(value) <= 20 and all(32 <= ord(c) <= 126 for c in value),
+                            'Remote ID Basic ID must be 1..20 printable ASCII characters')
                 if field in ('ssid_prefix', 'name_prefix'):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),

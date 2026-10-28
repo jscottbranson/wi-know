@@ -223,6 +223,54 @@ class ConfigTests(unittest.TestCase):
             settings['wifi']['channels'] = channels
             with self.assertRaises(ValueError):
                 generate.validate(settings)
+    def test_remote_id_predicates_and_examples(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = '.'
+            self.settings['detection']['enabled_categories'] = ['drones']
+            document = generate.load(ROOT/'rules/examples/remote-id.json')
+            for rule in document['rules']:
+                rule['enabled'] = True
+            path = base/'remote-id.json'
+            path.write_text(json.dumps(document))
+            settings, rules = generate.validate(self.settings, base=base)
+            self.assertEqual(len(rules), 4)
+            self.assertTrue(all(rule['enabled'] for rule in rules))
+            header = generate.emit(settings, rules)
+            for field in ('rid_valid', 'rid_basic_id', 'rid_basic_id_type'):
+                self.assertIn('Field::'+field, header)
+            self.assertEqual(rules[1]['source'], document['rules'][1]['source'])
+            self.assertEqual(rules[1]['predicates'], document['rules'][1]['predicates'])
+            self.settings['detection']['enabled_categories'] = ['lab']
+            _, rules = generate.validate(self.settings, base=base)
+            self.assertFalse(any(rule['enabled'] for rule in rules))
+            document['rules'] = document['rules'][:1]
+            valid = [('rid_valid', 'true'), ('rid_position_valid', 'true'),
+                     ('rid_basic_id', '12345678901234567890'),
+                     *[('rid_basic_id_type', str(i)) for i in range(1, 5)],
+                     *[('rid_message_type', name) for name in
+                       ('basic_id', 'location', 'authentication', 'self_id', 'system', 'operator_id')]]
+            invalid = [('rid_valid', 'false'), ('rid_valid', True),
+                       ('rid_position_valid', 'false'), ('rid_message_type', '6'),
+                       ('rid_message_type', 'pack'), ('rid_basic_id_type', '0'),
+                       ('rid_basic_id_type', '5'), ('rid_basic_id_type', '01'),
+                       ('rid_basic_id', 'a'*21), ('rid_basic_id', ''),
+                       ('rid_basic_id', 'test\x00id'), ('rid_basic_id', 'test\nid'),
+                       ('rid_basic_id', 'é')]
+            for radio in ('ble', 'wifi'):
+                document['rules'][0]['radio'] = radio
+                for pairs, accepted in ((valid, True), (invalid, False)):
+                    for field, value in pairs:
+                        with self.subTest(radio=radio, field=field, value=value):
+                            document['rules'][0]['predicates'] = [{'field': field, 'value': value}]
+                            path.write_text(json.dumps(document))
+                            if accepted:
+                                settings, rules = generate.validate(self.settings, base=base)
+                                self.assertIn('Field::'+field, generate.emit(settings, rules))
+                            else:
+                                with self.assertRaises(ValueError):
+                                    generate.validate(self.settings, base=base)
+
     def test_malformed_rules(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)

@@ -15,7 +15,8 @@ The receiver decodes ASTM/OpenDroneID **protocol version 2** broadcasts using:
 
 No external matching rules are required. Valid supported broadcasts receive queue
 priority and are logged even with `logging.mode` set to `matches`. Rule-based
-buzzer/follower actions remain configurable through the existing rules. Build and
+buzzer/follower actions can use the decoded `rid_*` predicates in the
+[rule format](../rules/README.md#decoded-remote-id-alert-rules), without vendor signatures. Build and
 flash the updated parent and workers to capture Wi-Fi payloads end to end.
 
 ## Stored records

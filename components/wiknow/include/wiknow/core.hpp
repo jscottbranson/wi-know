@@ -17,7 +17,18 @@ constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
 enum class Role : uint8_t { parent, child, follower };
 enum class Radio : uint8_t { wifi, ble };
 enum class Trend : uint8_t { unknown, increasing, decreasing, steady };
-enum class Field : uint8_t { oui, ssid_prefix, name_prefix, manufacturer_prefix, service_uuid16 };
+enum class Field : uint8_t {
+    oui,
+    ssid_prefix,
+    name_prefix,
+    manufacturer_prefix,
+    service_uuid16,
+    rid_valid,
+    rid_message_type,
+    rid_basic_id,
+    rid_basic_id_type,
+    rid_position_valid
+};
 struct Channel {
     uint8_t number{};
     bool operator==(Channel b) const {

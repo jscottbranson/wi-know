@@ -76,3 +76,8 @@ add_executable(nan_tests tests/nan_tests.cpp)
 target_link_libraries(nan_tests PRIVATE wiknow)
 target_compile_options(nan_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME nan COMMAND nan_tests)
+
+add_executable(remote_id_rule_tests tests/remote_id_rule_tests.cpp)
+target_link_libraries(remote_id_rule_tests PRIVATE wiknow)
+target_compile_options(remote_id_rule_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME remote_id_rules COMMAND remote_id_rule_tests)
