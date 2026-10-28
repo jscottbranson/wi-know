@@ -120,6 +120,21 @@ inline bool scan_logs(const char *root, LogFiles &result) {
     return ok;
 }
 enum class LogResult { stored, blocked, error };
+// A lazy first open may reveal read-only/broken SD after its mount succeeded.
+// Append must durably flush the first record before returning stored. Retention
+// blocking is a policy decision, never a reason to switch media.
+template <class Append, class Fallback>
+LogResult append_with_initial_fallback(Storage &storage, bool &written, Append append,
+                                       Fallback fallback) {
+    auto result = append();
+    if (result == LogResult::error && storage == Storage::sd && !written && fallback()) {
+        storage = Storage::flash;
+        result = append();
+    }
+    if (result == LogResult::stored)
+        written = true;
+    return result;
+}
 struct OpenLog {
     FILE *file{};
     LogId id{};

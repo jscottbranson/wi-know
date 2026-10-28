@@ -336,7 +336,18 @@ static void logger(void *) {
     LogWriter writer;
     uint64_t last_flush = now_ms(), last_drop_report = 0;
     uint32_t retention_drops = 0;
-    const Storage selected = select_storage(
+    bool written = false;
+    auto flash_fallback = [&] {
+        if (!mount_flash())
+            return false;
+        log_root = "/flashlog";
+        limits = log_limits(Storage::flash, c::logging_rotate_bytes, c::logging_max_files);
+        if (readable_logs())
+            return true;
+        esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
+        return false;
+    };
+    Storage selected = select_storage(
         c::sd_enabled,
         [&] {
             if (!mount_sd())
@@ -347,17 +358,7 @@ static void logger(void *) {
             esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
             spi_bus_free(SPI2_HOST);
             return false;
-        },
-        [&] {
-            if (!mount_flash())
-                return false;
-            log_root = "/flashlog";
-            limits = log_limits(Storage::flash, c::logging_rotate_bytes, c::logging_max_files);
-            if (readable_logs())
-                return true;
-            esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
-            return false;
-        });
+        }, flash_fallback);
     active_storage = selected;
     ESP_LOGI("storage", "Logging=%s rotate=%u max_files=%u", storage_label(selected),
              unsigned(limits.rotate_bytes), unsigned(limits.max_files));
@@ -365,13 +366,26 @@ static void logger(void *) {
     for (;;) {
         if (xQueueReceive(log_queue, &line, ticks(100)) == pdTRUE) {
             if (active_storage != Storage::off) {
-                const auto result = writer.append(log_root, limits, line.classification, line.data,
-                    [](size_t reserve) {
-                        uint64_t free{};
-                        if (!storage_free(free))
-                            return -1;
-                        return free >= reserve ? 1 : 0;
-                    });
+                const auto result = append_with_initial_fallback(selected, written, [&] {
+                    const auto appended = writer.append(log_root, limits, line.classification, line.data,
+                        [](size_t reserve) {
+                            uint64_t free{};
+                            if (!storage_free(free))
+                                return -1;
+                            return free >= reserve ? 1 : 0;
+                        });
+                    if (appended == LogResult::stored && !written &&
+                        !writer.flush([](FILE *file) { return fsync(fileno(file)) == 0; }))
+                        return LogResult::error;
+                    return appended;
+                }, [&] {
+                    ESP_LOGW("storage", "Initial SD write failed; trying flash");
+                    writer.close_all();
+                    esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
+                    spi_bus_free(SPI2_HOST);
+                    return flash_fallback();
+                });
+                active_storage = selected;
                 if (result != LogResult::stored)
                     ++dropped;
                 if (result == LogResult::blocked) {

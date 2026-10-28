@@ -259,6 +259,56 @@ int main() {
         CHECK(writer.append(d.name, {65, 8, 0}, LogClass::unmatched, "drop\n", ample) ==
               LogResult::error);
     }
+    // Lazy initial SD failures retain boot fallback; later errors and policy
+    // drops must not switch media or retry already committed observations.
+    {
+        Directory flash;
+        LogWriter writer;
+        Storage selected = Storage::sd;
+        bool written = false;
+        int fallbacks = 0;
+        const char *root = "/nonexistent/sd-readonly";
+        auto fallback = [&] {
+            ++fallbacks;
+            CHECK(writer.close_all());
+            root = flash.name;
+            return true;
+        };
+        auto append = [&] {
+            const auto result = writer.append(root, {64, 2}, LogClass::matched, "first\n", ample);
+            if (result == LogResult::stored && !written && !writer.flush(sync))
+                return LogResult::error;
+            return result;
+        };
+        CHECK(append_with_initial_fallback(selected, written, append, fallback) ==
+              LogResult::stored);
+        CHECK(selected == Storage::flash && written && fallbacks == 1);
+        CHECK(flash.read("WM00000001.LOG") == "first\n");
+        selected = Storage::sd;
+        CHECK(append_with_initial_fallback(
+                  selected, written, [] { return LogResult::error; }, fallback) ==
+              LogResult::error);
+        CHECK(selected == Storage::sd && fallbacks == 1);
+        written = false;
+        CHECK(append_with_initial_fallback(
+                  selected, written, [] { return LogResult::blocked; }, fallback) ==
+              LogResult::blocked);
+        CHECK(selected == Storage::sd && !written && fallbacks == 1);
+        int writes = 0;
+        CHECK(append_with_initial_fallback(
+                  selected, written,
+                  [&] {
+                      ++writes;
+                      return LogResult::error;
+                  },
+                  fallback) == LogResult::error);
+        CHECK(selected == Storage::flash && !written && writes == 2 && fallbacks == 2);
+        selected = Storage::sd;
+        CHECK(append_with_initial_fallback(
+                  selected, written, [] { return LogResult::error; }, [] { return false; }) ==
+              LogResult::error);
+        CHECK(!written);
+    }
     std::puts(
         "Storage selection, migration, priority retention, and two-stream writer tests passed");
 }
