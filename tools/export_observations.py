@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export wi-know JSONL observations and alerts as CSV or GeoJSON (stdlib only)."""
+"""Export wi-know detections as JSON, JSONL, CSV, TSV or GeoJSON (stdlib only)."""
 import argparse
 import csv
 import datetime
@@ -21,7 +21,9 @@ COLUMNS = (
     'receiver_fix_at_ms', 'peak_dbm', 'peak_capture_ms', 'peak_utc_ms', 'peak_sequence',
     'peak_timing_uncertainty_ms', 'peak_receiver_latitude', 'peak_receiver_longitude', 'peak_receiver_fix_at_ms',
     'peak_changed', 'observations', 'displacement_m', 'delay_ms', 'ble_ad_hex',
-    'location_role',
+    'location_role', 'schema_version', 'wifi_remote_id_hex', 'protocol',
+    'protocol_version', 'authenticated', 'message_index', 'message_counter',
+    'message_type', 'raw_hex', 'data',
 )
 
 
@@ -50,7 +52,7 @@ def coordinate(fix):
     return [lon, lat]
 
 
-def records(paths, skip_invalid=False, matches_only=False):
+def records(paths, skip_invalid=False, matches_only=False, location=None):
     for path in paths:
         with path.open(encoding='utf-8') as source:
             for number, line in enumerate(source, 1):
@@ -62,7 +64,7 @@ def records(paths, skip_invalid=False, matches_only=False):
                         raise ValueError('expected a JSON object')
                     # Status records remain in the source log; they are not detections.
                     event = record.get('event', 'observation')
-                    if event not in ('observation', 'following_alert'):
+                    if event not in ('observation', 'following_alert', 'drone_detection'):
                         continue
                     version = record.get('schema_version', 1 if event == 'following_alert' else None)
                     if type(version) is not int or version != 1:
@@ -77,6 +79,8 @@ def records(paths, skip_invalid=False, matches_only=False):
                     utc_text(record.get('peak_utc_ms'))
                     record = dict(record, source_file=str(path), source_line=number,
                                   event=event, location_role='receiver')
+                    if location is not None:
+                        mapped_point(record, location)
                     yield record
                 except (ValueError, TypeError, OverflowError) as error:
                     message = f'{path}:{number}: {error}'
@@ -103,8 +107,8 @@ def csv_value(value):
     return value
 
 
-def write_csv(rows, output):
-    writer = csv.DictWriter(output, fieldnames=COLUMNS, extrasaction='ignore')
+def write_csv(rows, output, delimiter=','):
+    writer = csv.DictWriter(output, fieldnames=COLUMNS, extrasaction='ignore', delimiter=delimiter)
     writer.writeheader()
     for record in rows:
         row = dict(record, utc=utc_text(record.get('utc_ms')))
@@ -117,13 +121,50 @@ def write_csv(rows, output):
         writer.writerow({key: csv_value(value) for key, value in row.items()})
 
 
+def write_json(rows, output, lines=False):
+    """Stream complete records, preserving nested data and unknown fields."""
+    if not lines:
+        output.write('[')
+    first = True
+    for record in rows:
+        if not first and not lines:
+            output.write(',')
+        json.dump(record, output, ensure_ascii=True, allow_nan=False, separators=(',', ':'))
+        if lines:
+            output.write('\n')
+        first = False
+    if not lines:
+        output.write(']\n')
+
+
+def mapped_point(record, location):
+    if location in ('capture', 'peak'):
+        key = 'receiver_fix' if location == 'capture' else 'peak_receiver_fix'
+        point = coordinate(record.get(key))
+    else:
+        data = record.get('data') or {}
+        if not isinstance(data, dict):
+            raise ValueError('drone data must be an object or null')
+        fix = None
+        if record['event'] == 'drone_detection':
+            if location == 'aircraft' and record.get('message_type') == 1:
+                fix = data
+            elif location == 'operator' and record.get('message_type') == 4:
+                fix = data.get('operator_position')
+        # Remote ID uses null coordinates when the position is unavailable.
+        if isinstance(fix, dict) and fix.get('latitude') is None and fix.get('longitude') is None:
+            fix = None
+        point = coordinate(fix)
+    return point
+
+
 def write_geojson(rows, output, location):
     output.write('{"type":"FeatureCollection","features":[')
     first = True
     for record in rows:
-        key = 'receiver_fix' if location == 'capture' else 'peak_receiver_fix'
-        point = coordinate(record.get(key))
-        properties = dict(record, mapped_location=location)
+        point = mapped_point(record, location)
+        role = location if location in ('aircraft', 'operator') else 'receiver'
+        properties = dict(record, mapped_location=location, location_role=role)
         geometry = {'type': 'Point', 'coordinates': point} if point is not None else None
         feature = {'type': 'Feature', 'geometry': geometry, 'properties': properties}
         if not first:
@@ -134,16 +175,23 @@ def write_geojson(rows, output, location):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser(
+        description=__doc__, epilog='Example: %(prog)s WK00000001.LOG -o detections.json')
     parser.add_argument('inputs', nargs='+', type=Path, help='JSONL log files in desired order')
-    parser.add_argument('--format', choices=('csv', 'geojson'), required=True)
+    parser.add_argument('--format', choices=('json', 'jsonl', 'csv', 'tsv', 'geojson'),
+                        help='override output extension; default: JSON for stdout')
     parser.add_argument('--output', '-o', default='-', help='output path; default: stdout')
-    parser.add_argument('--location', choices=('capture', 'peak'), default='capture',
-                        help='receiver location to map in GeoJSON (default: capture)')
-    parser.add_argument('--matches-only', action='store_true', help='only rule matches and following alerts')
+    parser.add_argument('--location', choices=('capture', 'peak', 'aircraft', 'operator'), default='capture',
+                        help='position to map in GeoJSON (default: capture receiver position)')
+    parser.add_argument('--matches-only', action='store_true', help='only rule matches, drone detections and following alerts')
     parser.add_argument('--skip-invalid', action='store_true', help='warn and skip invalid JSONL lines, including a truncated final line')
     args = parser.parse_args(argv)
     destination = Path(args.output) if args.output != '-' else None
+    kind = args.format
+    if kind is None:
+        kind = destination.suffix.lower().lstrip('.') if destination else 'json'
+        if kind not in ('json', 'jsonl', 'csv', 'tsv', 'geojson'):
+            parser.error('cannot infer output format; specify --format or use a supported extension')
     if destination and any(destination.resolve() == path.resolve() for path in args.inputs):
         parser.error('output must not replace an input log')
     temporary = None
@@ -153,9 +201,12 @@ def main(argv=None):
                                          dir=destination.parent if destination else None,
                                          prefix='.wiknow-export-', delete=False) as output:
             temporary = Path(output.name)
-            rows = records(args.inputs, args.skip_invalid, args.matches_only)
-            if args.format == 'csv':
-                write_csv(rows, output)
+            rows = records(args.inputs, args.skip_invalid, args.matches_only,
+                           args.location if kind == 'geojson' else None)
+            if kind in ('csv', 'tsv'):
+                write_csv(rows, output, delimiter='\t' if kind == 'tsv' else ',')
+            elif kind in ('json', 'jsonl'):
+                write_json(rows, output, lines=kind == 'jsonl')
             else:
                 write_geojson(rows, output, args.location)
             output.flush()
