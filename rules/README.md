@@ -64,7 +64,7 @@ The current Wi-Fi parser accepts beacons/probe responses, not ordinary client
 data or probe requests. A client-mode Ring camera or probe-only Flock camera can
 therefore remain invisible to these rules. BLE OUI rules only work with public,
 globally administered addresses. Names/company IDs can still match random
-addresses. Raw `BWCDEVICE` payload substring matching, 128-bit service UUIDs,
+addresses. Raw `BWCDEVICE` payload substring matching
 and Wi-Fi information-element fingerprints are unsupported and were not
 approximated. No signal does not mean no camera.
 
