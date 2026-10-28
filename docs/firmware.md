@@ -10,14 +10,15 @@ components/wiknow/include/wiknow/     shared C++ interfaces
 components/wiknow/src/                portable scheduler, parsers, matcher, tracking and protocol
 firmware/main/                       ESP-IDF radios, node roles, and peripheral drivers
 tools/generate_config.py             configuration/rule validation and C++ generation
-tools/flash.py                       interactive role/ID/port selection and build/flash
+tools/flash.py                       universal image build/flash and USB port selection
 tests/                               host-side core and configuration tests
 ```
 
 ## Easy flashing
 
 Use `python3 tools/flash.py` in an activated ESP-IDF v5.5.1 environment to choose
-the role, worker ID, and USB port. See [the flashing guide](flashing.md) for the
+the USB port. The default image is universal; use the same config for all boards.
+See [universal provisioning and validation](universal.md) before wiring. See [the flashing guide](flashing.md) for the
 interactive workflow and command-line examples. It isolates each device's build
 and SDK settings; the manual commands below remain available.
 
@@ -30,6 +31,8 @@ repository root. Nothing is flashed by a build.
 
 ```sh
 python3 tools/generate_config.py
+idf.py -C firmware -B build-universal -DIDF_TARGET=esp32c5 build
+# Explicit manual roles below require an isolated legacy bus.
 idf.py -C firmware -B build-parent -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 build
 idf.py -C firmware -B build-child-1 -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=1 build
 idf.py -C firmware -B build-follower -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=follower -DWIKNOW_NODE_ID=2 build
@@ -57,34 +60,28 @@ cmake --build build-host
 ctest --test-dir build-host --output-on-failure
 ```
 
-CI runs the host tests and builds all three firmware roles with the pinned SDK.
+CI runs host tests, both universal hardware profiles, the manual standalone image,
+and all three manual firmware roles with the pinned SDK.
 
 ## Initial hardware setup
 
-1. Parent: ESP32-C5 WiFi6 Dev Board N32R8. Use the separate
-   [parent wiring example](wiring.md#parent-leds-buzzer-screen-and-gps) for peripheral
-   pins and bus RX on GPIO3; default GPIO12 conflicts with its USB-UART output.
-2. Assign pins in `config/settings.json` using the board's SoC GPIO map. Enable
-   one peripheral at a time. See `config/README.md` for electrical assumptions.
-3. For the distributed scanner, fit RS-485 transceivers and configure bus TX/RX/RTS
-   on each node. Use unique IDs; do not connect multiple UART TX pins directly.
-4. Add reviewed rules to `rules/`. To exercise the pipeline locally, copy the lab
-   template from `rules/examples/`, enable it, and advertise a matching test SSID.
-5. Build and flash the corresponding role onto each board. The parent polls its
-   configured ID range, discovers roles, and redistributes channels as nodes appear
-   or stop replying. The reserved follower is excluded from the worker count.
+Follow [universal provisioning](universal.md) for the shared image, identification
+harness, pin changes, recovery and physical validation procedure. Parent bus RX
+is GPIO3; worker RX is GPIO12. Default peripherals are off. The universal example
+enables the parent peripherals and moves GPS RX to GPIO26. Every board receives
+the exact same image. Roles and short addresses are assigned at runtime.
 
-With the unmodified config, the parent observes BLE but has no enabled matching
-rules. The RS-485 node bus is enabled on TX GPIO11 (D6), RX GPIO12 (D7), and
-RTS GPIO7 (D3); other wired peripherals remain off. Children wait for an assignment;
-there is no autonomous fallback that silently changes coverage.
+Explicit manual `parent`, `child` and `follower` builds remain available for a
+separate legacy bus, using unique nonzero worker IDs. Their original parent wiring
+example and protocol remain available; never mix manual and universal bus nodes.
+Add reviewed rules under `rules/` and flash the same rule set to every board.
 
 ## Implemented behavior
 
 - Fixed-capacity C++ core; radio callbacks never perform filesystem or LCD writes.
 - Deterministic capability-aware allocation of up to 32 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
-- Versioned little-endian polling/report protocol with CRC32, node boot IDs,
+- Manual mode uses a versioned little-endian polling/report protocol with CRC32, node boot IDs,
   command sequences and assignment leases. Protocol version 2 adds observation
   acknowledgments: a worker retains its in-flight observation until the parent
   acknowledges its boot ID and observation sequence. Lost replies or acknowledgments

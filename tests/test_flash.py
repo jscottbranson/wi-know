@@ -120,19 +120,18 @@ class FlashTests(unittest.TestCase):
                 self.assertEqual(status, 1, output)
         execute.assert_not_called()
 
-    def test_noninteractive_missing_role_fails_clearly(self):
-        with patch.object(sys.stdin, 'isatty', return_value=False):
-            status, output = self.run_main('--dry-run')
-        self.assertEqual(status, 1)
-        self.assertIn('Interactive input unavailable', output)
-
-    def test_interactive_role_and_id(self):
-        with patch.object(sys.stdin, 'isatty', return_value=True), \
-             patch('builtins.input', side_effect=['2', '3']), \
+    def test_noninteractive_defaults_to_same_universal_image(self):
+        with patch.object(sys.stdin, 'isatty', return_value=False), \
              patch.object(flash, 'idf_command', return_value=['python', 'idf.py']):
-            status, output = self.run_main('--build-only', '--dry-run')
-        self.assertEqual(status, 0)
-        self.assertIn('child / node 3', output)
+            status, output = self.run_main('--dry-run')
+        self.assertEqual(status, 0, output)
+        self.assertIn('universal / node 0', output)
+        self.assertIn('-DWIKNOW_ROLE=universal', output)
+        self.assertIn('-DWIKNOW_NODE_ID=0', output)
+        first = flash.commands(['idf.py'], 'universal', 0, ROOT/'config/settings.json', 'COM7', 460800, False, False)
+        second = flash.commands(['idf.py'], 'universal', 0, ROOT/'config/settings.json', 'COM8', 460800, False, False)
+        self.assertEqual(first[0], second[0])
+        self.assertEqual(first[1][:-5], second[1][:-5])
 
     def test_port_selection_and_rescan(self):
         with patch.object(flash, 'serial_ports', side_effect=[[], [('COM5', 'ESP32')]]), \

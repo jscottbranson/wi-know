@@ -3,6 +3,7 @@
 #include "freertos/queue.h"
 #include "settings.hpp"
 #include "wiknow/core.hpp"
+#include "wiknow/discovery.hpp"
 #include <atomic>
 namespace platform {
 inline TickType_t ticks(uint32_t milliseconds) {
@@ -11,6 +12,14 @@ inline TickType_t ticks(uint32_t milliseconds) {
 }
 extern std::atomic<uint32_t> dropped;
 extern uint32_t boot_id;
+extern std::atomic<wiknow::Role> role;
+extern std::atomic<uint16_t> node_id;
+extern wiknow::DeviceId device_id;
+void detect_identity();
+void set_runtime_role(wiknow::Role value, uint16_t node);
+void local_scanning(bool enabled);
+bool local_scanning();
+bool standalone_scheduler();
 uint64_t now_ms();
 void init_observation_queues();
 bool take_observation(wiknow::Observation &observation);

@@ -40,7 +40,8 @@ struct Observation {
     uint64_t at_ms{}; // capture time mapped to parent's monotonic clock
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
-    std::array<uint8_t, max_payload> payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE body
+    std::array<uint8_t, max_payload>
+        payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE body
     uint16_t payload_size{};
 };
 struct Predicate {
@@ -187,7 +188,16 @@ class FollowingDetector {
 
 // Versioned little-endian wire protocol. Not a packed native struct.
 constexpr uint8_t protocol_version = 2;
-enum class MessageType : uint8_t { poll = 1, report = 2 };
+enum class MessageType : uint8_t {
+    poll = 1,
+    report = 2,
+    discover = 3,
+    hello = 4,
+    assign = 5,
+    assigned = 6,
+    session_poll = 7,
+    session_report = 8
+};
 struct Packet {
     MessageType type{MessageType::poll};
     uint16_t node{};

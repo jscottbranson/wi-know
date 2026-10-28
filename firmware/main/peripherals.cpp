@@ -5,9 +5,11 @@
 #include "driver/spi_common.h"
 #include "driver/uart.h"
 #include "esp_log.h"
+#include "esp_mac.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
 #include "log_helpers.hpp"
+#include "nvs.h"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
 #include "wiknow/bus_timing.hpp"
@@ -20,6 +22,49 @@
 
 namespace platform {
 namespace c = wiknow::config;
+std::atomic<wiknow::Role> role{c::role};
+std::atomic<uint16_t> node_id{c::node_id};
+wiknow::DeviceId device_id{};
+void detect_identity() {
+    ESP_ERROR_CHECK(esp_efuse_mac_get_default(device_id.data()));
+    if (!c::universal_enabled)
+        return;
+    // Input only, no internal pulls: the external resistor defines disconnected wiring.
+    gpio_config_t pin{};
+    pin.pin_bit_mask = 1ULL << c::universal_strap_pin;
+    pin.mode = GPIO_MODE_INPUT;
+    pin.pull_up_en = GPIO_PULLUP_DISABLE;
+    pin.pull_down_en = GPIO_PULLDOWN_DISABLE;
+    ESP_ERROR_CHECK(gpio_config(&pin));
+    vTaskDelay(ticks(20));
+    int high = 0;
+    for (int i = 0; i < 16; ++i) {
+        high += gpio_get_level(gpio_num_t(c::universal_strap_pin));
+        vTaskDelay(ticks(2));
+    }
+    uint8_t override_role = 0;
+    nvs_handle_t handle;
+    esp_err_t nvs_error = nvs_open("wiknow", NVS_READONLY, &handle);
+    if (nvs_error == ESP_OK) {
+        nvs_error = nvs_get_u8(handle, "identity", &override_role);
+        nvs_close(handle);
+    }
+    const auto detected = wiknow::hardware_identity(high, 16, override_role);
+    if ((nvs_error != ESP_OK && nvs_error != ESP_ERR_NVS_NOT_FOUND) ||
+        detected == wiknow::HardwareIdentity::invalid) {
+        ESP_LOGE("identity",
+                 "Unstable parent identification or invalid override; halted before outputs");
+        for (;;)
+            vTaskDelay(ticks(1000));
+    }
+    role =
+        detected == wiknow::HardwareIdentity::parent ? wiknow::Role::parent : wiknow::Role::child;
+    node_id = role == wiknow::Role::parent ? 0 : UINT16_MAX;
+    ESP_LOGI("identity", "MAC=%02x:%02x:%02x:%02x:%02x:%02x source=%s detected=%s node=%u",
+             device_id[0], device_id[1], device_id[2], device_id[3], device_id[4], device_id[5],
+             override_role ? "NVS override" : "passive harness",
+             role == wiknow::Role::parent ? "parent" : "worker", unsigned(node_id.load()));
+}
 static i2c_master_dev_handle_t lcd{};
 static uint64_t beep_until{};
 static QueueHandle_t log_queue{}, console_queue{};
@@ -43,7 +88,18 @@ static void uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) 
 }
 void bus_start() {
     if (c::bus_enabled)
-        uart_setup(c::bus_uart, c::bus_tx_pin, c::bus_rx_pin, c::bus_rts_pin, c::bus_baud, true);
+        uart_setup(
+            c::bus_uart,
+            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_tx_pin
+                                                                 : c::universal_worker_tx_pin)
+                                 : c::bus_tx_pin,
+            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_rx_pin
+                                                                 : c::universal_worker_rx_pin)
+                                 : c::bus_rx_pin,
+            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_rts_pin
+                                                                 : c::universal_worker_rts_pin)
+                                 : c::bus_rts_pin,
+            c::bus_baud, true);
 }
 void bus_send(const wiknow::Packet &p) {
     uint8_t frame[wiknow::max_frame];
@@ -61,6 +117,7 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         return false;
     static wiknow::Decoder decoder;
     static uint64_t last_byte{};
+    static uint32_t reported_errors{};
     // Reset only after an inter-byte idle gap, never at a caller's polling deadline.
     constexpr uint32_t idle_ms = 20;
     uint64_t until = now_ms() + timeout;
@@ -74,6 +131,11 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
             last_byte = now;
             if (decoder.feed(byte, packet))
                 return true;
+            if (decoder.errors() != reported_errors) {
+                reported_errors = decoder.errors();
+                ESP_LOGW("bus", "Rejected incompatible or corrupt frame; errors=%u",
+                         unsigned(reported_errors));
+            }
         }
     } while (now_ms() < until);
     return false;
@@ -108,7 +170,7 @@ void screen(const char *a, const char *b) {
     }
 }
 void gps_update(wiknow::Gps &gps) {
-    if (c::role != wiknow::Role::parent || !c::gps_enabled)
+    if (role != wiknow::Role::parent || !c::gps_enabled)
         return;
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
@@ -117,7 +179,7 @@ void gps_update(wiknow::Gps &gps) {
         gps.feed(char(data[i]), now);
 }
 void indicators(wiknow::Trend trend, bool beep) {
-    if (c::role != wiknow::Role::parent)
+    if (role != wiknow::Role::parent)
         return;
     if (c::signal_trend_enabled) {
         gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
@@ -299,7 +361,7 @@ bool storage_ready() {
     return sd_ready;
 }
 void start_peripherals() {
-    if (c::role != wiknow::Role::parent)
+    if (role != wiknow::Role::parent)
         return;
     console_queue = xQueueCreate(8, sizeof(LogLine));
     configASSERT(console_queue);

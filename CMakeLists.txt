@@ -60,3 +60,8 @@ add_executable(remote_id_tests tests/remote_id_tests.cpp)
 target_link_libraries(remote_id_tests PRIVATE wiknow)
 target_compile_options(remote_id_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME remote_id COMMAND remote_id_tests)
+
+add_executable(discovery_tests tests/discovery_tests.cpp)
+target_link_libraries(discovery_tests PRIVATE wiknow)
+target_compile_options(discovery_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME discovery COMMAND discovery_tests)

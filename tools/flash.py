@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Select a wi-know role, build ESP32-C5 firmware, and flash one USB-connected board."""
+"""Build the universal wi-know ESP32-C5 image and flash one USB-connected board."""
 import argparse
 import glob
 import hashlib
@@ -17,12 +17,12 @@ import generate_config
 
 ROOT = Path(__file__).resolve().parents[1]
 SUPPORTED_IDF = '5.5.1'
-ROLES = ('parent', 'child', 'follower')
+ROLES = ('universal', 'parent', 'child', 'follower')
 
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__, epilog=(
-        'Run without arguments for the interactive menu. Activate ESP-IDF v5.5.1 first. '
+        'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
     result.add_argument('--role', choices=ROLES)
     result.add_argument('--node-id', type=int, help='Parent: 0; children/follower: unique bus ID')
@@ -88,22 +88,8 @@ def prompt(text, default=None):
     return answer
 
 
-def select_role():
-    print('\nChoose the firmware role:')
-    print('  1. Parent   — full-size ESP32-C5-WROOM-1 board')
-    print('  2. Child    — mini XIAO ESP32-C5 Wi-Fi scanner')
-    print('  3. Follower — dedicated mini XIAO ESP32-C5')
-    while True:
-        answer = prompt('Role (number or name)', '1').lower()
-        if answer in ROLES:
-            return answer
-        if answer in ('1', '2', '3'):
-            return ROLES[int(answer)-1]
-        print('Choose parent, child, or follower (1–3).')
-
-
 def select_id(role, first, last):
-    if role == 'parent':
+    if role in ('parent', 'universal'):
         return 0
     print(f'Choose a unique node ID in {first}–{last}; children and followers share the same ID space.')
     default = first if role == 'child' else min(first+1, last)
@@ -209,13 +195,13 @@ def main(argv=None):
         # The menu/CLI selects role and ID independently of the stored defaults.
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0)
-        role = args.role or select_role()
+        role = args.role or 'universal'
         first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
         if node_id is None:
             node_id = select_id(role, first, last)
         _, rules = generate_config.validate(raw, role, node_id)
-        if role != 'parent' and not first <= node_id <= last:
+        if role not in ('parent', 'universal') and not first <= node_id <= last:
             raise ValueError(f'Node ID {node_id} is outside the configured bus discovery range {first}–{last}.')
         port = args.port
         if port is not None and (not port.strip() or port.startswith('-')):

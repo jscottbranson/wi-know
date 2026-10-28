@@ -688,7 +688,7 @@ bool Decoder::feed(uint8_t byte, Packet &out) {
     if (size_ < 16)
         return false;
     size_t payload = get16(data_.data() + 14);
-    if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 2 || payload > 512) {
+    if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 8 || payload > 512) {
         ++errors_;
         size_ = 0;
         return false;

@@ -38,9 +38,14 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     settings = copy.deepcopy(settings)
     # Optional section keeps existing schema-v1 configurations compatible.
     settings.setdefault('standalone', {'enabled': False, 'ble_dwell_ms': 120})
+    settings.setdefault('universal', {'strap_pin': 10, 'parent_tx_pin': 11, 'parent_rx_pin': 3,
+                                    'parent_rts_pin': 7, 'worker_tx_pin': 11,
+                                    'worker_rx_pin': 12, 'worker_rts_pin': 7})
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
+        'universal': dict.fromkeys(('strap_pin', 'parent_tx_pin', 'parent_rx_pin', 'parent_rts_pin',
+                                   'worker_tx_pin', 'worker_rx_pin', 'worker_rts_pin'), int),
         'wifi': {'country': str, 'channels': list, 'dwell_ms': int},
         'ble': {'enabled': bool},
         'standalone': {'enabled': bool, 'ble_dwell_ms': int},
@@ -70,8 +75,10 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     if node_override is not None:
         settings['node']['id'] = node_override
     node = settings['node']
-    require(node['role'] in ('parent', 'child', 'follower'), 'invalid role')
-    integer(node['id'], 0 if node['role'] == 'parent' else 1, 16, 'node.id')
+    require(node['role'] in ('universal', 'parent', 'child', 'follower'), 'invalid role')
+    universal = node['role'] == 'universal'
+    require(not universal or node['id'] == 0, 'universal node ID must be 0 (assigned at runtime)')
+    integer(node['id'], 0 if node['role'] in ('parent', 'universal') else 1, 16, 'node.id')
     require(node['role'] != 'parent' or node['id'] == 0, 'parent ID must be 0')
     wifi = settings['wifi']
     # Initial receive-only implementation deliberately excludes DFS / region-specific extensions.
@@ -93,7 +100,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     for field in ('first_node_id', 'last_node_id'):
         integer(bus[field], 1, 16, f'bus.{field}')
     require(bus['first_node_id'] <= bus['last_node_id'], 'invalid bus ID range')
-    require(not bus['enabled'] or node['role'] == 'parent' or
+    require(not bus['enabled'] or node['role'] in ('parent', 'universal') or
             bus['first_node_id'] <= node['id'] <= bus['last_node_id'],
             'worker node ID must be inside the bus discovery range')
     integer(bus['poll_timeout_ms'], 20, 1000, 'bus.poll_timeout_ms')
@@ -102,6 +109,11 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     integer(bus['membership_lease_ms'], 100, 60000, 'bus.membership_lease_ms')
     integer(bus['assignment_lease_ms'], 100, 60000, 'bus.assignment_lease_ms')
     sweep = (bus['last_node_id'] - bus['first_node_id'] + 1) * (bus['poll_timeout_ms'] + 5)
+    if universal:
+        # Each node can incur discovery query/reply and assignment/ACK in
+        # addition to its poll. Include request transmission and scheduler slack.
+        request_ms = (128 * 10000 + bus['baud'] - 1) // bus['baud']
+        sweep = (bus['last_node_id'] - bus['first_node_id'] + 1) * (3 * (bus['poll_timeout_ms'] + request_ms) + 84)
     require(bus['membership_lease_ms'] > sweep * 2, 'membership lease must exceed two worst-case bus sweeps')
     require(bus['assignment_lease_ms'] > bus['membership_lease_ms'], 'assignment lease must exceed membership lease')
     for name in ('gps', 'bus'):
@@ -147,8 +159,20 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         require(identity not in identities, 'duplicate ignored device')
         identities.add(identity)
     used = {}
+    if universal:
+        require(bus['enabled'], 'universal mode requires the bus')
+        profile = settings['universal']
+        require(profile['strap_pin'] == 10, 'universal strap must use verified GPIO10')
+        require((profile['parent_tx_pin'], profile['parent_rx_pin'], profile['parent_rts_pin']) == (11, 3, 7),
+                'universal parent bus requires verified GPIO11/3/7')
+        require((profile['worker_tx_pin'], profile['worker_rx_pin'], profile['worker_rts_pin']) == (11, 12, 7),
+                'universal worker bus requires verified GPIO11/12/7')
+        used[profile['strap_pin']] = 'universal.strap_pin'
+        # Validate parent peripherals against the runtime parent bus profile.
+        used.update({profile['parent_tx_pin']: 'parent bus TX', profile['parent_rx_pin']: 'parent bus RX',
+                     profile['parent_rts_pin']: 'parent bus RTS'})
     for section, values in settings.items():
-        if not isinstance(values, dict):
+        if not isinstance(values, dict) or section == 'universal' or (universal and section == 'bus'):
             continue
         for key, pin in values.items():
             if not key.endswith('_pin') and not (section == 'buzzer' and key == 'pin'):
@@ -232,7 +256,10 @@ def emit(settings, rules):
         out.append('DeviceIdentity{Radio::'+device['radio']+','+str(device['address_type'])+',{{'+address+'}}},')
     out.append('}};')
     out.append('inline constexpr FollowingConfig following_config{following_alert_enabled, following_alert_distance_m, following_alert_delay_ms, following_alert_max_gap_ms};')
-    out.append(f'inline constexpr Role role = Role::{settings["node"]["role"]};')
+    universal = settings['node']['role'] == 'universal'
+    out.append(f'inline constexpr bool universal_enabled = {cpp(universal)};')
+    role = 'child' if universal else settings['node']['role']
+    out.append(f'inline constexpr Role role = Role::{role};')
     channels = ','.join('Channel{'+str(n)+'}' for n in settings['wifi']['channels'])
     out.append(f'inline constexpr std::array<Channel, {len(settings["wifi"]["channels"])}> channels = {{{channels}}};')
     out.append('inline constexpr TrendConfig trend_config{signal_trend_window_ms, signal_trend_stale_ms, signal_trend_minimum_samples, signal_trend_confirmations, signal_trend_deadband_db};')
@@ -248,7 +275,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--config', type=pathlib.Path, default=ROOT/'config/settings.json')
     parser.add_argument('--output', type=pathlib.Path)
-    parser.add_argument('--role', choices=['parent', 'child', 'follower'])
+    parser.add_argument('--role', choices=['universal', 'parent', 'child', 'follower'])
     parser.add_argument('--node-id', type=int)
     args = parser.parse_args()
     try:

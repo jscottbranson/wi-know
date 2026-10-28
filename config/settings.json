@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "node": { "role": "parent", "id": 0 },
+  "node": { "role": "universal", "id": 0 },
   "wifi": {
     "country": "US",
     "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 36, 40, 44, 48, 149, 153, 157, 161],

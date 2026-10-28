@@ -14,6 +14,11 @@ jobs:
     strategy:
       matrix:
         include:
+          - role: universal
+            id: 0
+          - role: universal
+            id: 0
+            config: settings.universal.example.json
           - role: parent
             id: 0
           - role: parent
@@ -29,3 +34,13 @@ jobs:
         run: |
           . /opt/esp/idf/export.sh
           idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build
+      - uses: actions/upload-artifact@v4
+        if: matrix.role == 'universal'
+        with:
+          name: universal-${{ matrix.config || 'settings.json' }}
+          path: |
+            build/wi_know.bin
+            build/bootloader/bootloader.bin
+            build/partition_table/partition-table.bin
+            build/flash_args
+          if-no-files-found: error
