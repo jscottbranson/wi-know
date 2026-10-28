@@ -1,3 +1,4 @@
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
 #include "log_helpers.hpp"
@@ -10,6 +11,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <new>
 
 namespace {
 using namespace wiknow;
@@ -124,7 +126,27 @@ static void discovery_step() {
 
 static WorkerLossCounters worker_losses;
 static ScanCoverage scan_coverage;
-static Tracker tracker(c::trend_config);
+// Parent-only state, accessed from the normal parent task (never an ISR or a
+// cache-disabled callback). Keep this large table out of scarce internal RAM
+// when PSRAM is available; workers must not reserve it at all.
+static Tracker *tracker{};
+static void init_tracker() {
+    if (platform::role != Role::parent)
+        return;
+    void *memory = heap_caps_malloc(sizeof(Tracker), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    const bool external = memory != nullptr;
+    if (!memory)
+        memory = heap_caps_malloc(sizeof(Tracker), MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    if (!memory) {
+        ESP_LOGE("memory", "Cannot allocate parent tracking table (%u bytes)",
+                 unsigned(sizeof(Tracker)));
+        ESP_ERROR_CHECK(ESP_ERR_NO_MEM);
+    }
+    tracker = new (memory) Tracker(c::trend_config);
+    ESP_LOGI("memory", "Parent tracker: %u bytes in %s; PSRAM free=%u", unsigned(sizeof(Tracker)),
+             external ? "PSRAM" : "internal RAM",
+             unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
+}
 static Gps gps;
 static FollowingDetector following(c::following_config, c::following_ignore.data(),
                                    c::following_ignore.size());
@@ -203,7 +225,7 @@ static void consume(Observation o) {
     const auto drone = remote_id_messages(o);
     if (!match.rule && !drone.count && std::strcmp(c::logging_mode, "all") != 0)
         return;
-    Track &track = tracker.observe(o, fix);
+    Track &track = tracker->observe(o, fix);
     if (match.rule && received >= o.at_ms &&
         received - o.at_ms <= uint64_t(c::signal_trend_stale_ms)) {
         bool current = target_rule && same_target(target, o);
@@ -224,12 +246,12 @@ static void consume(Observation o) {
             if (!current || !existing_follower || incoming_follower ||
                 platform::now_ms() - target.at_ms > uint64_t(c::signal_trend_stale_ms)) {
                 if (!target_rule || !same_signal(target, o))
-                    tracker.reset_trend(track);
+                    tracker->reset_trend(track);
                 target = o;
                 target_rule = match.rule;
                 target_seen = current ? std::max(target_seen, o.at_ms) : o.at_ms;
                 target_peak = track.peak.rssi;
-                target_trend = tracker.trend(track, platform::now_ms());
+                target_trend = tracker->trend(track, platform::now_ms());
             } else
                 target_seen = std::max(target_seen, o.at_ms);
         }
@@ -690,6 +712,7 @@ extern "C" void app_main() {
     ESP_ERROR_CHECK(nvs_flash_init());
     platform::boot_id = esp_random();
     platform::detect_identity();
+    init_tracker();
     platform::init_observation_queues();
     ESP_LOGI("wi-know", "role=%s node=%d enabled rules=%u", wiknow::config::node_role,
              unsigned(platform::node_id.load()),

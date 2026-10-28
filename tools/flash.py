@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import generate_config
 
 ROOT = Path(__file__).resolve().parents[1]
+SDK_DEFAULTS = ROOT/'firmware/sdkconfig.defaults'
 SUPPORTED_IDF = '5.5.1'
 ROLES = ('universal', 'parent', 'child', 'follower')
 
@@ -146,8 +147,9 @@ def idf_command(idf_path=None, dry_run=False):
 
 
 def build_directory(role, node_id, config):
-    # Different config paths get different caches; content changes rebuild incrementally.
-    digest = hashlib.sha256(str(config.resolve()).encode()).hexdigest()[:10]
+    # Settings/rules rebuild incrementally, but changed SDK defaults need a new
+    # sdkconfig: IDF does not override values already saved in an existing cache.
+    digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
     return ROOT/'build'/'devices'/f'{role}-{node_id}-{digest}'
 
 
@@ -212,6 +214,8 @@ def main(argv=None):
         planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor)
         print(f'\nDevice: {role} / node {node_id} / ESP32-C5')
         print(f'Config: {config}')
+        if raw['sd'].get('enabled') and raw['sd'].get('format_if_mount_failed', False):
+            print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')
         print(f'Build:  {build_directory(role, node_id, config)}')
         if port:
             print(f'Port:   {port}')

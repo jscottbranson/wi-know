@@ -120,7 +120,8 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   SD-over-SPI logging. LCD assumption: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
 - JSONL on console and SD with [internal-flash fallback](storage.md); matching-only/all-observation modes; bounded
   SD writer queue, periodic flush, size rotation and file-count retention.
-  Existing files are not appended on reboot. The card is never auto-formatted;
+  Existing files are not appended on reboot. SD formatting requires an explicit
+  `sd.format_if_mount_failed` opt-in (disabled by default);
   only a completely erased flash log partition is initialized automatically.
 
 ## First-version limits and validation still needed
@@ -157,7 +158,9 @@ dynamic RX buffers, and disables AMPDU/AMSDU aggregation. The raw Wi-Fi parsing
 queue holds eight frames. Console and SD output queues each hold two 2304-byte
 lines; slow output or bursts can drop records, counted by the existing local loss
 counter. These bounds trade burst capacity for RAM available to Wi-Fi/BLE startup
-without requiring PSRAM. Serial startup logs report free internal heap and the
+with optional PSRAM used for the parent tracking table. Workers do not allocate
+that table. Wi-Fi throughput IRAM optimizations are disabled to leave more internal
+RAM available; stacks and radio buffers remain internal. Serial startup logs report free internal heap and the
 largest available block before each radio and after initialization. Radio init
 errors are also written to an enabled parent LCD before the normal fatal error
 handler runs. Hardware testing must verify startup headroom and capture loss under
