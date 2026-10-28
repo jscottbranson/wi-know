@@ -24,6 +24,9 @@ jobs:
           - role: parent
             id: 0
             config: settings.standalone.example.json
+          - role: parent
+            id: 0
+            config: settings.standalone-wiring.example.json
           - role: child
             id: 1
           - role: follower

@@ -60,6 +60,33 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate.validate(invalid)
 
+    def test_standalone_optional_indicators(self):
+        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        keys = ('increasing_pin', 'decreasing_pin', 'steady_pin')
+        for mask in range(8):
+            with self.subTest(mask=mask):
+                settings = copy.deepcopy(example)
+                for index, key in enumerate(keys):
+                    if not mask & (1 << index):
+                        settings['signal_trend'][key] = -1
+                validated, rules = generate.validate(settings)
+                header = generate.emit(validated, rules)
+                for key in keys:
+                    self.assertIn(f'signal_trend_{key} = {settings["signal_trend"][key]}', header)
+        # An omitted LED releases its GPIO for another peripheral.
+        settings = copy.deepcopy(example)
+        settings['signal_trend']['steady_pin'] = -1
+        settings['gps'].update(enabled=True, rx_pin=25)
+        generate.validate(settings)
+        settings['signal_trend']['steady_pin'] = 25
+        with self.assertRaisesRegex(ValueError, 'GPIO 25 used'):
+            generate.validate(settings)
+        for section, key in [('display', 'sda_pin'), ('buzzer', 'pin')]:
+            settings = copy.deepcopy(example)
+            settings[section][key] = -1
+            with self.assertRaisesRegex(ValueError, 'assign GPIO'):
+                generate.validate(settings)
+
     def test_standalone(self):
         self.settings['standalone']['enabled'] = True
         with self.assertRaisesRegex(ValueError, 'disable the bus'):

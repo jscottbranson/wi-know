@@ -178,7 +178,8 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             if not key.endswith('_pin') and not (section == 'buzzer' and key == 'pin'):
                 continue
             integer(pin, -1, 28, f'{section}.{key}')
-            active = values.get('enabled', False) and not (section == 'gps' and key == 'tx_pin' and pin == -1)
+            optional_pin = (section == 'signal_trend' or (section == 'gps' and key == 'tx_pin'))
+            active = values.get('enabled', False) and not (optional_pin and pin == -1)
             if active:
                 require(pin >= 0, f'{section}.{key}: assign GPIO before enabling')
                 require(pin not in used, f'GPIO {pin} used by {used.get(pin)} and {section}.{key}')

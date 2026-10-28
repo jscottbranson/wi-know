@@ -182,11 +182,14 @@ void indicators(wiknow::Trend trend, bool beep) {
     if (role != wiknow::Role::parent)
         return;
     if (c::signal_trend_enabled) {
-        gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
-                       trend == wiknow::Trend::increasing);
-        gpio_set_level(gpio_num_t(c::signal_trend_decreasing_pin),
-                       trend == wiknow::Trend::decreasing);
-        gpio_set_level(gpio_num_t(c::signal_trend_steady_pin), trend == wiknow::Trend::steady);
+        if (c::signal_trend_increasing_pin >= 0)
+            gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
+                           trend == wiknow::Trend::increasing);
+        if (c::signal_trend_decreasing_pin >= 0)
+            gpio_set_level(gpio_num_t(c::signal_trend_decreasing_pin),
+                           trend == wiknow::Trend::decreasing);
+        if (c::signal_trend_steady_pin >= 0)
+            gpio_set_level(gpio_num_t(c::signal_trend_steady_pin), trend == wiknow::Trend::steady);
     }
     if (c::buzzer_enabled) {
         uint64_t now = now_ms();
@@ -372,6 +375,8 @@ void start_peripherals() {
     if (c::signal_trend_enabled) {
         for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
                         c::signal_trend_steady_pin}) {
+            if (pin < 0)
+                continue;
             gpio_reset_pin(gpio_num_t(pin));
             gpio_set_direction(gpio_num_t(pin), GPIO_MODE_OUTPUT);
             gpio_set_level(gpio_num_t(pin), 0);

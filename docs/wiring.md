@@ -1,11 +1,12 @@
 # Wiring diagrams
 
-**The illustrations below show the manual legacy profile.** Universal images use
+**The illustrations below show manual profiles.** For a single mini board, use
+[standalone XIAO wiring](#standalone-mini-xiao-esp32-c5). Universal images use
 [the additional identification harness and GPS RX change](universal.md): GPIO10
 is reserved for detection, and parent GPS RX moves from GPIO10 to GPIO26. Do not
 connect the legacy GPS wire to GPIO10 when using universal firmware.
 
-The parent is the **ESP32-C5 WiFi6 Dev Board N32R8**, with 32 MB flash and 8 MB
+For the distributed setup, the parent is the **ESP32-C5 WiFi6 Dev Board N32R8**, with 32 MB flash and 8 MB
 PSRAM. The supplied product pinout matches the Waveshare WIFI6-KIT header layout.
 The children and dedicated follower are **mini Seeed XIAO ESP32-C5 boards**.
 The peripheral drawing shows circuit connections; the separate parent header map
@@ -20,6 +21,81 @@ USB-UART bridge's TX output; connecting a transceiver RO there would join two
 outputs. GPIO11 feeds the bridge RX input, so it remains usable as bus TX. Use the
 left **USB** connector for native USB Serial/JTAG console/flashing, not the right
 **UART** connector. XIAO D-number labels do not identify parent header positions.
+
+## Standalone mini XIAO ESP32-C5
+
+Use one **Seeed Studio XIAO ESP32-C5** as a manual standalone parent, with
+its supplied antenna attached to U.FL. Choose any combination of the optional
+display, buzzer and **one, two or three trend LEDs** below. A bare board needs
+only antenna and USB power. This setup has **no RS-485 wiring and no identification
+harness**; flash the explicit standalone profile rather than the universal image.
+
+![Standalone XIAO ESP32-C5 with optional display, buzzer and one to three LEDs](images/xiao-standalone-wiring.png)
+
+[Editable SVG](images/xiao-standalone-wiring.svg) ·
+[Matching example configuration](../config/settings.standalone-wiring.example.json)
+
+The diagram uses the existing supported **1602A LCD with a 5 V PCF8574 backpack**
+and the same LED resistors, level shifter and buzzer driver described in
+[the circuit details below](#parent-leds-buzzer-screen-and-gps). A small OLED is
+not a drop-in replacement: it needs a different firmware display driver. Use the
+XIAO assignments here, not the N32R8 parent's GPIO numbers.
+
+| Optional part | XIAO label / GPIO | Connection | GPIO cost |
+| --- | --- | --- | --- |
+| Display | D4 / GPIO23; D5 / GPIO24 | SDA; SCL through bidirectional BSS138 level shifter to LCD | 2 |
+| Buzzer | D3 / GPIO7 | 1 kΩ to 2N3904 base; driver circuit as drawn | 1 |
+| Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
+| Decreasing LED (red) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
+| Steady LED (amber) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
+
+The full combination uses **6 of the 11 D0–D10 header GPIOs**. D6/GPIO11,
+D7/GPIO12, D8/GPIO8, D9/GPIO9 and D10/GPIO10 remain unassigned by this example.
+Labels and power pins follow the
+[Seeed pin map](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/).
+These are logical connections; compare the board silkscreen for physical pin positions.
+
+Choose the parts before building:
+
+- **Display + buzzer + three LEDs:** use the matching example as supplied.
+- **One or two LEDs:** keep `signal_trend.enabled: true`, and set each omitted
+  LED's `increasing_pin`, `decreasing_pin` or `steady_pin` to `-1`. That GPIO is
+  released. Each fitted LED still shows only its named trend; one LED does not
+  encode all three states. Unknown or stale signal turns all fitted LEDs off.
+- **No LEDs:** set `signal_trend.enabled: false` and leave those branches unwired.
+- **No display or no buzzer:** set that section's `enabled` to `false` and omit
+  its entire circuit. The freed pins can be reassigned in a custom configuration.
+- **Bare board:** use [the original standalone example](../config/settings.standalone.example.json),
+  which disables all peripherals. USB data provides the serial console.
+
+Power the XIAO through USB-C (use a data cable for flashing/console). In the drawn
+arrangement, a separate regulated 5 V supply powers the LCD, shifter HV and buzzer;
+join its ground to XIAO GND and leave the XIAO **5V/VBUS header unconnected**.
+Use XIAO **3V3_OUT** for shifter LV, never as an external power input. If neither
+display nor buzzer is fitted, omit the external 5 V load supply. For a USB-free
+build, one regulated 5 V source may instead feed XIAO 5V/VBUS and the fitted 5 V
+loads with common ground; disconnect that source before attaching powered USB.
+Do not join independently powered 5 V rails. Budget the supply for board and loads.
+
+Use a **5 V passive magnetic buzzer rated at no more than 20 mA**, with the shown
+2N3904, 1 kΩ base resistor, 10 kΩ base pull-down and 1N4148 flyback diode (band to
++5 V). The LCD's 5 V I²C lines need the shown level shifter and pull-ups; never
+connect them directly to the XIAO GPIOs. GPS and microSD stay disabled in this
+example. Buzzer alerts require enabled matching rules with a buzzer action;
+the default ruleset is empty. LED trends describe signal strength, not direction.
+
+After activating ESP-IDF, validate and flash from the repository root:
+
+```sh
+python3 tools/generate_config.py --config config/settings.standalone-wiring.example.json
+python3 tools/flash.py --config config/settings.standalone-wiring.example.json --role parent --node-id 0
+```
+
+Settings are compiled in: rebuild and flash after changing your choices. This
+profile keeps `standalone.enabled: true`, `bus.enabled: false`, role `parent`
+and ID `0`. Wi-Fi and BLE scans alternate on the one radio; see
+[standalone behavior](../config/README.md#standalone-parent). The wiring has not
+been verified on physical hardware.
 
 ## Parent LEDs, buzzer, screen and GPS
 
