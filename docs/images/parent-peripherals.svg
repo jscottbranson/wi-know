@@ -167,26 +167,26 @@
 <polyline points="470,1445 900,1445" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="70" y="1484" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPS RX: leave disconnected. Use connector signal labels; check orientation rather than cable color.</text>
 <rect x="48" y="1535" width="1344" height="345" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="1576" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">5  microSD over SPI2 — 3.3 V logic and card supply</text>
+<text x="70" y="1576" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic</text>
 <text x="70" y="1626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO23 / P2.5</text>
-<text x="930" y="1626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">SCK / CLK (card pin 5)</text>
+<text x="930" y="1626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module SCK / CLK</text>
 <polyline points="370,1620 900,1620" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="70" y="1666" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO24 / P2.4</text>
-<text x="930" y="1666" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">MOSI / DI / CMD (card pin 3)</text>
+<text x="930" y="1666" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module MOSI / DI</text>
 <polyline points="370,1660 900,1660" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="70" y="1706" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO2 / P1.3</text>
-<text x="930" y="1706" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">MISO / DO / DAT0 (card pin 7)</text>
+<text x="930" y="1706" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module MISO / DO</text>
 <polyline points="900,1700 370,1700" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="70" y="1746" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO25 / P1.13</text>
-<text x="930" y="1746" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">CS / DAT3 (card pin 2)</text>
+<text x="930" y="1746" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module CS</text>
 <polyline points="370,1740 900,1740" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
-<text x="70" y="1780" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">3V3 to card VDD (pin 4); GND to VSS (pin 6). Add 100 nF + 10 µF near the socket.</text>
+<text x="70" y="1780" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">External regulated +5 V -&gt; module VCC; common GND -&gt; module GND. Card uses onboard 3.3 V.</text>
 <text x="70" y="1810" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">10 kΩ pull-ups to 3.3 V: CS, CMD, DAT0, DAT1 (pin 8), DAT2 (pin 1); no pull-up on CLK.</text>
-<text x="70" y="1840" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use a native 3.3 V SPI breakout. HW-125 supply / regulator / level-shifter variant must be checked.</text>
-<text x="70" y="1868" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Pull-ups may already be fitted. Card contact numbers are not the adapter header order.</text>
+<text x="70" y="1840" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">HiLetgo B07BJ2P6X6 includes level conversion; direct SPI GPIO wiring, no external IIC converter.</text>
+<text x="70" y="1868" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Account for card-side pull-ups already fitted. Never connect 5 V to GPIOs or bare card VDD.</text>
 <rect x="48" y="1905" width="1344" height="224" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1938" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Power, parts and configuration</text>
-<text x="70" y="1971" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Parent via documented USB input. External regulated +5 V feeds LCD and buzzer; join its GND to parent GND.</text>
+<text x="70" y="1971" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Parent via documented USB input. External +5 V feeds LCD, buzzer and SD VCC; join GND to parent GND.</text>
 <text x="70" y="1999" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Leave parent P1.14 / 5V unconnected with this external load supply. Keep +5 V off ESP32 GPIOs.</text>
 <text x="70" y="2027" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Add 100 nF across VCC/GND at GPS and LCD, plus 10 µF across the local +5 V/GND load rail.</text>
 <text x="70" y="2055" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use efficient red/green/amber LEDs (~2–3 mA with 470 Ω). Verify parent 3V3 regulator headroom for GPS.</text>

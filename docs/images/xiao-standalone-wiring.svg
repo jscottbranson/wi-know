@@ -78,29 +78,29 @@
 <text x="70" y="1054" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPS RX: leave disconnected (tx_pin = -1). Use connector signal labels to establish orientation.</text>
 <text x="70" y="1083" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.</text>
 <rect x="48" y="1135" width="1344" height="455" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="1176" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  microSD / native 3.3 V SPI breakout / SPI2 at 4 MHz</text>
+<text x="70" y="1176" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  HiLetgo microSD reader / 5 V VCC / 3.3 V SPI at 4 MHz</text>
 <text x="90" y="1226" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D8 / GPIO8</text>
-<text x="920" y="1226" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">SCK / CLK (card contact 5)</text>
+<text x="920" y="1226" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module SCK / CLK</text>
 <polyline points="525,1220 880,1220" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="90" y="1266" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D10 / GPIO10</text>
-<text x="920" y="1266" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">MOSI / DI / CMD (contact 3)</text>
+<text x="920" y="1266" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module MOSI / DI</text>
 <polyline points="525,1260 880,1260" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="90" y="1306" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D9 / GPIO9</text>
-<text x="920" y="1306" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">MISO / DO / DAT0 (contact 7)</text>
+<text x="920" y="1306" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module MISO / DO</text>
 <polyline points="880,1300 525,1300" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="90" y="1346" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D6 / GPIO11</text>
-<text x="920" y="1346" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">CS / DAT3 (contact 2)</text>
+<text x="920" y="1346" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module CS</text>
 <polyline points="525,1340 880,1340" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
-<text x="90" y="1386" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO 3V3 output</text>
-<text x="920" y="1386" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">VDD (contact 4)</text>
+<text x="90" y="1386" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO 5V / VBUS (USB)</text>
+<text x="920" y="1386" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module VCC (5 V input)</text>
 <polyline points="525,1380 880,1380" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="90" y="1426" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO GND</text>
-<text x="920" y="1426" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">VSS (contact 6)</text>
+<text x="920" y="1426" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Module GND</text>
 <polyline points="525,1420 880,1420" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="70" y="1464" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">10 kΩ to 3.3 V on CMD and DAT0–DAT3, including unused DAT1 (8) and DAT2 (1); none on CLK.</text>
-<text x="70" y="1493" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Account for fitted pull-ups. Contact numbers are for the card, not the adapter header order.</text>
-<text x="70" y="1522" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF + 10 µF at VDD/VSS; keep SPI wires short. GPIO11 is CS: do not attach a UART console there.</text>
-<text x="70" y="1551" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">HW-125 variants need supply/logic verification; this drawing assumes a native 3.3 V breakout.</text>
+<text x="70" y="1493" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Account for fitted pull-ups on the card side. Keep all signal pull-ups at 3.3 V, never 5 V.</text>
+<text x="70" y="1522" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Onboard regulator supplies card at 3.3 V. Keep wires short; GPIO11 is CS, not a UART console.</text>
+<text x="70" y="1551" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">HiLetgo B07BJ2P6X6 has level conversion: direct SPI GPIO wiring; no external IIC converter.</text>
 <g transform="translate(-672,1265)">
 <rect x="720" y="350" width="672" height="405" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="742" y="388" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">4  Buzzer / passive + NPN driver</text>
@@ -207,16 +207,16 @@
 <text x="625" y="2155" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="23" font-weight="700" text-anchor="start">XIAO ESP32-C5</text>
 <polyline points="380,2200 600,2200" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="490" y="2180" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">USB-C</text>
-<text x="625" y="2195" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">3V3 -&gt; GPS + SD + LV</text>
+<text x="625" y="2195" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">3V3 -&gt; GPS + shifter LV</text>
 <text x="625" y="2230" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GND -&gt; common ground</text>
-<text x="625" y="2260" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">5V / VBUS: leave open</text>
+<text x="625" y="2260" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">5V / VBUS -&gt; SD VCC</text>
 <rect x="1060" y="2120" width="305" height="165" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="1080" y="2155" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="22" font-weight="700" text-anchor="start">Supplied antenna</text>
 <text x="1080" y="2220" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="400" text-anchor="start">U.FL connector</text>
 <polyline points="910,2165 1060,2165" fill="none" stroke="#147d64" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="70" y="2324" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Separate regulated +5 V -&gt; LCD VCC + shifter HV + buzzer positive; supply GND -&gt; XIAO GND.</text>
 <text x="70" y="2353" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF at LCD VCC/GND; 10 µF across local +5 V/GND. Keep independently powered +5 V rails apart.</text>
-<text x="70" y="2382" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Allow regulator headroom for board/radio peaks, GPS and card writes; verify stable 3.3 V under load.</text>
+<text x="70" y="2382" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Budget USB power for board/radio + SD writes; verify module card-side 3.3 V remains stable.</text>
 <text x="70" y="2411" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.</text>
 <rect x="48" y="2470" width="1344" height="196" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="2503" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Build in priority order / remove optional blocks as needed</text>

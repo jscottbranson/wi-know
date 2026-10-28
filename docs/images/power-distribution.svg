@@ -70,11 +70,11 @@
 <text x="1210" y="682" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="400" text-anchor="middle">VCC from this XIAO only</text>
 <rect x="48" y="730" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="763" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent: native USB input; see parent header and peripheral diagrams</text>
-<text x="70" y="796" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer supply.</text>
+<text x="70" y="796" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer/SD supply.</text>
 <text x="70" y="824" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">For this non-isolated RS-485 bus, connect parent GND to the same common ground.</text>
 <rect x="48" y="868" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="901" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Keep the voltage rails separate</text>
 <text x="70" y="934" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not feed external power into XIAO 3V3_OUT. Do not connect different boards’ 3V3 outputs together.</text>
-<text x="70" y="962" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not attach the LCD backpack or HW-125 to a rail until its actual voltage requirements are confirmed.</text>
+<text x="70" y="962" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">HiLetgo SD module VCC needs 5 V; SPI signals remain 3.3 V. See the module-specific wiring diagrams.</text>
 <text x="48" y="1016" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

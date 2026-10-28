@@ -17,7 +17,7 @@
 <circle cx="560" cy="345" r="5" fill="#176aa5"/>
 <text x="575" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">1  3V3</text>
 <polyline points="530,345 560,345" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="515" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPS + shifter LV + native SD supply</text>
+<text x="515" y="351" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">GPS + shifter LV (not SD VCC)</text>
 <circle cx="560" cy="383" r="5" fill="#526577"/>
 <text x="575" y="389" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">2  RST</text>
 <polyline points="530,383 560,383" fill="none" stroke="#526577" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
@@ -147,7 +147,7 @@
 <rect x="48" y="1020" width="1344" height="168" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1053" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Board-specific details</text>
 <text x="70" y="1086" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Native USB port is left in the supplied pinout. GPIO12 is tied to CH343 TX; parent bus RX uses GPIO3.</text>
-<text x="70" y="1114" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use USB power for parent, external regulated +5 V for LCD/buzzer, common ground; do not tie +5 V rails.</text>
+<text x="70" y="1114" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use USB power for parent, external +5 V for LCD/buzzer/SD VCC, common ground; do not tie +5 V rails.</text>
 <text x="70" y="1142" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO25 pull-up selects an SDIO clock strap; firmware uses SPI boot and SPI2 SD, not the SDIO peripheral.</text>
 <text x="70" y="1170" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO0/1 need optional 32 kHz crystal unpopulated. Compare silkscreen before using a different board revision.</text>
 <text x="48" y="1226" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Physical header map for supplied N32R8 board pinout • compare board revision • see docs/wiring.md</text>

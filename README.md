@@ -24,7 +24,7 @@ support BLE, Wi-Fi beacon and passive NAN broadcasts.
 | ESP32-C5 WiFi6 Dev Board N32R8 parent | Coordination, BLE reception, matching, storage, UI and time |
 | Seeed Studio XIAO ESP32-C5 children | Passive Wi-Fi observation across assigned channels |
 | Dedicated XIAO ESP32-C5 follower | Focused observation and target reacquisition |
-| Parent microSD adapter, probably HW-125 (unconfirmed) | SPI storage; matching observations or all observations, selectable |
+| HiLetgo B07BJ2P6X6 microSD reader (5 V VCC, 3.3 V SPI) | SPI storage; matching observations or all observations, selectable |
 | Parent passive buzzer | Configurable match alerts |
 | Parent 1602A LCD with 5 V PCF8574 backpack | Two rows of 16 characters; I²C interface |
 | Parent Grove GPS (Air530), with onboard backup battery | Receiver coordinates and UTC from NMEA over UART; internal RTC backup |

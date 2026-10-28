@@ -71,7 +71,7 @@ disabled or unavailable. See [storage selection, limits and readback](../docs/st
 Unrecognized SD filesystems are automatically formatted by default; see the
 [`sd.format_if_mount_failed` option](../docs/storage.md#preparing-an-unformatted-sd-card).
 It may erase a damaged or unrecognized filesystem; turn it off again after setup.
-Do not infer HW-125 supply voltage from its header labels. The RS-485 bus requires
+The documented HiLetgo SD reader needs 5 V at module VCC and uses 3.3 V SPI signals. The RS-485 bus requires
 3.3 V-compatible transceivers, common ground, correct termination/biasing, and RTS
 wired to the transceiver's transmit-enable/receive-enable control. Bare UART TX
 pins must not be tied together. Transport is optional until this hardware exists.
