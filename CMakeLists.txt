@@ -71,3 +71,8 @@ add_executable(discovery_tests tests/discovery_tests.cpp)
 target_link_libraries(discovery_tests PRIVATE wiknow)
 target_compile_options(discovery_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME discovery COMMAND discovery_tests)
+
+add_executable(nan_tests tests/nan_tests.cpp)
+target_link_libraries(nan_tests PRIVATE wiknow)
+target_compile_options(nan_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME nan COMMAND nan_tests)

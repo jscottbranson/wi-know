@@ -89,11 +89,11 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   Rebuild and flash every node together; version 1 firmware cannot communicate
   with version 2 firmware. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
-- Receive-only Wi-Fi beacon/probe-response metadata and passive BLE advertising
+- Receive-only Wi-Fi beacon/probe-response metadata, NAN service discovery and passive BLE advertising
   (legacy and complete extended reports). Wi-Fi frames over 512 bytes and BLE
   advertising payloads over 255 bytes are currently skipped; fragmented reports
   are not reassembled. Arbitrary data traffic is not captured.
-- [Drone Remote ID decoding and storage](remote-id.md) for BLE and Wi-Fi beacon
+- [Drone Remote ID decoding and storage](remote-id.md) for BLE, Wi-Fi NAN and beacon
   broadcasts: identity, location, velocity, system and operator data, with raw evidence.
   Supported detections are retained in matches-only mode without custom rules.
 - Build-time JSON rule loading: OUI, SSID/name prefix, BLE manufacturer prefix and
@@ -133,7 +133,7 @@ the actual HW-125 and LCD backpack variants still require confirmation. SD mount
 fall back to flash at boot. Later storage failures surface on the console and LCD
 status; recovery currently requires reboot. There
 is no runtime configuration reload, external RTC driver, automatic signature import,
-Wi-Fi NAN Remote ID reception, RFID reader, Bluetooth Classic
+Hardware-verified Wi-Fi NAN interoperability, RFID reader, Bluetooth Classic
 support or triangulation in this version. These are explicit next implementation
 stages, not simulated telemetry.
 

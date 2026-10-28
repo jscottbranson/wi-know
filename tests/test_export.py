@@ -67,7 +67,8 @@ class ExportTests(unittest.TestCase):
 
     def test_tabular_drone_evidence(self):
         drone = observation(event='drone_detection', data={'description': 'a,\tb\n雪'},
-                            protocol='remote_id', authenticated=False, raw_hex='abcd')
+                            protocol='remote_id', authenticated=False, raw_hex='abcd',
+                            transport='wifi_nan', remote_id_transport='wifi_nan')
         for kind, delimiter in (('csv', ','), ('tsv', '\t')):
             self.assertEqual(self.run_export([drone], kind), 0)
             with self.output.open(newline='') as stream:
@@ -75,6 +76,8 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(json.loads(row['data']), drone['data'])
             self.assertEqual(row['protocol'], 'remote_id')
             self.assertEqual(row['raw_hex'], 'abcd')
+            self.assertEqual(row['transport'], 'wifi_nan')
+            self.assertEqual(row['remote_id_transport'], 'wifi_nan')
 
     def test_drone_map_distinguishes_aircraft_operator_and_receiver(self):
         aircraft = observation(event='drone_detection', message_type=1,

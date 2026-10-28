@@ -23,7 +23,7 @@ COLUMNS = (
     'peak_changed', 'observations', 'displacement_m', 'delay_ms', 'ble_ad_hex',
     'location_role', 'schema_version', 'wifi_remote_id_hex', 'protocol',
     'protocol_version', 'authenticated', 'message_index', 'message_counter',
-    'message_type', 'raw_hex', 'data',
+    'message_type', 'raw_hex', 'data', 'transport', 'remote_id_transport',
 )
 
 
