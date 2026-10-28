@@ -121,8 +121,8 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   SD-over-SPI logging. LCD driver mapping: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
 - JSONL on console and SD with [internal-flash fallback](storage.md); matching-only/all-observation modes; bounded
   SD writer queue, periodic flush, size rotation and file-count retention.
-  Existing files are not appended on reboot. SD formatting requires an explicit
-  `sd.format_if_mount_failed` opt-in (disabled by default);
+  Existing files are not appended on reboot. Unrecognized/damaged SD filesystems are automatically formatted by default
+  (`sd.format_if_mount_failed: false` opts out; existing card data may be erased);
   only a completely erased flash log partition is initialized automatically.
 
 ## First-version limits and validation still needed

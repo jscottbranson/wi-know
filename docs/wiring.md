@@ -115,8 +115,10 @@ pins in this table. The unconfirmed HW-125 is not assumed compatible: verify its
 supply and 3.3 V logic before substitution. GPIO25 remains the steady LED; it is
 an SDIO edge-selection strap, and this profile uses SPI2, not SDIO.
 
-Insert a FAT-formatted card before boot. Firmware never auto-formats a card;
-mount errors appear on the USB console and scanning continues. The example keeps
+Insert a card before boot. Unrecognized/damaged filesystems are automatically
+formatted by default, erasing existing data; back up the card first. Set
+`sd.format_if_mount_failed: false` to opt out. Mount errors appear on the USB
+console and scanning continues. The example keeps
 `logging.mode: "matches"`; with the empty default ruleset, ordinary observations
 will not populate logs. For a capture check, temporarily set it to `"all"`, then
 confirm `/sdcard/WK00000001.LOG` (and subsequent numbered files) contains

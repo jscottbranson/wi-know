@@ -2,8 +2,8 @@
 
 At boot, a parent tries the configured microSD interface if `sd.enabled` is true.
 If the card mounts and its log directory and free-space information can be read,
-logging uses SD. Files open lazily when records arrive; startup does not delete
-evidence just to create an empty log. The first record is flushed durably to
+logging uses SD. On a recognized FAT volume, files open lazily when records
+arrive; startup does not delete evidence just to create an empty log. The first record is flushed durably to
 verify writes; if that first SD open/write/flush fails, selection falls back to
 flash and retries the record. Retention-policy drops do not trigger fallback. Otherwise it tries the internal `logs` partition. With SD disabled,
 the parent goes directly to flash; unassigned SD pins are never accessed.
@@ -18,32 +18,30 @@ Selection becomes final after the first successful persistent write. Insert/remo
 restart. There is no hot-swap support or automatic copying between flash and SD.
 If the selected medium later fails to write, flush, or rotate, persistent logging
 stops with `OFF` and an error on serial; scanning and console output continue.
-Reboot to select storage again. SD formatting is disabled by default; see the
-explicit opt-in below.
+Reboot to select storage again. SD formatting is enabled by default; see the
+data-erasure behavior and opt-out below.
 
 ## Preparing an unformatted SD card
 
-In the settings file you actually pass to the flashing helper, set these fields
-inside the existing `sd` object (keep your verified GPIO settings):
+SD-enabled profiles automatically prepare cards whose filesystem the logger cannot
+mount. ESP-IDF first initializes the card and attempts a normal FAT mount. If it
+reports `FR_NO_FILESYSTEM` (for example, an exFAT card) or `FR_INT_ERR`, the driver
+formats the card as FAT and retries mounting. With the pinned ESP-IDF build,
+exFAT is disabled; large cards such as 256 GB SDXC cards are formatted as FAT32.
+**This can erase existing files. Back up cards before inserting them.** A readable
+FAT filesystem is preserved, even if it has no logger files yet.
 
-```json
-"enabled": true,
-"format_if_mount_failed": true
-```
+The default is `sd.format_if_mount_failed: true`, including settings files that
+omit the field. Existing custom configs explicitly setting it to `false` remain
+opted out: change that value to `true` and rebuild/reflash to enable preparation.
+To preserve unrecognized cards instead, set it to `false`; mount failures then
+fall back to internal flash. The flashing helper and firmware print a warning
+when automatic SD formatting is enabled.
 
-Rebuild and flash with that config, then boot with the card inserted. ESP-IDF
-first initializes the card and attempts a normal FAT mount. With this option
-enabled it may format a filesystem reported as missing/unrecognized or internally
-damaged (`FR_NO_FILESYSTEM` or `FR_INT_ERR`) and retry mounting. This can erase
-existing files, including a non-FAT filesystem; use only a card whose contents
-you intend to replace. A readable FAT filesystem is mounted without formatting.
-Memory-allocation, absent-card, and communication failures do not authorize
-formatting. `ESP_ERR_NO_MEM` must be fixed before a card can be initialized.
-
-The helper prints a warning when formatting is enabled. After the card mounts
-successfully, set the option back to `false` and rebuild/reflash to prevent future
-mount failures from formatting the card. Old settings files that omit the option
-retain the safe default `false`. Formatting is not offered for internal flash
+Absent-card, communication, power, and memory-allocation failures do not trigger
+formatting. For example, `ESP_ERR_TIMEOUT` during card initialization must be
+resolved before formatting can run. If formatting or the subsequent mount fails,
+the logger falls back to flash. Formatting is not offered for internal flash
 through this setting.
 
 ## Flash layout and retention
@@ -182,3 +180,9 @@ lose records that were still buffered in RAM.
    created while earlier logs remain. Exercise rotation with a small configured limit.
 4. Reinsert the SD card while powered off. Confirm the next boot selects SD and
    leaves earlier flash logs intact. Confirm Wi-Fi/BLE remain active in each case.
+
+5. With a backed-up/disposable exFAT or unformatted SD card, boot an SD-enabled
+   profile with the default formatting policy. Verify `storage=SD`, FAT32 on a
+   large card, and persistent log writes. Reboot and confirm prior logs survive.
+6. Repeat with `sd.format_if_mount_failed: false` and an unrecognized filesystem;
+   verify flash fallback and that the card contents remain unchanged.
