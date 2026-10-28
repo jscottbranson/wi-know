@@ -99,16 +99,17 @@ The helper reads only the `logs` partition described by this repository's
 It does not build, flash, or erase firmware.
 
 Omit `--port` for an interactive port menu. Each invocation creates a new
-`flash-export-*` directory containing the raw `logs.bin` backup, an `extracted/`
+`tmp/flash-export-*` directory in the repository containing the raw `logs.bin` backup, an `extracted/`
 directory of original logs (including status records), and `detections.json` by
 default. Use `--format csv`, `tsv`, `jsonl`, or `geojson` to change the export.
 Use `--directory my-backup` to name the directory; it must not already exist.
-Raw and extracted data are retained if extraction or conversion fails.
+The repository's `tmp/` directory is ignored by Git. Raw and extracted data are
+retained if extraction or conversion fails.
 
 Re-export a saved backup without connecting a board:
 
 ```sh
-python3 tools/export_flash.py --image flash-export-EXAMPLE/logs.bin --format geojson
+python3 tools/export_flash.py --image tmp/flash-export-EXAMPLE/logs.bin --format geojson
 ```
 
 Both modes accept `--location`, `--matches-only`, and `--skip-invalid` as described

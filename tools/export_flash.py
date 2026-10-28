@@ -28,7 +28,7 @@ def main(argv=None):
     source = parser.add_mutually_exclusive_group()
     source.add_argument('--port', help='USB serial port; prompts when omitted')
     source.add_argument('--image', type=Path, help='export an existing logs.bin without accessing hardware')
-    parser.add_argument('--directory', type=Path, help='new backup directory; default: flash-export-* in current directory')
+    parser.add_argument('--directory', type=Path, help='new backup directory; default: tmp/flash-export-* in the repository')
     parser.add_argument('--format', choices=('json', 'jsonl', 'csv', 'tsv', 'geojson'), default='json')
     parser.add_argument('--location', choices=('capture', 'peak', 'aircraft', 'operator'), default='capture')
     parser.add_argument('--matches-only', action='store_true')
@@ -54,7 +54,9 @@ def main(argv=None):
             directory = args.directory.resolve()
             directory.mkdir(parents=True, exist_ok=False)
         else:
-            directory = Path(tempfile.mkdtemp(prefix='flash-export-', dir=Path.cwd()))
+            backup_root = flash.ROOT / 'tmp'
+            backup_root.mkdir(exist_ok=True)
+            directory = Path(tempfile.mkdtemp(prefix='flash-export-', dir=backup_root))
         print(f'Backup directory: {directory}', flush=True)
         backup = directory / 'logs.bin'
         if args.image:

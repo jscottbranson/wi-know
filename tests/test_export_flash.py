@@ -72,6 +72,20 @@ class FlashExportTests(unittest.TestCase):
         rows = json.loads((self.output / 'detections.json').read_text())
         self.assertEqual([r['sequence'] for r in rows], [1, 2])
 
+    def test_default_exports_use_unique_directories_under_repository_tmp(self):
+        partition = export_flash.log_partition()
+        with patch.object(export_flash.flash, 'ROOT', self.root), \
+                patch.object(export_flash, 'log_partition', return_value=partition), \
+                patch.object(Path, 'cwd', side_effect=AssertionError('must not depend on cwd')), \
+                contextlib.redirect_stdout(io.StringIO()):
+            for _ in range(2):
+                self.assertEqual(export_flash.main(['--port', '/dev/test']), 0)
+        backups = list((self.root / 'tmp').glob('flash-export-*'))
+        self.assertEqual(len(backups), 2)
+        for backup in backups:
+            self.assertTrue((backup / 'detections.json').is_file())
+            self.assertEqual((backup / 'logs.bin').stat().st_size, self.size)
+
     def test_offline_image_preserved_and_csv_exported(self):
         image = self.root / 'original.bin'
         image.write_bytes(b'z' * self.size)
