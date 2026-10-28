@@ -3,8 +3,74 @@
 Place production rule files directly in this directory as `*.json`. Every such
 file is validated and compiled into firmware. Subdirectories are excluded, so
 `examples/` contains inactive templates. Rebuild/reflash the parent after edits.
-No downloaded signature collection is bundled yet; `rules.json` starts empty.
+`surveillance.json` supplies the local surveillance rule pack described below;
+`rules.json` remains available for additional local entries.
 An empty enabled ruleset produces a visible build/startup diagnostic.
+
+## Local surveillance pack (reviewed 2026-10-28)
+
+`surveillance.json` contains 25 enabled rules. The local settings and all shipped
+example profiles enable its categories, including `body_cameras` for Utility,
+Digital Ally, and legacy VIEVU. Existing custom profiles must add `body_cameras`
+to `detection.enabled_categories` to enable those rules.
+No UniFi/Ubiquiti Wi-Fi or Bluetooth identifiers are included.
+
+| Category | Coverage | Interpretation |
+| --- | --- | --- |
+| `axon` | Registered OUI on Wi-Fi/BLE; BLE company ID `034D` and services `FC81`, `FE6B`, `FE6C` | Possible Axon/TASER equipment, including body cameras, Fleet, and other equipment |
+| `body_cameras` | Utility, Digital Ally, legacy VIEVU registered OUIs on Wi-Fi/BLE | Possible vendor equipment; may include in-car cameras or accessories |
+| `flock` | Registered `B4:1E:52` OUI, provisioning SSID prefix, Penguin/external battery BLE names | Possible Flock equipment or accessory; does not distinguish ALPR, other cameras, and batteries |
+| `ring` | All 13 Ring LLC MA-L registrations in the reviewed IEEE snapshot, on Wi-Fi/BLE | Possible Ring device, including cameras, doorbells, chimes, and other products |
+| `alpr` | Two Genetec registered OUIs on Wi-Fi/BLE | Possible Genetec vendor association only; not proof of an AutoVu plate reader or that it has a wireless radio |
+
+OUI groups use `any`, with at most four prefixes per rule. All single-indicator
+rules are `possible`; only a `Penguin-` name AND XUNTONG company ID `09C8` in
+the same BLE observation is `probable` (a battery/accessory association).
+Manufacturer prefixes include the company ID in little-endian order: `4D03`
+for Axon/TASER and `C809` for XUNTONG. Names are case-sensitive; only listed
+variants match. Prefix rules cannot validate a serial suffix, so a name such as
+`Flock-Guest` also matches and must remain only possible.
+
+Rules request buzzer and follower actions, subject to existing global settings.
+OUI matches have priority 30, Flock names 40, and the composite battery rule 60.
+The supplied local buzzer is disabled. Matches indicate observed identifiers,
+not authenticated identity, camera recording state, or a person following you.
+
+### Sources and deliberate omissions
+
+See [source attribution and licensing notes](sources/README.md) for the imported
+MIT notice, IEEE database licensing limitation, and research-only references.
+
+Registered vendor addresses were checked directly against the
+[IEEE MA-L registry](https://standards-oui.ieee.org/oui/oui.csv).
+The selected factual rows are retained in
+`sources/ieee-surveillance-2026-10-28.csv`; each rule records the full downloaded
+registry's SHA-256. This is a factual extract, not a claim that IEEE licenses its
+whole database under this project's license.
+
+Axon BLE and Flock naming facts are adapted from
+[OUI Spy at revision 46eb13b](https://github.com/colonelpanichacks/oui-spy-unified-blue/tree/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw).
+Each rule links its exact source file; its MIT notice is preserved in
+`sources/oui-spy-LICENSE.txt`. These community signatures have not been tested
+against physical devices here.
+
+Generic Espressif, Qualcomm, LiteOn, Amazon, Motorola, and other shared hardware
+prefixes are omitted. Neither XUNTONG company ID alone nor Nordic DFU services
+identify Flock. No unsupported Vigilant, ELSAG, Rekor, or generic ALPR fingerprint
+is asserted. In particular, Genetec vendor matching does not provide universal
+ALPR detection.
+
+The current Wi-Fi parser accepts beacons/probe responses, not ordinary client
+data or probe requests. A client-mode Ring camera or probe-only Flock camera can
+therefore remain invisible to these rules. BLE OUI rules only work with public,
+globally administered addresses. Names/company IDs can still match random
+addresses. Raw `BWCDEVICE` payload substring matching, 128-bit service UUIDs,
+and Wi-Fi information-element fingerprints are unsupported and were not
+approximated. No signal does not mean no camera.
+
+Validate with `python3 tools/generate_config.py`, then rebuild/reflash the parent
+or universal firmware using the existing firmware workflow. Merely editing JSON
+does not update a running device.
 
 For a controlled test, copy `examples/lab.json` here and set its `enabled` field
 to `true`. A beacon whose SSID starts with `WI-KNOW-TEST-` will match. This is a

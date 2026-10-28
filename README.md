@@ -108,7 +108,9 @@ disabled. Use `config/settings.universal.example.json` on every board to enable
 the parent peripherals; its GPS RX is GPIO26, reserving GPIO10 for identification.
 The existing wiring illustrations describe the manual profile; follow the
 [universal wiring changes](docs/universal.md) for the new image.
-The default ruleset is empty; a disabled test template is in `rules/examples/`.
+The local surveillance ruleset covers Axon, Flock, Ring, selected body-camera
+vendors, and possible Genetec equipment; see [coverage and limitations](rules/README.md).
+UniFi Wi-Fi/Bluetooth signatures are excluded. Disabled test templates are in `rules/examples/`.
 
 ## Primary references
 

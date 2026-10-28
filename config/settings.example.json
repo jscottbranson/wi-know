@@ -26,7 +26,7 @@
   },
   "detection": {
     "rules_directory": "rules",
-    "enabled_categories": ["drones", "flock", "axon", "alpr", "ring", "other_doorbell_cameras", "lab"]
+    "enabled_categories": ["drones", "flock", "axon", "body_cameras", "alpr", "ring", "other_doorbell_cameras", "lab"]
   },
   "following_alert": { "enabled": false, "distance_m": 200, "delay_ms": 30000, "max_gap_ms": 15000, "ignore_devices": [] },
   "follower": { "enabled": true, "release_after_ms": 30000 },

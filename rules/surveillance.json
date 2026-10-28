@@ -1,0 +1,750 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "axon-wifi-oui-1",
+      "category": "axon",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:25:DF"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "axon-ble-oui-1",
+      "category": "axon",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:25:DF"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-wifi-oui-1",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "B4:1E:52"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-ble-oui-1",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "B4:1E:52"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-wifi-oui-1",
+      "category": "ring",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:B4:63"
+        },
+        {
+          "field": "oui",
+          "value": "18:7F:88"
+        },
+        {
+          "field": "oui",
+          "value": "24:2B:D6"
+        },
+        {
+          "field": "oui",
+          "value": "34:3E:A4"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-wifi-oui-2",
+      "category": "ring",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "50:E4:67"
+        },
+        {
+          "field": "oui",
+          "value": "54:E0:19"
+        },
+        {
+          "field": "oui",
+          "value": "5C:47:5E"
+        },
+        {
+          "field": "oui",
+          "value": "64:9A:63"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-wifi-oui-3",
+      "category": "ring",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "90:48:6C"
+        },
+        {
+          "field": "oui",
+          "value": "9C:76:13"
+        },
+        {
+          "field": "oui",
+          "value": "AC:9F:C3"
+        },
+        {
+          "field": "oui",
+          "value": "C4:DB:AD"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-wifi-oui-4",
+      "category": "ring",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "CC:3B:FB"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-ble-oui-1",
+      "category": "ring",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:B4:63"
+        },
+        {
+          "field": "oui",
+          "value": "18:7F:88"
+        },
+        {
+          "field": "oui",
+          "value": "24:2B:D6"
+        },
+        {
+          "field": "oui",
+          "value": "34:3E:A4"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-ble-oui-2",
+      "category": "ring",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "50:E4:67"
+        },
+        {
+          "field": "oui",
+          "value": "54:E0:19"
+        },
+        {
+          "field": "oui",
+          "value": "5C:47:5E"
+        },
+        {
+          "field": "oui",
+          "value": "64:9A:63"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-ble-oui-3",
+      "category": "ring",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "90:48:6C"
+        },
+        {
+          "field": "oui",
+          "value": "9C:76:13"
+        },
+        {
+          "field": "oui",
+          "value": "AC:9F:C3"
+        },
+        {
+          "field": "oui",
+          "value": "C4:DB:AD"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "ring-ble-oui-4",
+      "category": "ring",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "CC:3B:FB"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "utility-bodyworn-wifi-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:09:BC"
+        },
+        {
+          "field": "oui",
+          "value": "00:16:ED"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "utility-bodyworn-ble-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:09:BC"
+        },
+        {
+          "field": "oui",
+          "value": "00:16:ED"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "digital-ally-wifi-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:23:BD"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "digital-ally-ble-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:23:BD"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "vievu-legacy-wifi-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "FC:01:9E"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "vievu-legacy-ble-oui-1",
+      "category": "body_cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "FC:01:9E"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "genetec-vendor-wifi-oui-1",
+      "category": "alpr",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:BF:15"
+        },
+        {
+          "field": "oui",
+          "value": "0C:BF:15"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "genetec-vendor-ble-oui-1",
+      "category": "alpr",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:BF:15"
+        },
+        {
+          "field": "oui",
+          "value": "0C:BF:15"
+        }
+      ],
+      "source": {
+        "url": "https://standards-oui.ieee.org/oui/oui.csv",
+        "revision": "sha256:10ac72b5d9178cab63ab4f49458b946e9d1997902340229eeb5443929d738c3a",
+        "license": "IEEE registry facts; no license asserted for registry database",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "axon-ble-company",
+      "category": "axon",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "manufacturer_prefix",
+          "value": "4D03"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/axeoff.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "axon-ble-services",
+      "category": "axon",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 30,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid16",
+          "value": "FC81"
+        },
+        {
+          "field": "service_uuid16",
+          "value": "FE6B"
+        },
+        {
+          "field": "service_uuid16",
+          "value": "FE6C"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/axeoff.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-wifi-provisioning-name",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 40,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_prefix",
+          "value": "Flock-"
+        },
+        {
+          "field": "ssid_prefix",
+          "value": "flock-"
+        },
+        {
+          "field": "ssid_prefix",
+          "value": "FLOCK-"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-ble-battery-name",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 40,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_prefix",
+          "value": "Penguin-"
+        },
+        {
+          "field": "name_prefix",
+          "value": "penguin-"
+        },
+        {
+          "field": "name_prefix",
+          "value": "FS Ext Battery"
+        },
+        {
+          "field": "name_prefix",
+          "value": "fs ext battery"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-ble-battery-corroborated",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "all",
+      "priority": 60,
+      "confidence": "probable",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_prefix",
+          "value": "Penguin-"
+        },
+        {
+          "field": "manufacturer_prefix",
+          "value": "C809"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT",
+        "reviewed": "2026-10-28"
+      }
+    }
+  ]
+}

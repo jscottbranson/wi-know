@@ -190,7 +190,19 @@ class ConfigTests(unittest.TestCase):
     def test_defaults(self):
         settings, rules = generate.validate(self.settings)
         self.assertEqual(settings['node']['role'], 'parent')
-        self.assertEqual(rules, [])
+        self.assertTrue(rules)
+        self.assertTrue({'axon', 'flock', 'ring', 'alpr', 'body_cameras'} <=
+                        {rule['category'] for rule in rules})
+
+    def test_shipped_profiles_enable_surveillance_pack(self):
+        categories = {'axon', 'flock', 'ring', 'alpr', 'body_cameras'}
+        for path in sorted((ROOT/'config').glob('settings*.json')):
+            with self.subTest(profile=path.name):
+                settings, rules = generate.validate(generate.load(path))
+                self.assertTrue(categories <= set(settings['detection']['enabled_categories']))
+                self.assertTrue(categories <= {rule['category'] for rule in rules
+                                               if rule['enabled']})
+
     def test_role_requires_unique_nonzero_id(self):
         with self.assertRaises(ValueError):
             generate.validate(self.settings, 'child', 0)
