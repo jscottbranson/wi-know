@@ -10,6 +10,7 @@
 #include "nvs_flash.h"
 #include "platform.hpp"
 #include "wiknow/ble_reassembly.hpp"
+#include "wiknow/ble_scan_lifecycle.hpp"
 #include "wiknow/capture_policy.hpp"
 #include "wiknow/observation_queue.hpp"
 #include "wiknow/remote_id.hpp"
@@ -178,7 +179,7 @@ struct RawBle {
     uint32_t generation;
 };
 static std::atomic<uint32_t> ble_queue_drops{};
-static bool ble_ready{}, ble_recovery_pending{};
+static bool ble_ready{};
 static void reset_ble_assembly() {
     // Synchronize with the final queue insertion, not just the worker's first
     // generation check: a reset during parsing must also reject the old report.
@@ -266,6 +267,23 @@ static wiknow::StandaloneScan standalone_scan;
 static ble_npl_callout standalone_timer;
 static uint8_t own_type{};
 static void scan_ble();
+static wiknow::BleScanLifecycle ble_scan_lifecycle;
+static ble_npl_event ble_scan_barrier;
+static void post_ble_barrier() {
+    ble_npl_eventq_put(nimble_port_get_dflt_eventq(), &ble_scan_barrier);
+}
+static void ble_boundary() {
+    ble_scan_lifecycle.boundary(reset_ble_assembly, post_ble_barrier);
+}
+static bool ble_scan_desired() {
+    return wiknow::ble_phase_wants_scan(standalone_scheduler(), standalone_scan.ble(),
+                                        wiknow::config::universal_enabled, local_scanning(),
+                                        wifi_receiving);
+}
+static void ble_barrier_drained(struct ble_npl_event *) {
+    if (ble_scan_lifecycle.drained(post_ble_barrier))
+        scan_ble();
+}
 static int gap_event(struct ble_gap_event *event, void *) {
     if (event->type == BLE_GAP_EVENT_DISC) {
         const auto &d = event->disc;
@@ -302,34 +320,38 @@ static int gap_event(struct ble_gap_event *event, void *) {
     }
 #endif
     if (event->type == BLE_GAP_EVENT_DISC_COMPLETE) {
-        reset_ble_assembly();
-        if (!standalone_scheduler())
-            scan_ble();
+        ble_boundary();
     }
     return 0;
 }
 static void scan_ble() {
-    if (ble_gap_disc_active())
-        return;
-    reset_ble_assembly();
+    const bool desired = ble_scan_desired();
+    const bool active = ble_scan_lifecycle.start(
+        ble_ready, desired, [] { return ble_gap_disc_active(); },
+        [] {
 #if CONFIG_BT_NIMBLE_EXT_ADV
-    ble_gap_ext_disc_params params{};
-    params.passive = 1;
-    params.disable_observer_mode = 0; // Forward raw fragments even when AD headers are split.
-    params.itvl = 160;
-    params.window = 80;
-    int rc = ble_gap_ext_disc(own_type, 0, 0, 0, 0, 0, &params, &params, gap_event, nullptr);
+            ble_gap_ext_disc_params params{};
+            params.passive = 1;
+            params.disable_observer_mode = 0; // Pass raw fragments even when AD headers are split.
+            params.itvl = 160;
+            params.window = 80;
+            int rc =
+                ble_gap_ext_disc(own_type, 0, 0, 0, 0, 0, &params, &params, gap_event, nullptr);
 #else
-    ble_gap_disc_params params{};
-    params.passive = 1;
-    params.disable_observer_mode = 0; // Forward raw fragments even when AD headers are split.
-    params.itvl = 160;
-    params.window = 80;
-    params.filter_duplicates = 0;
-    int rc = ble_gap_disc(own_type, BLE_HS_FOREVER, &params, gap_event, nullptr);
+            ble_gap_disc_params params{};
+            params.passive = 1;
+            params.disable_observer_mode = 0;
+            params.itvl = 160;
+            params.window = 80;
+            params.filter_duplicates = 0;
+            int rc = ble_gap_disc(own_type, BLE_HS_FOREVER, &params, gap_event, nullptr);
 #endif
-    if (rc)
-        ESP_LOGE("ble", "Scan start failed: %d", rc);
+            if (rc)
+                ESP_LOGE("ble", "Scan start failed: %d", rc);
+            return rc == 0;
+        });
+    if (standalone_scheduler() && desired)
+        standalone_channel = active ? 0 : -1;
 }
 static void standalone_step() {
     namespace c = wiknow::config;
@@ -351,8 +373,7 @@ static void standalone_step() {
             standalone_channel = -1;
             return;
         }
-        reset_ble_assembly();
-        ble_recovery_pending = false;
+        ble_boundary();
     }
     pause_wifi();
     if (standalone_scan.has_started())
@@ -384,13 +405,11 @@ static void standalone_wifi_task(void *) {
 }
 static void ble_sync() {
     ble_ready = ble_hs_id_infer_auto(0, &own_type) == 0;
-    if (ble_ready && !standalone_scheduler())
-        scan_ble();
+    ble_boundary();
 }
 static void ble_reset(int reason) {
-    reset_ble_assembly();
     ble_ready = false;
-    ble_recovery_pending = false;
+    ble_boundary();
     if (standalone_scheduler() && standalone_channel == 0)
         standalone_channel = -1;
     ESP_LOGW("ble", "Host reset: %d", reason);
@@ -401,30 +420,19 @@ static void ble_maintenance(struct ble_npl_event *) {
     ble_assembler.expire(now_ms());
     const bool restart = ble_assembler.needs_restart();
     portEXIT_CRITICAL(&ble_assembly_lock);
-    // Quarantine survives a failed cancellation. Only a confirmed controller
-    // boundary permits later COMPLETE reports to be treated as standalone again.
+    // A synchronous controller ACK is not a host-event-queue drain. The posted
+    // barrier keeps all scan starts gated while queued old reports are discarded.
     if (restart && ble_ready) {
         if (ble_gap_disc_active()) {
-            if (ble_gap_disc_cancel() == 0) {
-                reset_ble_assembly();
-                scan_ble();
-                ble_recovery_pending = !ble_gap_disc_active();
-            }
-        } else {
-            reset_ble_assembly();
+            if (ble_gap_disc_cancel() == 0)
+                ble_boundary();
+        } else if (!ble_scan_lifecycle.pending()) {
+            ble_boundary();
         }
     }
-    if (ble_recovery_pending && ble_ready) {
-        const bool desired = !standalone_scheduler() || standalone_scan.ble() ||
-                             (wiknow::config::universal_enabled && !local_scanning());
-        if (!desired)
-            ble_recovery_pending = false;
-        else if (!ble_gap_disc_active()) {
-            scan_ble();
-            ble_recovery_pending = !ble_gap_disc_active();
-        } else
-            ble_recovery_pending = false;
-    }
+    // Retry failed starts only when this phase wants BLE. The lifecycle gate
+    // prevents this timer, sync, or standalone callbacks bypassing the barrier.
+    scan_ble();
     ble_npl_callout_reset(&ble_maintenance_timer, ble_npl_time_ms_to_ticks32(50));
 }
 static void ble_task(void *) {
@@ -486,6 +494,7 @@ void start_radios() {
         configASSERT(xTaskCreate(ble_worker, "ble_parse", 4096, nullptr, 4, nullptr) == pdPASS);
         ESP_LOGI("ble", "Bounded assembly=%u bytes; completed queue=%u bytes; parser stack=4096",
                  unsigned(sizeof(ble_assembler)), unsigned(ble_queue_depth * sizeof(RawBle)));
+        ble_npl_event_init(&ble_scan_barrier, ble_barrier_drained, nullptr);
         ble_npl_callout_init(&ble_maintenance_timer, nimble_port_get_dflt_eventq(), ble_maintenance,
                              nullptr);
         ble_npl_callout_reset(&ble_maintenance_timer, ble_npl_time_ms_to_ticks32(50));

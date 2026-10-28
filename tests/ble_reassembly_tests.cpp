@@ -1,7 +1,10 @@
 #include "wiknow/ble_reassembly.hpp"
+#include "wiknow/ble_scan_lifecycle.hpp"
 #include "wiknow/remote_id.hpp"
 #include <cassert>
 #include <cstring>
+#include <deque>
+#include <functional>
 #include <vector>
 using namespace wiknow;
 using Bytes = std::vector<uint8_t>;
@@ -38,7 +41,155 @@ static Observation observation(const BleAdvertisement &report) {
     o.timing_uncertainty_ms = report.duration_ms;
     return o;
 }
+// Fake the pinned host queue: advertising events are queued, but the controller
+// stop ACK returns synchronously without processing those queued events.
+static void lifecycle_tests() {
+    assert(ble_phase_wants_scan(false, false, false, false, true)); // Concurrent normal mode.
+    assert(!ble_phase_wants_scan(true, false, true, true, true));   // Standalone Wi-Fi dwell.
+    assert(!ble_phase_wants_scan(true, false, true, false,
+                                 true)); // Intent changed; Wi-Fi not paused yet.
+    assert(ble_phase_wants_scan(true, false, true, false, false)); // Scheduler confirmed pause.
+    assert(ble_phase_wants_scan(true, true, false, true, false));  // Standalone BLE dwell.
+    assert(
+        !ble_phase_wants_scan(true, false, false, true, false)); // Wi-Fi phase, even before tune.
+    struct Host {
+        BleAssembler assembler;
+        BleScanLifecycle lifecycle;
+        bool active{true}, ready{true}, desired{true}, start_ok{true};
+        uint32_t generation{1};
+        unsigned starts{}, delivered{};
+        std::deque<std::function<void()>> events;
+        std::vector<uint32_t> completed;
+        void start() {
+            lifecycle.start(
+                ready, desired, [&] { return active; },
+                [&] {
+                    ++starts;
+                    active = start_ok;
+                    return active;
+                });
+        }
+        void post() {
+            events.push_back([&] {
+                if (lifecycle.drained([&] { post(); }))
+                    start();
+            });
+        }
+        void boundary() {
+            lifecycle.boundary(
+                [&] {
+                    ++generation;
+                    assembler.reset();
+                },
+                [&] { post(); });
+        }
+        void cancel(bool ok = true) {
+            if (ok) {
+                active = false;
+                boundary();
+            }
+        }
+        void report(BleFragment fragment) {
+            events.push_back([&, fragment] {
+                if (!active)
+                    return;
+                BleAdvertisement output;
+                if (assembler.accept(fragment, output) == BleAssemblyResult::complete)
+                    completed.push_back(generation);
+            });
+        }
+        void next() {
+            assert(!events.empty());
+            auto event = events.front();
+            events.pop_front();
+            event();
+        }
+        void parse() {
+            for (const auto epoch : completed)
+                if (epoch == generation)
+                    ++delivered;
+            completed.clear();
+        }
+    };
+    const auto data = rid();
+    const auto complete = fragment(data, 0, data.size(), BleDataStatus::complete);
+    {
+        Host host;
+        BleAdvertisement output;
+        assert(host.assembler.accept(fragment(data, 0, 1, BleDataStatus::incomplete), output) ==
+               BleAssemblyResult::pending);
+        host.report(complete); // Old scan tail happens to be a parseable whole AD record.
+        host.cancel();         // ACK bypasses the old report; only appends the drain marker.
+        assert(!host.active && host.lifecycle.pending());
+        host.start(); // Maintenance/standalone/sync cannot bypass the marker.
+        assert(!host.active && host.starts == 0);
+        host.next(); // Old report drains while inactive, never acquiring new generation.
+        assert(host.completed.empty());
+        host.next();
+        assert(host.active && !host.lifecycle.pending() && host.starts == 1);
+        host.report(complete);
+        host.next();
+        host.parse();
+        assert(host.delivered == 1);
+    }
+    {
+        Host host;
+        host.cancel();         // Marker is already queued.
+        host.report(complete); // A later reset/sync may have more old reports behind it.
+        host.boundary();
+        host.next(); // First marker must append a fresh marker behind that old report.
+        assert(!host.active && host.lifecycle.pending());
+        host.next();
+        assert(host.completed.empty());
+        host.next();
+        assert(host.active && !host.lifecycle.pending());
+    }
+    {
+        Host host;
+        host.report(complete);
+        host.next(); // Completed report waiting for worker parsing.
+        assert(host.completed.size() == 1);
+        host.cancel();
+        host.desired = false; // Standalone Wi-Fi phase begins before barrier drains.
+        host.next();
+        assert(!host.active && !host.lifecycle.pending());
+        host.parse();
+        assert(host.delivered == 0); // Old completed-report generation invalidated too.
+        host.start();
+        assert(!host.active);
+        host.desired = true;
+        host.start_ok = false;
+        host.start();
+        assert(!host.active);
+        host.start_ok = true;
+        host.start();
+        assert(host.active && host.starts == 2);
+    }
+    {
+        Host host;
+        BleAdvertisement output;
+        assert(host.assembler.accept(fragment(data, 0, 1, BleDataStatus::incomplete), output) ==
+               BleAssemblyResult::pending);
+        host.assembler.expire(350);
+        host.cancel(false); // Failed cancellation cannot release quarantine or post a barrier.
+        assert(host.active && host.events.empty() && host.assembler.needs_restart());
+        host.report(complete);
+        host.next();
+        assert(host.completed.empty());
+        host.cancel();
+        host.ready = false; // Reset before drain; no scan until a later sync boundary.
+        host.next();
+        assert(!host.active);
+        host.ready = true;
+        host.boundary();
+        host.start();
+        assert(!host.active);
+        host.next();
+        assert(host.active);
+    }
+}
 int main() {
+    lifecycle_tests();
     const auto bytes = rid();
     BleAdvertisement output;
     // All split positions, including the AD length/type/UUID header, on both
@@ -261,7 +412,7 @@ int main() {
         if (invalid == 0)
             bad.key.address_type = 0xff;
         if (invalid == 1)
-            bad.key.sid = 0xff;
+            bad.key.sid = 16;
         if (invalid == 2)
             bad.key.properties = 0x20;
         if (invalid == 3)
@@ -272,6 +423,35 @@ int main() {
             bad.data = nullptr;
         assert(a.accept(bad, output) == BleAssemblyResult::rejected);
         assert(a.stats().ambiguous == 1);
+    }
+    // Unavailable SID is legal on an independent COMPLETE report, but cannot
+    // safely terminate or follow a same-address pending/poisoned chain.
+    {
+        BleAssembler a;
+        auto unavailable = fragment(bytes, 0, bytes.size(), BleDataStatus::complete);
+        unavailable.key.sid = 0xff;
+        assert(a.accept(unavailable, output) == BleAssemblyResult::complete);
+        assert(remote_id_messages(observation(output)).count == 1);
+        assert(a.accept(fragment(bytes, 0, 1, BleDataStatus::incomplete), output) ==
+               BleAssemblyResult::pending);
+        assert(a.accept(unavailable, output) == BleAssemblyResult::rejected);
+        assert(a.needs_restart());
+        a.reset();
+        auto incomplete = unavailable;
+        incomplete.status = BleDataStatus::incomplete;
+        assert(a.accept(incomplete, output) == BleAssemblyResult::rejected);
+        assert(a.needs_restart());
+        assert(a.accept(unavailable, output) == BleAssemblyResult::rejected);
+        assert(a.accept(fragment(bytes, 0, bytes.size(), BleDataStatus::complete), output) ==
+               BleAssemblyResult::rejected);
+        a.reset();
+        Bytes oversized(256, 0);
+        assert(a.accept(fragment(oversized, 0, 256, BleDataStatus::incomplete), output) ==
+               BleAssemblyResult::rejected);
+        assert(a.accept(unavailable, output) == BleAssemblyResult::rejected);
+        assert(a.needs_restart());
+        a.reset();
+        assert(a.accept(unavailable, output) == BleAssemblyResult::complete);
     }
     // Missing bytes are not synthesized: malformed assembled AD is rejected by
     // the downstream parser. Invisible upstream loss at an AD boundary cannot

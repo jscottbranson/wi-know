@@ -77,26 +77,40 @@ class BleAssembler {
         }
         const auto &key = fragment.key;
         const bool legacy = key.properties & 0x10;
-        // Anonymous/reserved addresses and nonlegacy reports without a valid SID
-        // cannot be associated reliably. Legacy COMPLETE reports need no SID.
-        if (key.address_type > 3 || (!legacy && key.sid > 15)) {
+        // Anonymous/reserved addresses cannot be associated reliably.
+        if (key.address_type > 3) {
             ++stats_.ambiguous;
             return BleAssemblyResult::rejected;
         }
         Entry *entry = nullptr, *free = nullptr;
+        bool related = false;
         for (auto &candidate : entries_) {
+            related = related || (candidate.used && candidate.report.key.address == key.address &&
+                                  candidate.report.key.address_type == key.address_type);
             if (candidate.used && same_identity(candidate.report.key, key))
                 entry = &candidate;
             if (!candidate.used)
                 free = &candidate;
         }
         if (fragment.status == BleDataStatus::truncated) {
+            if (!legacy && key.sid > 15 && related) {
+                quarantine_ = true; // Cannot identify which same-address chain terminated.
+                ++stats_.ambiguous;
+            }
             if (entry)
                 *entry = {};
             ++stats_.truncations;
             return BleAssemblyResult::rejected;
         }
         const bool terminal = fragment.status == BleDataStatus::complete;
+        // HCI permits unavailable SID (0xff) on a complete nonlegacy report.
+        // It is safe standalone only if no same-advertiser chain could own it.
+        if (!legacy && key.sid > 15 && !(key.sid == 0xff && terminal && !related)) {
+            ++stats_.ambiguous;
+            if (!terminal || related)
+                quarantine_ = true; // A later COMPLETE must not escape lost SID history.
+            return BleAssemblyResult::rejected;
+        }
         const bool valid =
             (key.properties & ~uint8_t(0x1f)) == 0 &&
             (key.primary_phy == 1 || key.primary_phy == 3) && key.secondary_phy <= 3 &&

@@ -163,8 +163,11 @@ fragment, 250 ms from the first fragment, and 255 total bytes**. The table and
 buffers have fixed capacity. The exact advertiser address/type and advertising
 SID identify a chain; advertising and scan-response chains are separate. Report
 properties, primary/secondary PHY, periodic interval and any directed destination
-must remain consistent. Anonymous/reserved address types and nonlegacy reports
-without a valid SID are rejected, rather than assigned a guessed identity.
+must remain consistent. Anonymous/reserved address types are rejected rather
+than assigned a guessed identity. A known-address standalone COMPLETE report
+with unavailable SID (`0xff`) remains supported if no pending/poisoned chain for
+that advertiser could own it. Incomplete unavailable-SID reports or ambiguous
+same-advertiser completions quarantine reception until a scan boundary.
 Legacy COMPLETE advertisements remain supported.
 
 Overflow and inconsistent metadata poison a chain: subsequent fragments are
@@ -172,8 +175,17 @@ ignored until its terminal report. A poisoned chain's terminal COMPLETE is never
 treated as standalone data. Timeouts or table saturation quarantine reception
 until a successful controller scan cancellation/restart; no live chain is evicted
 to make an unsafe late tail look like a new report. The maintenance timer checks
-every 50 ms and retries failed cancellations. A normal scan stop, host reset, or
-standalone Wi-Fi/BLE transition also clears reassembly. Completed reports carry
+every 50 ms and retries failed cancellations/starts. A normal scan stop, host reset,
+or standalone Wi-Fi/BLE transition also clears reassembly. A stop-command ACK
+alone is **not** a drain barrier: pinned
+[`ble_hs_hci.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs_hci.c)
+handles command ACKs synchronously while
+[`ble_hs.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs.c)
+queues advertising events individually. After a confirmed cancellation or reset/sync,
+all scan-start paths stay gated until a marker posted on the host event queue has
+drained older reports while discovery remains inactive. Overlapping boundaries
+post a fresh marker before releasing the gate; a Wi-Fi phase does not restart BLE.
+Completed reports carry
 a scan generation into a two-entry parser queue; both before parsing and at final
 observation insertion, reports from an earlier generation are discarded.
 
@@ -208,7 +220,11 @@ Host `ble_reassembly_tests` exercises every split point of a valid RID AD fixtur
 1M and coded metadata, interleaved advertisers/SIDs/scan responses, standalone
 COMPLETE and legacy input, repeated bytes, truncated/missing fragments, exact byte
 and fragment bounds, poisoned tails, table saturation, timeout and reset. Reassembled
-RID output and bus evidence are compared with the original fixture.
+RID output and bus evidence are compared with the original fixture. A fake SDK/host
+queue reproduces synchronous stop-ACK bypass, queued old COMPLETE tails, overlapping
+reset/sync barriers, failed cancellation/start, standalone phase changes and stale
+completed-report generations. Unavailable-SID complete input and ambiguous tails
+have separate regression cases.
 
 For physical acceptance, use an extended-advertising transmitter with controlled
 fragmentation on both 1M and coded PHYs. Compare independent HCI/RF captures with
