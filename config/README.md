@@ -56,6 +56,12 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
 | `signal_trend` | Optional active-high LED pins (`-1` omits each LED), median window, samples, deadband and confirmations |
 
+With `signal_trend.enabled: true` and all three LED pins wired, a fresh matching
+signal keeps one LED lit. The steady LED lights while trend samples accumulate;
+increasing/decreasing trends select their respective LEDs. All LEDs turn off
+after `signal_trend.stale_ms` without a fresh target observation. Unmatched
+observations logged in `all` mode do not light these LEDs.
+
 For multiple boards, flash the same universal config and binary onto every board.
 Only detected parents initialize the configured peripherals. The generator checks
 the strap against active parent peripheral pins and the selected parent bus pins.

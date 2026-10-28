@@ -160,6 +160,14 @@ static uint64_t target_seen{};
 static AlertCooldown alert_cooldown;
 static int target_peak{};
 static Trend target_trend{Trend::unknown};
+static Trend target_led_trend(uint64_t now) {
+    if (!target_rule || now < target.at_ms ||
+        now - target.at_ms > uint64_t(c::signal_trend_stale_ms))
+        return Trend::unknown;
+    // A fresh detection lights amber while trend samples accumulate. Keep the
+    // measured trend unchanged so the screen does not claim a steady signal.
+    return target_trend == Trend::unknown ? Trend::steady : target_trend;
+}
 static bool same_target(const Observation &a, const Observation &b) {
     return a.radio == b.radio && a.address_type == b.address_type && a.address == b.address;
 }
@@ -218,7 +226,7 @@ static void consume(Observation o) {
         else
             ++platform::dropped;
         if (alert_cooldown.request(received, c::buzzer_cooldown_ms)) {
-            platform::indicators(target_trend, true);
+            platform::indicators(target_led_trend(platform::now_ms()), true);
         }
     }
     // Preserve matching target state even when logging is matches-only.
@@ -257,7 +265,7 @@ static void consume(Observation o) {
         }
         uint64_t now = platform::now_ms();
         if (match.rule->buzzer && alert_cooldown.request(now, c::buzzer_cooldown_ms)) {
-            platform::indicators(target_trend, true);
+            platform::indicators(target_led_trend(platform::now_ms()), true);
         }
     }
     char json[log_line_capacity];
@@ -432,7 +440,7 @@ static void parent_loop() {
                                 now - target.at_ms <= uint64_t(c::signal_trend_stale_ms)
                             ? target_trend
                             : Trend::unknown;
-        platform::indicators(visible, false);
+        platform::indicators(target_led_trend(now), false);
         if (now - last_display >= 250) {
             char line1[32]{}, line2[32]{};
             size_t page = (now / c::display_page_interval_ms) % 5;
