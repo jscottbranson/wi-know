@@ -156,6 +156,20 @@ bool predicate(const Predicate &p, const Observation &o) {
         return starts(text_view(o.ssid), p.value);
     case Field::name_prefix:
         return starts(text_view(o.name), p.value);
+    case Field::mac:
+        // Strict six-octet colon notation, also enforced by the JSON validator.
+        // Unlike OUI inference, exact address evidence is valid for local/random MACs.
+        if (p.value.size() != 17)
+            return false;
+        for (size_t i = 0; i < p.value.size(); ++i) {
+            const char c = p.value[i];
+            if (i % 3 == 2 ? c != ':'
+                           : !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') ||
+                               (c >= 'A' && c <= 'F')))
+                return false;
+        }
+        return hex(p.value, bytes, size, 6) && size == 6 &&
+               std::equal(bytes, bytes + 6, o.address.begin());
     case Field::oui:
         if ((o.radio == Radio::ble && o.address_type != 0) ||
             (o.radio == Radio::wifi && (o.address[0] & 2)))

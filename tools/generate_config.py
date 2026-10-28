@@ -213,10 +213,14 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             for pred in rule['predicates']:
                 require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
-                require(field in ('oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
+                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= 96, 'invalid predicate value')
+                if field == 'mac':
+                    require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', value)),
+                            'MAC must be six colon-separated hex bytes')
+                    pred['value'] = value.lower()
                 if field in ('rid_valid', 'rid_position_valid'):
                     require(value == 'true', f'{field} must be "true"')
                 if field == 'rid_message_type':

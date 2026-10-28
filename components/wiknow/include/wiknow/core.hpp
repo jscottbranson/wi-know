@@ -28,6 +28,7 @@ enum class Field : uint8_t {
     rid_basic_id,
     rid_basic_id_type,
     rid_position_valid,
+    mac,
     service_uuid128
 };
 struct Channel {
