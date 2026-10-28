@@ -49,7 +49,7 @@ Use separate build directories for separate role/ID/config combinations. Custom
 settings: add `-DWIKNOW_CONFIG=/absolute/path/to/settings.json` on configure/build.
 `firmware/sdkconfig.defaults` selects passive BLE observation with NimBLE extended
 advertisements, a USB Serial/JTAG console, and a single factory app partition for
-2 MiB or larger flash. There is no OTA updater. GPIO assignments and enabled
+2 MiB or larger flash, including a 512 KiB internal log partition. There is no OTA updater. GPIO assignments and enabled
 peripherals still require your actual board's pin map.
 
 For host tests, use a C++17 compiler, CMake 3.20+ and Python 3:
@@ -118,17 +118,19 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   trend LEDs and an unknown/off state for stale data. These indicate strength, not bearing.
 - PWM buzzer with global cooldown, common PCF8574/HD44780 16×2 LCD driver, and
   SD-over-SPI logging. LCD assumption: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
-- JSONL on console and optional SD; matching-only/all-observation modes; bounded
+- JSONL on console and SD with [internal-flash fallback](storage.md); matching-only/all-observation modes; bounded
   SD writer queue, periodic flush, size rotation and file-count retention.
-  Existing files are not appended on reboot. The card is never auto-formatted.
+  Existing files are not appended on reboot. The card is never auto-formatted;
+  only a completely erased flash log partition is initialized automatically.
 
 ## First-version limits and validation still needed
 
 The firmware must be exercised on physical hardware; compilation does not validate
 RF sensitivity, pin wiring, SD power, Air530 battery retention, LCD mapping or the
 bus. The N32R8 parent now has a header map and peripheral wiring example;
-the actual HW-125 and LCD backpack variants still require confirmation. SD mount/write failures
-surface on the console and LCD status; recovery currently requires reboot. There
+the actual HW-125 and LCD backpack variants still require confirmation. SD mount/open failures
+fall back to flash at boot. Later storage failures surface on the console and LCD
+status; recovery currently requires reboot. There
 is no runtime configuration reload, external RTC driver, automatic signature import,
 Wi-Fi NAN Remote ID reception, RFID reader, Bluetooth Classic
 support or triangulation in this version. These are explicit next implementation

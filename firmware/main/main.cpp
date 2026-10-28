@@ -453,12 +453,11 @@ static void parent_loop() {
                 auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
                 std::snprintf(line1, sizeof(line1), "Plan:%u Err:%u", unsigned(coverage.planned),
                               unsigned(coverage.errors));
-                std::snprintf(line2, sizeof(line2), "Gap:%u SD:%s", unsigned(plan.uncovered_count),
-                              platform::storage_ready() ? "OK" : "OFF");
+                std::snprintf(line2, sizeof(line2), "Gap:%u %s", unsigned(plan.uncovered_count),
+                              platform::storage_name());
             }
             if ((c::standalone_enabled || (c::universal_enabled && platform::local_scanning())) &&
-                (page == 0 || page == 4) &&
-                !(following_visible && now - following_alert_at < 30000)) {
+                page == 0 && !(following_visible && now - following_alert_at < 30000)) {
                 const int channel = platform::standalone_scan_channel();
                 std::snprintf(line1, sizeof(line1), "Standalone");
                 if (channel > 0)
@@ -485,21 +484,21 @@ static void parent_loop() {
             auto plan = members.plan(c::channels.data(), c::channels.size());
             auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
             if (c::standalone_enabled || (c::universal_enabled && platform::local_scanning()))
-                ESP_LOGI(
-                    "parent",
-                    "standalone scan_channel=%d (0=BLE -1=error -2=starting) local_drops=%u SD=%s",
-                    platform::standalone_scan_channel(), unsigned(platform::dropped.load()),
-                    platform::storage_ready() ? "ready" : "off");
+                ESP_LOGI("parent",
+                         "standalone scan_channel=%d (0=BLE -1=error -2=starting) local_drops=%u "
+                         "storage=%s",
+                         platform::standalone_scan_channel(), unsigned(platform::dropped.load()),
+                         platform::storage_name());
             else
                 ESP_LOGI(
                     "parent",
                     "children=%u planned=%u tuned=%u scan_errors=%u uncovered=%u local_drops=%u "
-                    "worker_drops=%llu SD=%s",
+                    "worker_drops=%llu storage=%s",
                     unsigned(plan.count), unsigned(coverage.planned), unsigned(coverage.confirmed),
                     unsigned(coverage.errors), unsigned(plan.uncovered_count),
                     unsigned(platform::dropped.load()),
                     static_cast<unsigned long long>(worker_losses.total()),
-                    platform::storage_ready() ? "ready" : "off");
+                    platform::storage_name());
             last_status = now;
         }
         vTaskDelay(platform::ticks(5));
@@ -699,6 +698,7 @@ extern "C" void app_main() {
     platform::bus_start();
     platform::start_peripherals();
     platform::start_radios();
+    platform::start_storage();
     if (platform::role == wiknow::Role::parent)
         parent_loop();
     else
