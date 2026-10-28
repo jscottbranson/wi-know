@@ -33,6 +33,15 @@ It does not download/install the SDK, change your shell environment, or run a fu
 
 ## Commands without the menu
 
+Standalone configs automatically select the parent role when `--role` is omitted:
+
+```sh
+python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone-wiring.example.json
+```
+
+Other configs default to the universal role. Explicit `--role` choices are still
+validated; standalone mode requires `parent`.
+
 Universal image (repeat for every board, changing only the USB port):
 
 ```sh

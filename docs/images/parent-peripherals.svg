@@ -105,7 +105,7 @@
 <text x="742" y="710" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">BZ1: 5 V passive magnetic buzzer, 20 mA max; D1 band to +5 V.</text>
 <text x="742" y="737" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Q1 lead order: check your part datasheet. No GPIO load drive.</text>
 <rect x="48" y="780" width="1344" height="470" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="821" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  1602A LCD + assumed 5 V PCF8574 backpack</text>
+<text x="70" y="821" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  1602A LCD + 5 V PCF8574 backpack</text>
 <text x="70" y="851" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Two bidirectional BSS138 channels. LV = 3.3 V; HV = 5 V; all grounds joined.</text>
 <rect x="70" y="930" width="210" height="160" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="175" y="960" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="middle">PARENT</text>
@@ -152,7 +152,7 @@
 <circle cx="1065" cy="1065" r="5" fill="#a85e08"/>
 <text x="70" y="1130" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Shifter: LV supply to parent 3V3; HV supply to regulated +5 V; GND to common ground.</text>
 <text x="70" y="1160" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Each MOSFET: gate to 3.3 V; source to LV signal; drain to matching HV signal.</text>
-<text x="70" y="1190" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD VCC to +5 V; GND to common ground. Address 0x27 assumed; verify backpack and contrast.</text>
+<text x="70" y="1190" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD VCC to +5 V; GND to common ground. Configured address 0x27; verify address and adjust contrast.</text>
 <text x="70" y="1220" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Pull-ups shown are TOTAL per line/side: reuse fitted resistors, do not blindly add parallel sets.</text>
 <rect x="48" y="1275" width="1344" height="235" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1316" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">4  Grove GPS Air530 — receive-only UART0 at 9600 baud</text>

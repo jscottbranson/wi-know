@@ -26,7 +26,7 @@ support BLE and Wi-Fi beacon broadcasts.
 | Dedicated XIAO ESP32-C5 follower | Focused observation and target reacquisition |
 | Parent microSD adapter, probably HW-125 (unconfirmed) | SPI storage; matching observations or all observations, selectable |
 | Parent passive buzzer | Configurable match alerts |
-| Parent 1602A LCD with backpack | Two rows of 16 characters; assume I²C pending backpack identification |
+| Parent 1602A LCD with 5 V PCF8574 backpack | Two rows of 16 characters; I²C interface |
 | Parent Grove GPS (Air530), with onboard backup battery | Receiver coordinates and UTC from NMEA over UART; internal RTC backup |
 | Three parent LEDs | Selected signal strength increasing, decreasing, or steady |
 | Optional separate battery-backed RTC | Fallback only if Air530 startup time availability proves insufficient |

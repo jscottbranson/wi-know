@@ -193,8 +193,8 @@ It suppresses the magnetic load's turn-off transient. Select a different driver
 for a higher-current buzzer; an active buzzer or bare piezo is a different load
 and should not be substituted without checking its drive requirements.
 
-The LCD circuit assumes a **5 V 1602A with PCF8574 backpack**, at `0x27` with the
-driver's documented pin mapping. Use a two-channel **bidirectional I²C level
+The LCD circuit uses a **1602A LCD with a 5 V PCF8574 backpack**, configured at
+`0x27` with the driver's documented pin mapping. Use a two-channel **bidirectional I²C level
 shifter**, with each BSS138 gate at 3.3 V, source on the LV bus, and drain on the
 HV bus. Each SDA/SCL line needs a pull-up on each side: 4.7 kΩ to 3.3 V on LV and
 4.7 kΩ to 5 V on HV. The drawing shows the intended total pull-ups; check resistors
@@ -314,8 +314,8 @@ not be mistaken for a development board's regulated 5 V input. See the
 [Espressif module datasheet](https://documentation.espressif.com/esp32-c5-wroom-1_wroom-1u_datasheet_en.html).
 
 Budget supply current for all boards, their transceivers and the parent's peripherals.
-Do not assume the LCD backpack or probable HW-125 accepts a particular supply voltage
-until identified. Parent GPS, LCD, buzzer and LED connections are shown above;
+The LCD backpack uses 5 V. Verify the probable HW-125 supply voltage before
+connecting it. Parent GPS, LCD, buzzer and LED connections are shown above;
 the separate header map includes microSD. The HW-125 variant still needs identification.
 
 ## Image sources

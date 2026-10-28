@@ -163,6 +163,28 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(first[0], second[0])
         self.assertEqual(first[1][:-5], second[1][:-5])
 
+    def test_standalone_configs_infer_parent_without_prompting(self):
+        for name in ('settings.standalone.example.json', 'settings.standalone-wiring.example.json'):
+            with self.subTest(config=name), \
+                 patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
+                 patch.object(flash, 'prompt', side_effect=AssertionError('Unexpected prompt')):
+                status, output = self.run_main('--config', str(ROOT/'config'/name),
+                                               '--port', '/dev/ttyACM1', '--dry-run')
+                self.assertEqual(status, 0, output)
+                self.assertIn('parent / node 0', output)
+                self.assertIn('-DWIKNOW_ROLE=parent', output)
+                self.assertIn('-DWIKNOW_NODE_ID=0', output)
+
+    def test_standalone_explicit_incompatible_roles_are_rejected(self):
+        for role in ('universal', 'child', 'follower'):
+            with self.subTest(role=role), patch.object(flash.subprocess, 'run') as execute:
+                status, output = self.run_main(
+                    '--config', str(ROOT/'config/settings.standalone-wiring.example.json'),
+                    '--role', role, '--node-id', '0' if role == 'universal' else '1', '--dry-run')
+                self.assertEqual(status, 1, output)
+                self.assertIn('standalone mode requires the parent role', output)
+                execute.assert_not_called()
+
     def test_port_selection_and_rescan(self):
         with patch.object(flash, 'serial_ports', side_effect=[[], [('COM5', 'ESP32')]]), \
              patch.object(flash, 'prompt', side_effect=['r', '1']), \

@@ -266,7 +266,7 @@ def buzzer_wiring(d, buzzer_pin=9, title='2  Passive buzzer + NPN driver'):
     d.text(742, 737, 'Q1 lead order: check your part datasheet. No GPIO load drive.', size=17, color=MUTED)
 
 
-def lcd_wiring(d, lcd_pins=(4, 5), board='PARENT', title='3  1602A LCD + assumed 5 V PCF8574 backpack'):
+def lcd_wiring(d, lcd_pins=(4, 5), board='PARENT', title='3  1602A LCD + 5 V PCF8574 backpack'):
     d.box(48, 780, 1344, 470)
     d.text(70, 821, title, size=25, weight=700)
     d.text(70, 851, 'Two bidirectional BSS138 channels. LV = 3.3 V; HV = 5 V; all grounds joined.', size=19, color=MUTED)
@@ -295,7 +295,7 @@ def lcd_wiring(d, lcd_pins=(4, 5), board='PARENT', title='3  1602A LCD + assumed
         d.dot(x, y, color)
     d.text(70, 1130, f'Shifter: LV supply to {board.lower()} 3V3; HV supply to regulated +5 V; GND to common ground.', size=18)
     d.text(70, 1160, 'Each MOSFET: gate to 3.3 V; source to LV signal; drain to matching HV signal.', size=18)
-    d.text(70, 1190, 'LCD VCC to +5 V; GND to common ground. Address 0x27 assumed; verify backpack and contrast.', size=18)
+    d.text(70, 1190, 'LCD VCC to +5 V; GND to common ground. Configured address 0x27; verify address and adjust contrast.', size=18)
     d.text(70, 1220, 'Pull-ups shown are TOTAL per line/side: reuse fitted resistors, do not blindly add parallel sets.', size=18, color=MUTED)
 
 
@@ -315,7 +315,7 @@ def standalone_wiring(png):
     ])
     # Reuse the verified circuits, presenting the blocks in build-priority order.
     d.parts.append('<g transform="translate(0,-430)">')
-    lcd_wiring(d, (23, 24), 'XIAO', '1  Screen / 1602A LCD + assumed 5 V PCF8574 backpack')
+    lcd_wiring(d, (23, 24), 'XIAO', '1  Screen / 1602A LCD + 5 V PCF8574 backpack')
     d.parts.append('</g>')
 
     d.box(48, 845, 1344, 265)

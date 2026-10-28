@@ -25,7 +25,8 @@ def parser():
     result = argparse.ArgumentParser(description=__doc__, epilog=(
         'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
-    result.add_argument('--role', choices=ROLES)
+    result.add_argument('--role', choices=ROLES,
+                        help='Defaults to parent for standalone configs, otherwise universal')
     result.add_argument('--node-id', type=int, help='Parent: 0; children/follower: unique bus ID')
     result.add_argument('--port', help='Serial device, e.g. /dev/ttyACM0 or COM5')
     result.add_argument('--config', type=Path, default=ROOT/'config/settings.json')
@@ -197,7 +198,7 @@ def main(argv=None):
         # The menu/CLI selects role and ID independently of the stored defaults.
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0)
-        role = args.role or 'universal'
+        role = args.role or ('parent' if raw.get('standalone', {}).get('enabled', False) else 'universal')
         first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
         if node_id is None:
