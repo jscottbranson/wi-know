@@ -60,6 +60,67 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate.validate(invalid)
 
+    def test_standalone_wiring_uses_all_header_pins(self):
+        settings, rules = generate.validate(generate.load(ROOT/'config/settings.standalone-wiring.example.json'))
+        self.assertEqual(settings['node'], {'role': 'parent', 'id': 0})
+        self.assertTrue(settings['standalone']['enabled'])
+        self.assertFalse(settings['bus']['enabled'])
+        header = generate.emit(settings, rules)
+        assignments = {
+            'display': {'sda_pin': 23, 'scl_pin': 24},
+            'gps': {'rx_pin': 12},
+            'sd': {'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11},
+            'buzzer': {'pin': 7},
+            'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 0, 'steady_pin': 25},
+        }
+        pins = []
+        for section, expected in assignments.items():
+            self.assertTrue(settings[section]['enabled'])
+            self.assertIn(f'{section}_enabled = true;', header)
+            for key, pin in expected.items():
+                self.assertEqual(settings[section][key], pin)
+                self.assertIn(f'{section}_{key} = {pin};', header)
+                pins.append(settings[section][key])
+        # D0..D10 are the exposed header GPIOs; USB, battery and BOOT stay free.
+        self.assertEqual(set(pins), {1, 0, 25, 7, 23, 24, 11, 12, 8, 9, 10})
+        self.assertEqual(len(pins), len(set(pins)))
+        self.assertEqual(settings['gps']['uart'], 0)
+        self.assertEqual(settings['gps']['tx_pin'], -1)
+        self.assertEqual(settings['gps']['baud'], 9600)
+        self.assertEqual(settings['sd']['clock_khz'], 4000)
+
+    def test_standalone_priority_peripheral_combinations(self):
+        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        priority = ('display', 'gps', 'sd', 'buzzer', 'signal_trend')
+        for count in range(len(priority) + 1):
+            with self.subTest(peripherals=priority[:count]):
+                settings = copy.deepcopy(example)
+                for index, section in enumerate(priority):
+                    settings[section]['enabled'] = index < count
+                validated, rules = generate.validate(settings)
+                header = generate.emit(validated, rules)
+                for index, section in enumerate(priority):
+                    enabled = 'true' if index < count else 'false'
+                    self.assertIn(f'{section}_enabled = {enabled};', header)
+
+    def test_standalone_gps_sd_require_assigned_unique_pins(self):
+        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        for section, keys in [('gps', ('rx_pin',)),
+                              ('sd', ('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin'))]:
+            for key in keys:
+                with self.subTest(section=section, key=key):
+                    settings = copy.deepcopy(example)
+                    settings[section][key] = -1
+                    with self.assertRaisesRegex(ValueError, 'assign GPIO'):
+                        generate.validate(settings)
+        for section, key, pin in [('gps', 'rx_pin', 9), ('sd', 'cs_pin', 7),
+                                  ('sd', 'mosi_pin', 23), ('gps', 'tx_pin', 11)]:
+            with self.subTest(section=section, key=key, pin=pin):
+                settings = copy.deepcopy(example)
+                settings[section][key] = pin
+                with self.assertRaisesRegex(ValueError, f'GPIO {pin} used'):
+                    generate.validate(settings)
+
     def test_standalone_optional_indicators(self):
         example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
         keys = ('increasing_pin', 'decreasing_pin', 'steady_pin')

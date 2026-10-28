@@ -197,9 +197,9 @@ def power_wiring(png):
     d.save('power-distribution', png)
 
 
-def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board='PARENT'):
+def led_wiring(d, led_pins=(0, 1, 8), title='1  Three active-high trend LEDs'):
     d.box(48, 350, 650, 405)
-    d.text(70, 388, '1  Three active-high trend LEDs', size=25, weight=700)
+    d.text(70, 388, title, size=25, weight=700)
     for y, pin, label, color in [(450, led_pins[0], 'Increasing / green', GREEN),
                                   (535, led_pins[1], 'Decreasing / red', RED),
                                   (620, led_pins[2], 'Steady / amber', ORANGE)]:
@@ -222,8 +222,10 @@ def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board
     d.text(395, 711, 'GND', size=18, anchor='middle', color=GROUND)
     d.text(70, 735, 'One resistor per LED. Cathode K = flat edge / short lead.', size=17, color=MUTED)
 
+
+def buzzer_wiring(d, buzzer_pin=9, title='2  Passive buzzer + NPN driver'):
     d.box(720, 350, 672, 405)
-    d.text(742, 388, '2  Passive buzzer + NPN driver', size=25, weight=700)
+    d.text(742, 388, title, size=25, weight=700)
     d.text(1055, 422, '+5 V regulated', size=18, color=RED, anchor='middle')
     d.line([(1055, 430), (1055, 453)], RED)
     d.box(1005, 453, 100, 65, stroke=ORANGE)
@@ -263,8 +265,10 @@ def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board
     d.text(742, 710, 'BZ1: 5 V passive magnetic buzzer, 20 mA max; D1 band to +5 V.', size=17)
     d.text(742, 737, 'Q1 lead order: check your part datasheet. No GPIO load drive.', size=17, color=MUTED)
 
+
+def lcd_wiring(d, lcd_pins=(4, 5), board='PARENT', title='3  1602A LCD + assumed 5 V PCF8574 backpack'):
     d.box(48, 780, 1344, 470)
-    d.text(70, 821, '3  1602A LCD + assumed 5 V PCF8574 backpack', size=25, weight=700)
+    d.text(70, 821, title, size=25, weight=700)
     d.text(70, 851, 'Two bidirectional BSS138 channels. LV = 3.3 V; HV = 5 V; all grounds joined.', size=19, color=MUTED)
     d.box(70, 930, 210, 160, fill='#edf3f8')
     d.text(175, 960, board, size=21, weight=700, anchor='middle')
@@ -295,38 +299,90 @@ def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board
     d.text(70, 1220, 'Pull-ups shown are TOTAL per line/side: reuse fitted resistors, do not blindly add parallel sets.', size=18, color=MUTED)
 
 
+def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board='PARENT'):
+    led_wiring(d, led_pins)
+    buzzer_wiring(d, buzzer_pin)
+    lcd_wiring(d, lcd_pins, board)
+
+
 def standalone_wiring(png):
-    d = Diagram('XIAO ESP32-C5 standalone / choose your indicators',
-                'One board + antenna • manual parent role • fit any combination of the three optional blocks below.', 1920)
-    d.note(182, 'XIAO header labels -> GPIO numbers / standalone-wiring example', [
-        'LEDs: D0 -> GPIO1 increasing; D1 -> GPIO0 decreasing; D2 -> GPIO25 steady. Buzzer: D3 -> GPIO7.',
-        'Display: D4 -> GPIO23 SDA; D5 -> GPIO24 SCL. D6–D10 remain free with all indicators fitted.',
-        'Omit any LED: set its pin to -1. Omit display or buzzer: set that section enabled=false. Rebuild and flash.',
+    d = Diagram('XIAO ESP32-C5 / standalone with GPS + microSD',
+                'Priority: screen > GPS > microSD > buzzer > LEDs. All five fit on the 11 header GPIOs.', 2790)
+    d.note(182, 'Manual standalone parent / config/settings.standalone-wiring.example.json', [
+        'Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.',
+        'Buzzer D3/7; LEDs D0/1 increasing, D1/0 decreasing, D2/25 steady. Labels show D-number / GPIO.',
+        'Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.',
     ])
-    indicator_wiring(d, led_pins=(1, 0, 25), buzzer_pin=7, lcd_pins=(23, 24), board='XIAO')
-    d.box(48, 1275, 1344, 350)
-    d.text(70, 1316, 'Power + antenna / common ground for every fitted block', size=25, weight=700)
-    d.box(70, 1360, 310, 165, fill='#edf3f8')
-    d.text(95, 1395, 'Computer / USB supply', size=22, weight=700)
-    d.text(95, 1430, 'USB-C power', size=20)
-    d.text(95, 1460, '+ data for flash / console', size=18)
-    d.box(600, 1360, 310, 165, fill='#edf3f8')
-    d.text(625, 1395, 'XIAO ESP32-C5', size=23, weight=700)
-    d.line([(380, 1440), (600, 1440)], BLUE)
-    d.text(490, 1420, 'USB-C', size=18, anchor='middle')
-    d.text(625, 1435, '3V3 -> shifter LV', size=19)
-    d.text(625, 1470, 'GND -> common ground', size=19)
-    d.text(625, 1500, '5V / VBUS: leave open', size=18, color=MUTED)
-    d.box(1060, 1360, 305, 165)
-    d.text(1080, 1395, 'Supplied antenna', size=22, weight=700)
-    d.text(1080, 1460, 'U.FL connector', size=20)
-    d.line([(910, 1405), (1060, 1405)], GREEN)
-    d.text(95, 1560, 'Separate regulated +5 V -> LCD VCC + shifter HV + buzzer positive; supply GND -> XIAO GND.', size=19)
-    d.text(95, 1595, '100 nF at LCD VCC/GND; 10 µF across the local +5 V/GND rail. Keep independently powered +5 V rails apart.', size=18)
-    d.note(1650, 'Compact build choices', [
-        'Bare board: antenna + USB only. Display uses 2 GPIOs; buzzer uses 1; each LED uses 1 (6 GPIOs total).',
-        '1 LED shows only its assigned trend; it does not combine all states. Unknown/stale signal turns LEDs off.',
-        'No indicators: disable display, buzzer and signal_trend. GPS and microSD are disabled in this example.',
+    # Reuse the verified circuits, presenting the blocks in build-priority order.
+    d.parts.append('<g transform="translate(0,-430)">')
+    lcd_wiring(d, (23, 24), 'XIAO', '1  Screen / 1602A LCD + assumed 5 V PCF8574 backpack')
+    d.parts.append('</g>')
+
+    d.box(48, 845, 1344, 265)
+    d.text(70, 886, '2  GPS / Grove Air530 / receive-only UART0 at 9600 baud', size=25, weight=700)
+    for y, left, right, color, incoming in [
+        (928, 'D7 / GPIO12 / UART0 RX', 'GPS TX (module output)', BLUE, True),
+        (970, 'XIAO 3V3 output', 'GPS VCC (3.3 V supply)', RED, False),
+        (1012, 'XIAO GND', 'GPS GND', GROUND, False),
+    ]:
+        d.text(90, y + 6, left, size=19)
+        d.text(920, y + 6, right, size=19)
+        points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
+        d.line(points, color, arrow=incoming)
+    d.text(70, 1054, 'GPS RX: leave disconnected (tx_pin = -1). Use connector signal labels to establish orientation.', size=18)
+    d.text(70, 1083, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
+
+    d.box(48, 1135, 1344, 455)
+    d.text(70, 1176, '3  microSD / native 3.3 V SPI breakout / SPI2 at 4 MHz', size=25, weight=700)
+    for y, left, right, color, incoming in [
+        (1220, 'D8 / GPIO8', 'SCK / CLK (card contact 5)', BLUE, False),
+        (1260, 'D10 / GPIO10', 'MOSI / DI / CMD (contact 3)', BLUE, False),
+        (1300, 'D9 / GPIO9', 'MISO / DO / DAT0 (contact 7)', BLUE, True),
+        (1340, 'D6 / GPIO11', 'CS / DAT3 (contact 2)', BLUE, False),
+        (1380, 'XIAO 3V3 output', 'VDD (contact 4)', RED, False),
+        (1420, 'XIAO GND', 'VSS (contact 6)', GROUND, False),
+    ]:
+        d.text(90, y + 6, left, size=19)
+        d.text(920, y + 6, right, size=19)
+        points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
+        d.line(points, color, arrow=(color == BLUE))
+    d.text(70, 1464, '10 kΩ to 3.3 V on CMD and DAT0–DAT3, including unused DAT1 (8) and DAT2 (1); none on CLK.', size=18)
+    d.text(70, 1493, 'Account for fitted pull-ups. Contact numbers are for the card, not the adapter header order.', size=18)
+    d.text(70, 1522, '100 nF + 10 µF at VDD/VSS; keep SPI wires short. GPIO11 is CS: do not attach a UART console there.', size=18)
+    d.text(70, 1551, 'HW-125 variants need supply/logic verification; this drawing assumes a native 3.3 V breakout.', size=18, color=MUTED)
+
+    d.parts.append('<g transform="translate(-672,1265)">')
+    buzzer_wiring(d, 7, '4  Buzzer / passive + NPN driver')
+    d.parts.append('</g>')
+    d.parts.append('<g transform="translate(694,1265)">')
+    led_wiring(d, (1, 0, 25), '5  LEDs / three optional trend indicators')
+    d.parts.append('</g>')
+
+    d.box(48, 2045, 1344, 400)
+    d.text(70, 2086, 'Power + antenna / common ground for every fitted block', size=25, weight=700)
+    d.box(70, 2120, 310, 165, fill='#edf3f8')
+    d.text(95, 2155, 'Computer / USB supply', size=22, weight=700)
+    d.text(95, 2190, 'USB-C power', size=20)
+    d.text(95, 2220, '+ data for flash / console', size=18)
+    d.box(600, 2120, 310, 165, fill='#edf3f8')
+    d.text(625, 2155, 'XIAO ESP32-C5', size=23, weight=700)
+    d.line([(380, 2200), (600, 2200)], BLUE)
+    d.text(490, 2180, 'USB-C', size=18, anchor='middle')
+    d.text(625, 2195, '3V3 -> GPS + SD + LV', size=18)
+    d.text(625, 2230, 'GND -> common ground', size=19)
+    d.text(625, 2260, '5V / VBUS: leave open', size=18, color=MUTED)
+    d.box(1060, 2120, 305, 165)
+    d.text(1080, 2155, 'Supplied antenna', size=22, weight=700)
+    d.text(1080, 2220, 'U.FL connector', size=20)
+    d.line([(910, 2165), (1060, 2165)], GREEN)
+    d.text(70, 2324, 'Separate regulated +5 V -> LCD VCC + shifter HV + buzzer positive; supply GND -> XIAO GND.', size=19)
+    d.text(70, 2353, '100 nF at LCD VCC/GND; 10 µF across local +5 V/GND. Keep independently powered +5 V rails apart.', size=18)
+    d.text(70, 2382, 'Allow regulator headroom for board/radio peaks, GPS and card writes; verify stable 3.3 V under load.', size=18)
+    d.text(70, 2411, 'Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.', size=18)
+    d.note(2470, 'Build in priority order / remove optional blocks as needed', [
+        'Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.',
+        'All five sections are enabled in this example. Disable absent sections; omit individual LEDs with pin=-1.',
+        'One LED shows only its assigned trend. Unknown/stale signal turns LEDs off. Rebuild and flash after edits.',
         'LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.',
         'Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.',
     ], ORANGE)
@@ -457,7 +513,9 @@ def main():
     standalone = json.loads((ROOT / 'config/settings.standalone-wiring.example.json').read_text())
     expected_standalone = {
         'node': {'role': 'parent', 'id': 0}, 'standalone': {'enabled': True},
-        'bus': {'enabled': False}, 'gps': {'enabled': False}, 'sd': {'enabled': False},
+        'bus': {'enabled': False},
+        'gps': {'enabled': True, 'uart': 0, 'rx_pin': 12, 'tx_pin': -1, 'baud': 9600},
+        'sd': {'enabled': True, 'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11, 'clock_khz': 4000},
         'display': {'enabled': True, 'sda_pin': 23, 'scl_pin': 24, 'i2c_address': 39},
         'buzzer': {'enabled': True, 'pin': 7},
         'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 0, 'steady_pin': 25},
