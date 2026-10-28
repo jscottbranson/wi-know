@@ -14,7 +14,7 @@ and Wi-Fi scanning on one board, trading scan coverage for fewer devices.
 The initial C++ firmware targets ESP-IDF v5.5.1 on ESP32-C5, with parent, child,
 and follower roles. It includes passive radio reception, coordination, matching,
 GPS/peak tracking, and peripheral drivers. Host tests and firmware builds check the
-software; physical hardware validation is still required. Production signatures are not yet included. [Drone Remote ID decoding and storage](docs/remote-id.md)
+software; physical hardware validation is still required. Reviewed community detection rules are included; identifiers can be spoofed and matches can be false positives. [Drone Remote ID decoding and storage](docs/remote-id.md)
 support BLE, Wi-Fi beacon and passive NAN broadcasts.
 
 ## Hardware
@@ -110,7 +110,7 @@ The existing wiring illustrations describe the manual profile; follow the
 [universal wiring changes](docs/universal.md) for the new image.
 The local surveillance ruleset covers Axon, Flock, Ring, selected body-camera
 vendors, and possible Genetec equipment; see [coverage and limitations](rules/README.md).
-UniFi Wi-Fi/Bluetooth signatures are excluded. Disabled test templates are in `rules/examples/`.
+The [expanded detection pack](rules/EXPANDED.md) adds cameras, acoustic sensors, smart glasses, Flock probe/accessory evidence, and more. Tile/BLE trackers and Ubiquiti/UniFi rules are included but disabled in every shipped profile. Disabled test templates are in `rules/examples/`.
 
 ## Primary references
 
@@ -123,4 +123,4 @@ UniFi Wi-Fi/Bluetooth signatures are excluded. Disabled test templates are in `r
 - [OUI Spy Unified Blue](https://github.com/colonelpanichacks/oui-spy-unified-blue)
 
 Review source licenses and exact revisions before incorporating signatures or code.
-No third-party signatures or code have been imported.
+Third-party signature adaptations retain their licenses and attribution in [NOTICE](NOTICE) and [rules/sources/](rules/sources/README.md).

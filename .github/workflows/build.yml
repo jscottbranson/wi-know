@@ -46,4 +46,8 @@ jobs:
             build/bootloader/bootloader.bin
             build/partition_table/partition-table.bin
             build/flash_args
+            build/esp-idf/main/generated/settings.rules.json
+            NOTICE
+            LICENSE
+            rules/sources/
           if-no-files-found: error

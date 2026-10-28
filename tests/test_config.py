@@ -187,6 +187,75 @@ class ConfigTests(unittest.TestCase):
         self.assertTrue(settings['standalone']['enabled'])
         self.assertFalse(settings['bus']['enabled'])
 
+    def test_expanded_predicate_validation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            rule = document['rules'][0]
+            cases = [
+                ('ble', 'service_uuid16_range', '3100-3500', True),
+                ('ble', 'service_uuid16_range', 'FEED-FEED', True),
+                ('ble', 'service_uuid16_range', '3500-3100', False),
+                ('ble', 'service_uuid16_range', '3100:3500', False),
+                ('ble', 'service_uuid16_range', '310-3500', False),
+                ('wifi', 'service_uuid16_range', '3100-3500', False),
+                ('wifi', 'wifi_ie_signature', '2,12,221:506F9A16030103', True),
+                ('wifi', 'wifi_ie_signature', '0,2', False),
+                ('wifi', 'wifi_ie_signature', '221:112233', False),
+                ('wifi', 'wifi_ie_signature', '221:001122334455667788', False),
+                ('wifi', 'wifi_ie_signature', '221', False),
+                ('wifi', 'wifi_ie_signature', '256', False),
+                ('wifi', 'wifi_ie_signature', '2,', False),
+                ('ble', 'wifi_ie_signature', '2,12', False),
+                ('ble', 'name_contains_ci', 'Ray-Ban', True),
+                ('ble', 'name_exact', 'HC-05', True),
+                ('wifi', 'name_exact', 'HC-05', False),
+                ('wifi', 'ssid_contains_ci', 'Camera', True),
+                ('ble', 'ssid_contains_ci', 'Camera', False),
+                ('ble', 'name_contains_ci', 'x'*33, False),
+                ('wifi', 'ssid_contains_ci', 'bad\nname', False),
+            ]
+            for radio, field, value, valid in cases:
+                with self.subTest(radio=radio, field=field, value=value):
+                    rule['radio'] = radio
+                    rule['predicates'] = [{'field': field, 'value': value}]
+                    (base/'rule.json').write_text(json.dumps(document))
+                    if valid:
+                        _, rules = generate.validate(self.settings)
+                        if field in ('service_uuid16_range', 'wifi_ie_signature'):
+                            self.assertEqual(rules[0]['predicates'][0]['value'], value.lower())
+                    else:
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings)
+
+    def test_detection_category_defaults_and_opt_in(self):
+        disabled = {'ble_trackers', 'unifi_cameras'}
+        for path in sorted((ROOT/'config').glob('settings*.json')):
+            with self.subTest(profile=path.name):
+                original = generate.load(path)
+                settings, rules = generate.validate(original)
+                self.assertEqual(set(settings['detection']['disabled_categories']), disabled)
+                self.assertEqual({r['category'] for r in rules if not r['enabled']}, disabled)
+                self.assertTrue(all(r['enabled'] for r in rules if r['category'] not in disabled))
+                self.assertTrue(all(len(r['source']['revision']) >= 7 for r in rules))
+                original['detection']['disabled_categories'] = []
+                original['detection']['enabled_categories'] += sorted(disabled)
+                _, opted_in = generate.validate(original)
+                self.assertTrue(all(r['enabled'] for r in opted_in))
+        self.settings['detection']['enabled_categories'].append('ble_trackers')
+        with self.assertRaisesRegex(ValueError, 'both enabled and disabled'):
+            generate.validate(self.settings)
+
+    def test_disabled_categories_backward_compatibility_and_validation(self):
+        self.settings['detection'].pop('disabled_categories')
+        settings, _ = generate.validate(self.settings)
+        self.assertEqual(settings['detection']['disabled_categories'], [])
+        for invalid in (['a', 'a'], ['Bad Category'], [1], 'ble_trackers'):
+            self.settings['detection']['disabled_categories'] = invalid
+            with self.assertRaises(ValueError):
+                generate.validate(self.settings)
+
     def test_defaults(self):
         settings, rules = generate.validate(self.settings)
         self.assertEqual(settings['node']['role'], 'parent')

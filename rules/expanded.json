@@ -1,0 +1,2212 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "unifi-vendor-wifi-1",
+      "category": "unifi_cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "a8:9f:ba"
+        },
+        {
+          "field": "oui",
+          "value": "fc:ec:da"
+        },
+        {
+          "field": "oui",
+          "value": "24:a4:3c"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-1",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:40:8c"
+        },
+        {
+          "field": "oui",
+          "value": "ac:cc:8e"
+        },
+        {
+          "field": "oui",
+          "value": "b8:a4:4f"
+        },
+        {
+          "field": "oui",
+          "value": "4c:bd:8f"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-2",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "bc:ad:28"
+        },
+        {
+          "field": "oui",
+          "value": "44:19:b6"
+        },
+        {
+          "field": "oui",
+          "value": "c4:2f:90"
+        },
+        {
+          "field": "oui",
+          "value": "28:57:be"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-3",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "90:02:a9"
+        },
+        {
+          "field": "oui",
+          "value": "3c:ef:8c"
+        },
+        {
+          "field": "oui",
+          "value": "e0:50:8b"
+        },
+        {
+          "field": "oui",
+          "value": "4c:11:bf"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-4",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "ec:71:db"
+        },
+        {
+          "field": "oui",
+          "value": "2c:aa:8e"
+        },
+        {
+          "field": "oui",
+          "value": "d0:3f:27"
+        },
+        {
+          "field": "oui",
+          "value": "3c:37:86"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-5",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "14:b4:84"
+        },
+        {
+          "field": "oui",
+          "value": "f0:27:65"
+        },
+        {
+          "field": "oui",
+          "value": "18:b4:30"
+        },
+        {
+          "field": "oui",
+          "value": "64:16:66"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-6",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "9c:8e:cd"
+        },
+        {
+          "field": "oui",
+          "value": "90:c7:d8"
+        },
+        {
+          "field": "oui",
+          "value": "00:2b:67"
+        },
+        {
+          "field": "oui",
+          "value": "34:40:b5"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-wifi-7",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:09:6c"
+        },
+        {
+          "field": "oui",
+          "value": "00:40:48"
+        },
+        {
+          "field": "oui",
+          "value": "ac:3a:7a"
+        },
+        {
+          "field": "oui",
+          "value": "00:1b:c5"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "unifi-vendor-ble-1",
+      "category": "unifi_cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "a8:9f:ba"
+        },
+        {
+          "field": "oui",
+          "value": "fc:ec:da"
+        },
+        {
+          "field": "oui",
+          "value": "24:a4:3c"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-1",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:40:8c"
+        },
+        {
+          "field": "oui",
+          "value": "ac:cc:8e"
+        },
+        {
+          "field": "oui",
+          "value": "b8:a4:4f"
+        },
+        {
+          "field": "oui",
+          "value": "4c:bd:8f"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-2",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "bc:ad:28"
+        },
+        {
+          "field": "oui",
+          "value": "44:19:b6"
+        },
+        {
+          "field": "oui",
+          "value": "c4:2f:90"
+        },
+        {
+          "field": "oui",
+          "value": "28:57:be"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-3",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "90:02:a9"
+        },
+        {
+          "field": "oui",
+          "value": "3c:ef:8c"
+        },
+        {
+          "field": "oui",
+          "value": "e0:50:8b"
+        },
+        {
+          "field": "oui",
+          "value": "4c:11:bf"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-4",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "ec:71:db"
+        },
+        {
+          "field": "oui",
+          "value": "2c:aa:8e"
+        },
+        {
+          "field": "oui",
+          "value": "d0:3f:27"
+        },
+        {
+          "field": "oui",
+          "value": "3c:37:86"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-5",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "14:b4:84"
+        },
+        {
+          "field": "oui",
+          "value": "f0:27:65"
+        },
+        {
+          "field": "oui",
+          "value": "18:b4:30"
+        },
+        {
+          "field": "oui",
+          "value": "64:16:66"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-6",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "9c:8e:cd"
+        },
+        {
+          "field": "oui",
+          "value": "90:c7:d8"
+        },
+        {
+          "field": "oui",
+          "value": "00:2b:67"
+        },
+        {
+          "field": "oui",
+          "value": "34:40:b5"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-vendor-ble-7",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:09:6c"
+        },
+        {
+          "field": "oui",
+          "value": "00:40:48"
+        },
+        {
+          "field": "oui",
+          "value": "ac:3a:7a"
+        },
+        {
+          "field": "oui",
+          "value": "00:1b:c5"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "unifi-network-name-1",
+      "category": "unifi_cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "unifi"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "protect"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-1",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "cam"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "ipcam"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "hikvision"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "dahua"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-2",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "reolink"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "arlo"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "wyze"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "ring"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-3",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "blink"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "nest"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "cctv"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "nvr"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-4",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "dvr"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "doorbell"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "surv"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "axis"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-5",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "amcrest"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "vivotek"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "lorex"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "flir"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "camera-network-name-6",
+      "category": "cameras",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "mobotix"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "hanwha"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "genetec"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-network-name-1",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "flock"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "flocksafety"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "fs ext"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "penguin"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-network-name-2",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "pigvision"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "raven"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "flck"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "test_flck"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-network-name-3",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "test_flck"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "flock"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "flck"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "alpr-network-name-1",
+      "category": "alpr",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "alpr"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "lpr"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "vigilant"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "plateread"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "alpr-network-name-2",
+      "category": "alpr",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "ssid_contains_ci",
+          "value": "licenseplat"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "motorola"
+        },
+        {
+          "field": "ssid_contains_ci",
+          "value": "automate"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-ble-name-1",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_contains_ci",
+          "value": "flock"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "raven"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "penguin"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "pigvision"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-ble-name-2",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_contains_ci",
+          "value": "fs ext battery"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-1",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "70:c9:4e"
+        },
+        {
+          "field": "oui",
+          "value": "3c:91:80"
+        },
+        {
+          "field": "oui",
+          "value": "d8:f3:bc"
+        },
+        {
+          "field": "oui",
+          "value": "80:30:49"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-2",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "b8:35:32"
+        },
+        {
+          "field": "oui",
+          "value": "14:5a:fc"
+        },
+        {
+          "field": "oui",
+          "value": "74:4c:a1"
+        },
+        {
+          "field": "oui",
+          "value": "08:3a:88"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-3",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "9c:2f:9d"
+        },
+        {
+          "field": "oui",
+          "value": "c0:35:32"
+        },
+        {
+          "field": "oui",
+          "value": "94:08:53"
+        },
+        {
+          "field": "oui",
+          "value": "e4:aa:ea"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-4",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "24:b2:b9"
+        },
+        {
+          "field": "oui",
+          "value": "b8:1e:a4"
+        },
+        {
+          "field": "oui",
+          "value": "70:08:94"
+        },
+        {
+          "field": "oui",
+          "value": "58:8e:81"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-5",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "ec:1b:bd"
+        },
+        {
+          "field": "oui",
+          "value": "3c:71:bf"
+        },
+        {
+          "field": "oui",
+          "value": "58:00:e3"
+        },
+        {
+          "field": "oui",
+          "value": "90:35:ea"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-6",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "5c:93:a2"
+        },
+        {
+          "field": "oui",
+          "value": "64:6e:69"
+        },
+        {
+          "field": "oui",
+          "value": "48:27:ea"
+        },
+        {
+          "field": "oui",
+          "value": "a4:cf:12"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-7",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "e0:4f:43"
+        },
+        {
+          "field": "oui",
+          "value": "04:0d:84"
+        },
+        {
+          "field": "oui",
+          "value": "f0:82:c0"
+        },
+        {
+          "field": "oui",
+          "value": "1c:34:f1"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-8",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "38:5b:44"
+        },
+        {
+          "field": "oui",
+          "value": "94:34:69"
+        },
+        {
+          "field": "oui",
+          "value": "b4:e3:f9"
+        },
+        {
+          "field": "oui",
+          "value": "d4:bb:e6"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-9",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "3c:61:05"
+        },
+        {
+          "field": "oui",
+          "value": "f4:6a:dd"
+        },
+        {
+          "field": "oui",
+          "value": "f8:a2:d6"
+        },
+        {
+          "field": "oui",
+          "value": "14:b5:cd"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-10",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:f4:8d"
+        },
+        {
+          "field": "oui",
+          "value": "d0:39:57"
+        },
+        {
+          "field": "oui",
+          "value": "e8:d0:fc"
+        },
+        {
+          "field": "oui",
+          "value": "e0:0a:f6"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "community-shared-radio-oui-11",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:03:7f"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "soundthinking-vendor-wifi-1",
+      "category": "acoustic_sensors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "d4:11:d6"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "motorola-vendor-wifi-1",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:0e:58"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "soundthinking-vendor-ble-1",
+      "category": "acoustic_sensors",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "d4:11:d6"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "motorola-vendor-ble-1",
+      "category": "shared_radio_vendors",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:0e:58"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-firmware-default-addresses",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "mac",
+          "value": "00:03:7f:50:00:01"
+        },
+        {
+          "field": "mac",
+          "value": "00:03:7f:4f:00:16"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "raven-advertised-service-range",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid16_range",
+          "value": "3100-3500"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-accessory-service",
+      "category": "flock",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid128",
+          "value": "e8ccbb38-9532-46a8-9fe5-1814df172e6f"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "nordic-dfu-service",
+      "category": "device_services",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid128",
+          "value": "00001530-1212-efde-1523-785feabcd123"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "dfutarg"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "hc-serial-module-name-1",
+      "category": "serial_modules",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_exact",
+          "value": "HC-03"
+        },
+        {
+          "field": "name_exact",
+          "value": "HC-05"
+        },
+        {
+          "field": "name_exact",
+          "value": "HC-06"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "meshcore-name",
+      "category": "mesh_radios",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_prefix",
+          "value": "MeshCore-"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "apple-findmy-advertisement",
+      "category": "ble_trackers",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "manufacturer_prefix",
+          "value": "4c0012"
+        },
+        {
+          "field": "manufacturer_prefix",
+          "value": "4c001e"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "samsung-smarttag-service",
+      "category": "ble_trackers",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid16_range",
+          "value": "fd5a-fd5a"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "tile-services",
+      "category": "ble_trackers",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid16_range",
+          "value": "feec-feec"
+        },
+        {
+          "field": "service_uuid16_range",
+          "value": "feed-feed"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "apple-ibeacon-advertisement",
+      "category": "ble_trackers",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "manufacturer_prefix",
+          "value": "4c000215"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "remote-id-advertised-service",
+      "category": "drones",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "service_uuid16_range",
+          "value": "fffa-fffa"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/main.cpp",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "decoded-remote-id-wifi",
+      "category": "drones",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "any",
+      "priority": 60,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_valid",
+          "value": "true"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/jscottbranson/wi-know/blob/e615393be4a9fc4278fe1a698dd9ad21ec91f125/components/wiknow/src/remote_id.cpp",
+        "revision": "e615393be4a9fc4278fe1a698dd9ad21ec91f125",
+        "license": "CC0-1.0; locally authored decoded-evidence rule",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "decoded-remote-id-ble",
+      "category": "drones",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 60,
+      "confidence": "broadcast",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "rid_valid",
+          "value": "true"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/jscottbranson/wi-know/blob/e615393be4a9fc4278fe1a698dd9ad21ec91f125/components/wiknow/src/remote_id.cpp",
+        "revision": "e615393be4a9fc4278fe1a698dd9ad21ec91f125",
+        "license": "CC0-1.0; locally authored decoded-evidence rule",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "meta-glasses-composite",
+      "category": "smart_glasses",
+      "enabled": true,
+      "radio": "ble",
+      "match": "all",
+      "priority": 60,
+      "confidence": "probable",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "manufacturer_prefix",
+          "value": "530d"
+        },
+        {
+          "field": "service_uuid16_range",
+          "value": "fd5f-fd5f"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/detector.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT; see rules/sources/oui-spy-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "meta-glasses-name-1",
+      "category": "smart_glasses",
+      "enabled": true,
+      "radio": "ble",
+      "match": "any",
+      "priority": 20,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "name_contains_ci",
+          "value": "ray-ban"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "wayfarer"
+        },
+        {
+          "field": "name_contains_ci",
+          "value": "oakley meta"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/detector.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT; see rules/sources/oui-spy-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-1",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "f4:6a:dd"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-2",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "f8:a2:d6"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-3",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "14:b5:cd"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-4",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "00:f4:8d"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-5",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "d0:39:57"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-6",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "e8:d0:fc"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    },
+    {
+      "id": "flock-community-probe-pattern-7",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 45,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": true
+      },
+      "predicates": [
+        {
+          "field": "oui",
+          "value": "e0:0a:f6"
+        },
+        {
+          "field": "wifi_ssid_wildcard",
+          "value": "true"
+        },
+        {
+          "field": "wifi_ie_signature",
+          "value": "2,12,127,221:506f9a16030103,45,191,221:0050f208000000"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/flock-you/blob/6704f011f3e6c9cfe94fe18c593f863032c9c954/main.cpp",
+        "revision": "6704f011f3e6c9cfe94fe18c593f863032c9c954",
+        "license": "MIT; modified adaptation; see rules/sources/flock-you-LICENSE.txt",
+        "reviewed": "2026-10-28"
+      }
+    }
+  ]
+}

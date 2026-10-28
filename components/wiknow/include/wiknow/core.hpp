@@ -6,7 +6,7 @@
 #include <string_view>
 
 namespace wiknow {
-constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 64;
+constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 128;
 constexpr size_t max_tracks = 64, max_payload = 255;
 constexpr size_t log_line_capacity = 2304;
 // Serial numbers advance modulo 2^32; jumps of half the range are ambiguous.
@@ -33,7 +33,12 @@ enum class Field : uint8_t {
     wifi_subtype,
     wifi_ssid_wildcard,
     wifi_ie_fingerprint,
-    wifi_requested_ssid_prefix
+    wifi_requested_ssid_prefix,
+    ssid_contains_ci,
+    name_contains_ci,
+    name_exact,
+    service_uuid16_range,
+    wifi_ie_signature
 };
 struct Channel {
     uint8_t number{};

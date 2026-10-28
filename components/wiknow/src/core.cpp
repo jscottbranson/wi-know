@@ -102,6 +102,57 @@ bool starts(std::string_view a, std::string_view b) {
 std::string_view text_view(const std::array<char, 33> &text) {
     return {text.data(), size_t(std::find(text.begin(), text.end(), '\0') - text.begin())};
 }
+// ASCII-only case folding leaves non-ASCII UTF-8 bytes unchanged.
+bool contains_ci(std::string_view text, std::string_view value) {
+    if (value.empty())
+        return false;
+    const auto lower = [](unsigned char c) { return c >= 'A' && c <= 'Z' ? c + 32 : c; };
+    return std::search(text.begin(), text.end(), value.begin(), value.end(),
+                       [&](char a, char b) { return lower(a) == lower(b); }) != text.end();
+}
+// Ranges apply to actual advertised service UUIDs, including Bluetooth-base
+// 128-bit encodings, never arbitrary bytes in manufacturer/application data.
+bool service_range(std::string_view value, const Observation &o) {
+    uint8_t bounds[4];
+    size_t size{};
+    if (o.radio != Radio::ble || value.size() != 9 || value[4] != '-' ||
+        !hex(value, bounds, size, 4) || size != 4)
+        return false;
+    const unsigned low = (bounds[0] << 8) | bounds[1];
+    const unsigned high = (bounds[2] << 8) | bounds[3];
+    if (low > high)
+        return false;
+    bool found = false;
+    constexpr uint8_t base[] = {0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00,
+                                0x00, 0x80, 0x00, 0x10, 0x00, 0x00};
+    for (size_t at = 0; at < o.payload_size;) {
+        const size_t n = o.payload[at];
+        if (!n)
+            break;
+        if (at + n + 1 > o.payload_size)
+            return false;
+        const uint8_t type = o.payload[at + 1];
+        const bool short_uuid = type == 2 || type == 3 || type == 0x16;
+        const bool long_uuid = type == 6 || type == 7 || type == 0x21;
+        if (short_uuid || long_uuid) {
+            const size_t width = short_uuid ? 2 : 16;
+            const bool data = type == 0x16 || type == 0x21;
+            if (data ? n - 1 < width : (n - 1) % width != 0)
+                return false;
+            const size_t limit = data ? width : n - 1;
+            for (size_t i = 0; i < limit; i += width) {
+                const auto *p = o.payload.data() + at + 2 + i;
+                if (long_uuid && (!std::equal(base, base + 12, p) || p[14] || p[15]))
+                    continue;
+                const size_t offset = short_uuid ? 0 : 12;
+                const unsigned id = p[offset] | (p[offset + 1] << 8);
+                found = found || (id >= low && id <= high);
+            }
+        }
+        at += n + 1;
+    }
+    return found;
+}
 // Canonical UUID text uses display order; BLE transmits all 16 octets reversed.
 bool uuid128(std::string_view text, uint8_t *bytes) {
     if (text.size() != 36)
@@ -163,6 +214,7 @@ bool predicate(const Predicate &p, const Observation &o) {
                (p.value == "nan_action" && o.wifi_subtype == WifiSubtype::nan_action);
     case Field::wifi_ssid_wildcard:
     case Field::wifi_requested_ssid_prefix:
+    case Field::wifi_ie_signature:
     case Field::wifi_ie_fingerprint: {
         if (o.radio != Radio::wifi || o.wifi_subtype != WifiSubtype::probe_request ||
             !valid_probe_ies(o.payload.data(), o.payload_size))
@@ -181,6 +233,37 @@ bool predicate(const Predicate &p, const Observation &o) {
                     return p.value == (o.payload[at + 1] == 0 ? "true" : "false");
             return false; // A missing SSID is neither directed nor wildcard.
         }
+        if (p.field == Field::wifi_ie_signature) {
+            // Ordered tag IDs; vendor IDs include up to eight leading body bytes.
+            // The existing strict IE validator rejects malformed or duplicate SSIDs.
+            auto remaining = p.value;
+            bool matched = false;
+            for (size_t at = 0; at < o.payload_size; at += 2 + o.payload[at + 1]) {
+                const auto tag = o.payload[at];
+                if (tag == 0)
+                    continue;
+                const size_t comma = remaining.find(',');
+                const auto token = remaining.substr(0, comma);
+                char expected[24]{};
+                size_t length =
+                    size_t(std::snprintf(expected, sizeof(expected), "%u", unsigned(tag)));
+                if (tag == 221) {
+                    expected[length++] = ':';
+                    constexpr char digits[] = "0123456789abcdef";
+                    for (size_t i = 0; i < std::min<size_t>(8, o.payload[at + 1]); ++i) {
+                        const auto byte = o.payload[at + 2 + i];
+                        expected[length++] = digits[byte >> 4];
+                        expected[length++] = digits[byte & 15];
+                    }
+                }
+                if (token != std::string_view(expected, length))
+                    return false;
+                matched = true;
+                remaining = comma == std::string_view::npos ? std::string_view{}
+                                                            : remaining.substr(comma + 1);
+            }
+            return matched && remaining.empty();
+        }
         // Full canonical IE bytes, not a hash or a substring. No variable bytes normalized.
         if (p.value.size() != size_t(o.payload_size) * 2 || p.value.empty())
             return false;
@@ -194,6 +277,15 @@ bool predicate(const Predicate &p, const Observation &o) {
     }
     case Field::ssid_prefix:
         return o.wifi_subtype != WifiSubtype::probe_request && starts(text_view(o.ssid), p.value);
+    case Field::ssid_contains_ci:
+        return o.radio == Radio::wifi && o.wifi_subtype != WifiSubtype::probe_request &&
+               contains_ci(text_view(o.ssid), p.value);
+    case Field::name_contains_ci:
+        return o.radio == Radio::ble && contains_ci(text_view(o.name), p.value);
+    case Field::name_exact:
+        return o.radio == Radio::ble && text_view(o.name) == p.value;
+    case Field::service_uuid16_range:
+        return service_range(p.value, o);
     case Field::name_prefix:
         return starts(text_view(o.name), p.value);
     case Field::mac:
