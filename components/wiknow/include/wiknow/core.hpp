@@ -41,7 +41,7 @@ struct Observation {
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
     std::array<uint8_t, max_payload>
-        payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE body
+        payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE or NAN action body
     uint16_t payload_size{};
 };
 struct Predicate {

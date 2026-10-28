@@ -289,6 +289,24 @@ struct Json {
 } // namespace
 
 bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
+    // Unfragmented NAN Public Action frames retain their complete action body.
+    if (frame && length >= 30 && frame[0] == 0xd0) {
+        constexpr uint8_t destination[]{0x51, 0x6f, 0x9a, 1, 0, 0};
+        if ((frame[1] & 0xc7) || (frame[22] & 15) ||
+            std::memcmp(frame + 4, destination, sizeof(destination)) || length - 24 > max_payload)
+            return false;
+        out.radio = Radio::wifi;
+        out.address_type = 0;
+        std::copy(frame + 10, frame + 16, out.address.begin());
+        out.ssid.fill(0);
+        out.name.fill(0);
+        out.payload_size = uint16_t(length - 24);
+        std::copy(frame + 24, frame + length, out.payload.begin());
+        if (remote_id_messages(out).count)
+            return true;
+        out.payload_size = 0;
+        return false;
+    }
     // Beacon and probe response management headers + fixed parameters.
     if (!frame || length < 36 || ((frame[0] & 0xfc) != 0x80 && (frame[0] & 0xfc) != 0x50) ||
         (frame[0] & 3))
@@ -929,6 +947,10 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
             j.add("%02x", unsigned(o.payload[i]));
     j.add("\"");
+    const auto remote_messages = remote_id_messages(o);
+    if (remote_messages.count)
+        j.add(",\"remote_id_transport\":\"%s\"",
+              remote_id_transport_name(remote_messages.transport));
     j.add(",\"wifi_remote_id_hex\":\"");
     if (o.radio == Radio::wifi)
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
@@ -977,6 +999,7 @@ bool drone_detection_json(const Observation &o, size_t index, Fix receiver, cons
         j.add("%s%02x", i ? ":" : "", unsigned(o.address[i]));
     j.add("\",\"rssi_dbm\":%d,\"receiver_fix\":", int(o.rssi));
     j.fix(receiver);
+    j.add(",\"transport\":\"%s\"", remote_id_transport_name(messages.transport));
     j.add(",\"message_index\":%u,\"message_counter\":%u,\"message_type\":%u,\"raw_hex\":\"",
           unsigned(index), unsigned(messages.counters[index]), type);
     for (size_t i = 0; i < 25; ++i)

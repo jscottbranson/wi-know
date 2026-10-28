@@ -110,7 +110,11 @@ static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
     size_t size = packet->rx_ctrl.sig_len;
     if (packet->rx_ctrl.rx_state != 0 || size < 40 || size - 4 > 512)
         return; // omit trailing FCS; reject truncated frames
-    if ((packet->payload[0] & 0xfc) != 0x80 && (packet->payload[0] & 0xfc) != 0x50)
+    const auto *frame = packet->payload;
+    const bool nan_action = frame[0] == 0xd0 && size >= 34 && frame[24] == 4 && frame[25] == 9 &&
+                            frame[26] == 0x50 && frame[27] == 0x6f && frame[28] == 0x9a &&
+                            frame[29] == 0x13;
+    if ((frame[0] & 0xfc) != 0x80 && (frame[0] & 0xfc) != 0x50 && !nan_action)
         return;
     RawWifi raw{};
     raw.at = now_ms();
