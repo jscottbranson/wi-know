@@ -29,7 +29,11 @@ enum class Field : uint8_t {
     rid_basic_id_type,
     rid_position_valid,
     mac,
-    service_uuid128
+    service_uuid128,
+    wifi_subtype,
+    wifi_ssid_wildcard,
+    wifi_ie_fingerprint,
+    wifi_requested_ssid_prefix
 };
 struct Channel {
     uint8_t number{};
@@ -41,6 +45,13 @@ struct Fix {
     bool valid{};
     double latitude{}, longitude{};
     uint64_t at_ms{};
+};
+enum class WifiSubtype : uint8_t {
+    probe_request = 4,
+    probe_response = 5,
+    beacon = 8,
+    nan_action = 13,
+    unknown = 255
 };
 struct Observation {
     uint16_t node{};
@@ -54,8 +65,9 @@ struct Observation {
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
     std::array<uint8_t, max_payload>
-        payload{}; // BLE advertising data or Wi-Fi Remote ID vendor IE or NAN action body
+        payload{}; // BLE AD; Wi-Fi probe: complete IEs; otherwise Remote ID IE/NAN body
     uint16_t payload_size{};
+    WifiSubtype wifi_subtype{WifiSubtype::unknown};
 };
 struct Predicate {
     Field field{};
@@ -74,6 +86,8 @@ struct Rule {
 struct Match {
     const Rule *rule{};
 };
+// Input excludes FCS. Probe IEs must fit completely; no fingerprint truncation.
+bool valid_probe_ies(const uint8_t *data, size_t length);
 bool parse_wifi(const uint8_t *frame, size_t length, Observation &out);
 bool parse_ble(const uint8_t *data, size_t length, Observation &out);
 bool matches(const Rule &rule, const Observation &observation);
@@ -200,7 +214,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
-constexpr uint8_t protocol_version = 2;
+constexpr uint8_t protocol_version = 3;
 enum class MessageType : uint8_t {
     poll = 1,
     report = 2,

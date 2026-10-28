@@ -60,13 +60,15 @@ identify Flock. No unsupported Vigilant, ELSAG, Rekor, or generic ALPR fingerpri
 is asserted. In particular, Genetec vendor matching does not provide universal
 ALPR detection.
 
-The current Wi-Fi parser accepts beacons/probe responses, not ordinary client
-data or probe requests. A client-mode Ring camera or probe-only Flock camera can
-therefore remain invisible to these rules. BLE OUI rules only work with public,
-globally administered addresses. Names/company IDs can still match random
-addresses. Raw `BWCDEVICE` payload substring matching
-and Wi-Fi information-element fingerprints are unsupported and were not
-approximated. No signal does not mean no camera.
+The Wi-Fi parser accepts beacons, probe responses, bounded probe requests, and
+supported NAN Remote ID actions, not ordinary client data. Probe requests require
+independently reviewed rules; adding parser support does not identify probe-only
+Flock devices. Requested SSIDs never match `ssid_prefix` rules. BLE OUI rules only
+work with public, globally administered addresses. Names/company IDs can still match random
+addresses. Raw `BWCDEVICE` payload substring matching is unsupported and was
+not approximated. Native 128-bit service UUID matching is supported. Exact probe IE fingerprints are
+supported as described below; no production fingerprints are imported. No signal
+does not mean no camera.
 
 Validate with `python3 tools/generate_config.py`, then rebuild/reflash the parent
 or universal firmware using the existing firmware workflow. Merely editing JSON
@@ -98,7 +100,11 @@ Supported predicates:
 | --- | --- |
 | `mac` | Exact six-byte transmitter/advertiser address, e.g. `02:11:22:33:44:55`; supports local/random addresses |
 | `oui` | Three address bytes, e.g. `00:11:22`; ignored for local/random addresses |
-| `ssid_prefix` | Case-sensitive UTF-8 Wi-Fi SSID prefix, at most 32 encoded bytes |
+| `ssid_prefix` | Case-sensitive UTF-8 advertised Wi-Fi SSID prefix, at most 32 encoded bytes; excludes probe requests |
+| `wifi_subtype` | `probe_request`, `probe_response`, `beacon`, or `nan_action` |
+| `wifi_ssid_wildcard` | `"true"` for a present empty probe SSID, `"false"` for a present nonempty probe SSID |
+| `wifi_ie_fingerprint` | Full ordered probe IE bytes as contiguous hex, at most 255 bytes; canonical lowercase |
+| `wifi_requested_ssid_prefix` | Case-sensitive printable UTF-8 prefix of a probe request's raw SSID bytes, at most 32 encoded bytes |
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
 | `manufacturer_prefix` | Hex prefix of BLE AD type `0xff`, including little-endian company ID bytes |
 | `service_uuid16` | Conventional 16-bit UUID text, e.g. `180F`; compared against little-endian AD bytes |
@@ -109,14 +115,17 @@ Supported predicates:
 | `rid_basic_id_type` | String `"1"` (serial), `"2"` (CAA registration), `"3"` (UTM UUID), or `"4"` (specific session ID) |
 | `rid_position_valid` | String `"true"`: Location message has in-range aircraft coordinates, with the unavailable `(0, 0)` pair excluded |
 
-Wi-Fi beacons/probe responses, supported passive NAN Remote ID action frames,
-and complete BLE advertising reports are parsed within the 255-byte observation
-payload limit. Oversized payloads are rejected without truncation. Text matching retains up to 32 received bytes of
-the name/SSID, stopping at the first NUL byte. Prefixes match those bytes exactly,
-including UTF-8; they cannot contain ASCII control characters or exceed the
-32-byte limit. Regex is not supported. Match evidence is retained as SSID/name,
-`ssid_hex` for that captured text prefix, and BLE advertising hex in
-JSONL. Every matching rule produces a classification record with its category,
+Wi-Fi beacons/probe responses, bounded probe requests, supported passive NAN
+Remote ID action frames, and complete BLE advertising reports are parsed. Retained
+payload evidence is limited to 255 bytes; oversized payloads are rejected without
+truncation. The display name/SSID and `ssid_prefix`/`name_prefix` retain up to 32
+received bytes, stopping at the first NUL byte. `wifi_requested_ssid_prefix` instead
+uses the raw SSID IE length and bytes, including embedded NULs. Prefixes are exact
+and case-sensitive, including UTF-8; rule text cannot contain ASCII control
+characters or exceed 32 encoded bytes. Regex is not supported. JSONL retains
+SSID/name display text, `ssid_hex` for that display prefix, BLE advertising hex,
+and complete `wifi_ie_hex` for probe requests with an explicit evidence format.
+Every matching rule produces a classification record with its category,
 confidence and priority; records for the same capture share the same observation
 identity and count. The highest-priority match controls alerts and target selection.
 OUI matches indicate a possible vendor association, not confirmed equipment identity.
@@ -135,8 +144,8 @@ can be shared and addresses spoofed. Production signatures still require separat
 source and confidence review. No new vendor signatures are included by this capability.
 
 Exact address evidence already travels in the six-byte `Observation.address`
-field of protocol v2 reports and the JSONL `address` field; no wire or log format
-expansion is needed. Local/standalone and forwarded observations use the same
+field of protocol v3 reports and the JSONL `address` field; exact MAC matching
+adds no wire or log fields. The separate probe-evidence feature introduced v3. Local/standalone and forwarded observations use the same
 matcher, priority selection, and action flags.
 
 Every build also writes `settings.rules.json` beside its generated `settings.hpp`.
@@ -188,6 +197,71 @@ Potential upstream sources: [Eye Spy](https://github.com/simeononsecurity/eye-sp
 fix the exact revision, and retain attribution when importing. Enable Flock, Axon,
 ALPR, Ring, or drone categories only with reviewed signatures appropriate to the
 radio/parser. Category switches alone do not add signatures. Decoded drone telemetry and rule predicates are documented in [Remote ID](../docs/remote-id.md).
+
+## Passive probe requests and exact IE evidence
+
+`wifi_subtype` accepts `probe_request`, `probe_response`, `beacon`, or `nan_action`.
+`wifi_ssid_wildcard` accepts `true` (one zero-length SSID IE) or `false` (one
+nonempty SSID IE), on probe requests only. A missing SSID matches neither value.
+Duplicate SSIDs are rejected. `ssid_prefix` continues matching advertised network
+names in beacons/probe responses, and deliberately does not match requested probe
+SSIDs: requesting a network does not establish the requesting device's vendor.
+
+`wifi_requested_ssid_prefix` matches a case-sensitive, nonempty prefix of the
+raw SSID IE in a probe request. Values are printable UTF-8, at most 32 bytes. It
+never matches beacon/probe-response SSIDs, wildcard probes, or missing SSIDs.
+The raw retained IE bytes are authoritative, including embedded NUL bytes; the
+display `ssid` text does not control this predicate. Public and locally administered
+transmitter addresses are both supported.
+
+This can surface clients requesting a network name such as `Flock-…`, using a
+separate rule category like `requested_network`, confidence `possible`, and a
+clear ID such as `requested-flock-like-network`:
+
+```json
+"predicates": [
+  {"field": "wifi_subtype", "value": "probe_request"},
+  {"field": "wifi_requested_ssid_prefix", "value": "Flock-"}
+]
+```
+
+Use `match: "all"`; make buzzer/follow actions an explicit local choice. The
+example prefix already appears in the reviewed advertised-network rules, but
+this request evidence has a different meaning. It means only that a client
+requested that name, potentially from saved-network behavior. It does not prove
+a connection attempt, a saved network, current/past association, a phone (rather
+than another kind of client), the client's manufacturer, ownership, or affiliation.
+Network names can be generic/spoofed; private client addresses rotate. No generic
+Axon or Motorola network prefix is assumed: those require separately reviewed
+name evidence. This capability adds no enabled production requested-network rules.
+
+`wifi_ie_fingerprint` accepts 2–510 contiguous hexadecimal characters, case
+insensitive and canonicalized to lowercase in generated code and provenance.
+Its format is **probe_ie_v1**: the complete, ordered IE stream after the 24-byte
+management header, including every element ID, length, and value byte. Repeated
+non-SSID IEs remain repeated; order matters. Vendor IEs include their complete OUI,
+type and remaining bytes (at least four body bytes are required); extension IEs
+include the extension ID. No field is normalized: directed SSID bytes (including
+embedded NUL), rates, channel declarations, vendor sequence fields and all other
+variable data participate. Capture timestamp, RSSI, address, sequence-control and
+FCS are outside this stream. This deliberately conservative exact comparison has
+no short-hash collision or prefix-match ambiguity; variation means a non-match.
+Unknown well-formed IEs are retained. Malformed/truncated IEs, duplicate/oversize
+SSIDs, incomplete vendor/extension identifiers and fingerprints over 255 bytes
+are rejected. Empty IE streams can be observed but cannot be fingerprint rules.
+
+Use `match: "all"` to combine four predicates: `wifi_subtype: "probe_request"`,
+`wifi_ssid_wildcard: "true"`, an independently reviewed address/identifier predicate,
+and `wifi_ie_fingerprint`. The third predicate can be `mac`; an OUI provides only vendor association and does not prove device identity.
+A wildcard probe or shared chipset fingerprint alone must never assert Flock
+identity. Shared defaults, random/private addresses, spoofing and common radio
+stacks remain limitations. No production probe signatures, generic chipset lists,
+UniFi/Ubiquiti signatures, or community implementation code are added here.
+The test fixtures are newly authored synthetic bytes under this repository's
+license. Any future external fingerprint requires a pinned source, license review,
+and independent confidence/evidence review before enabling it.
+
+See [probe evidence transport and hardware checks](../docs/probe-capture.md).
 
 ### 128-bit BLE service UUIDs
 

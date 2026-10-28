@@ -8,7 +8,9 @@ from affecting another assignment; this local-bus protocol is not authenticated.
 
 ## Framing and messages
 
-The existing CRC-protected, little-endian framing version 2 remains unchanged.
+CRC-protected, little-endian framing is version 3. All nodes must be updated
+together; version 2 is rejected. Version 3 adds a Wi-Fi subtype byte to observation
+reports; discovery envelopes and message types retain their existing layout.
 Manual poll/report types 1/2 remain supported only by manually configured builds.
 Universal builds use types 3–8:
 

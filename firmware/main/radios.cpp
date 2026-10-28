@@ -15,6 +15,7 @@
 #include "wiknow/observation_queue.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/standalone_scan.hpp"
+#include "wiknow/wifi_capture.hpp"
 #include <algorithm>
 #include <cstring>
 
@@ -113,14 +114,9 @@ static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
     if (type != WIFI_PKT_MGMT)
         return;
     const auto *packet = static_cast<const wifi_promiscuous_pkt_t *>(buffer);
-    size_t size = packet->rx_ctrl.sig_len;
-    if (packet->rx_ctrl.rx_state != 0 || size < 40 || size - 4 > 512)
-        return; // omit trailing FCS; reject truncated frames
-    const auto *frame = packet->payload;
-    const bool nan_action = frame[0] == 0xd0 && size >= 34 && frame[24] == 4 && frame[25] == 9 &&
-                            frame[26] == 0x50 && frame[27] == 0x6f && frame[28] == 0x9a &&
-                            frame[29] == 0x13;
-    if ((frame[0] & 0xfc) != 0x80 && (frame[0] & 0xfc) != 0x50 && !nan_action)
+    const size_t size = wiknow::wifi_capture_size(packet->payload, packet->rx_ctrl.sig_len,
+                                                  packet->rx_ctrl.rx_state == 0);
+    if (!size)
         return;
     RawWifi raw{};
     raw.at = now_ms();
@@ -128,7 +124,7 @@ static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
     raw.node = raw.policy.node;
     raw.rssi = packet->rx_ctrl.rssi;
     raw.channel = packet->rx_ctrl.channel;
-    raw.size = uint16_t(size - 4);
+    raw.size = uint16_t(size);
     std::memcpy(raw.frame, packet->payload, raw.size);
     if (xQueueSend(raw_wifi, &raw, 0) != pdTRUE)
         ++dropped;

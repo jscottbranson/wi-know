@@ -215,8 +215,32 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                 field, value = pred['field'], pred['value']
                 require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
-                                  'rid_position_valid'), 'unknown predicate field')
-                require(isinstance(value, str) and 0 < len(value) <= 96, 'invalid predicate value')
+                                  'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
+                                  'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix'), 'unknown predicate field')
+                require(isinstance(value, str) and 0 < len(value) <= (510 if field == 'wifi_ie_fingerprint' else 96), 'invalid predicate value')
+                if field.startswith('wifi_'):
+                    require(rule['radio'] == 'wifi', 'Wi-Fi predicate in BLE rule')
+                if field == 'wifi_subtype':
+                    require(value in ('probe_request', 'probe_response', 'beacon', 'nan_action'),
+                            'invalid Wi-Fi subtype')
+                if field == 'wifi_ssid_wildcard':
+                    require(value in ('true', 'false'), 'wildcard must be true or false')
+                if field == 'wifi_ie_fingerprint':
+                    require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2})+', value)),
+                            'fingerprint must be complete contiguous hex bytes')
+                    raw = bytes.fromhex(value)
+                    at, ssid = 0, False
+                    while at < len(raw):
+                        require(at + 2 <= len(raw), 'truncated fingerprint IE header')
+                        tag, size = raw[at:at + 2]
+                        require(at + 2 + size <= len(raw), 'truncated fingerprint IE body')
+                        if tag == 0:
+                            require(not ssid and size <= 32, 'duplicate or oversized fingerprint SSID')
+                            ssid = True
+                        require(tag != 221 or size >= 4, 'vendor IE needs OUI and type')
+                        require(tag != 255 or size >= 1, 'extension IE needs extension ID')
+                        at += 2 + size
+                    pred['value'] = value.lower()
                 if field == 'mac':
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', value)),
                             'MAC must be six colon-separated hex bytes')
@@ -231,7 +255,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                 if field == 'rid_basic_id':
                     require(1 <= len(value) <= 20 and all(32 <= ord(c) <= 126 for c in value),
                             'Remote ID Basic ID must be 1..20 printable ASCII characters')
-                if field in ('ssid_prefix', 'name_prefix'):
+                if field in ('ssid_prefix', 'name_prefix', 'wifi_requested_ssid_prefix'):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')

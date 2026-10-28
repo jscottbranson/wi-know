@@ -388,6 +388,66 @@ class ConfigTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         generate.validate(self.settings, base=base)
 
+    def test_probe_predicates_and_manifest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            rule = document['rules'][0]
+            rule['radio'] = 'wifi'
+            for field, value, valid in [
+                ('wifi_subtype', 'probe_request', True), ('wifi_subtype', 'beacon', True),
+                ('wifi_subtype', 'probe_response', True), ('wifi_subtype', 'nan_action', True),
+                ('wifi_requested_ssid_prefix','Flock-',True),
+                ('wifi_requested_ssid_prefix','é'*16,True),
+                ('wifi_requested_ssid_prefix','é'*17,False),
+                ('wifi_requested_ssid_prefix','a\x00b',False),
+                ('wifi_requested_ssid_prefix','',False),
+                ('wifi_requested_ssid_prefix','a'*33,False),
+                ('wifi_subtype', '4', False), ('wifi_ssid_wildcard', 'true', True),
+                ('wifi_ssid_wildcard', 'false', True), ('wifi_ssid_wildcard', 'yes', False),
+                ('wifi_ie_fingerprint', '000001028284DD0412345601', True),
+                ('wifi_ie_fingerprint', '000001fb' + '82'*251, True),
+                ('wifi_ie_fingerprint', '01000100', True),
+                ('wifi_ie_fingerprint', '00', False), ('wifi_ie_fingerprint', '0001', False),
+                ('wifi_ie_fingerprint', '00000000', False), ('wifi_ie_fingerprint', 'dd03010203', False),
+                ('wifi_ie_fingerprint', 'ff00', False), ('wifi_ie_fingerprint', '00:00', False),
+                ('wifi_ie_fingerprint', '000', False), ('wifi_ie_fingerprint', 'gg', False),
+                ('wifi_ie_fingerprint', '000001fb' + '82'*251 + '0100', False),
+                ('wifi_ie_fingerprint', '0021' + '61'*33, False),
+            ]:
+                rule['predicates'] = [{'field': field, 'value': value}]
+                (base/'rule.json').write_text(json.dumps(document))
+                with self.subTest(field=field,value=value):
+                    if valid:
+                        settings, rules = generate.validate(self.settings)
+                        self.assertIn('Field::'+field, generate.emit(settings,rules))
+                        self.assertEqual(rules[0]['predicates'][0]['value'],
+                                         value.lower() if field == 'wifi_ie_fingerprint' else value)
+                    else:
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings)
+            rule['predicates'] = [{'field': 'wifi_subtype', 'value': 'probe_request'},
+                                  {'field': 'wifi_ssid_wildcard', 'value': 'true'},
+                                  {'field': 'mac', 'value': '02:11:22:33:44:55'},
+                                  {'field': 'wifi_ie_fingerprint', 'value': '000001028284DD0412345601'}]
+            (base/'rule.json').write_text(json.dumps(document))
+            config = base/'config/settings.json'; config.parent.mkdir()
+            config.write_text(json.dumps(self.settings))
+            output = base/'generated/settings.hpp'
+            result = subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                                     '--config',str(config),'--output',str(output)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            manifest = generate.load(output.with_suffix('.rules.json'))['rules'][0]
+            self.assertEqual(manifest['source'],rule['source'])
+            self.assertEqual(manifest['predicates'][2], {'field':'mac','value':'02:11:22:33:44:55'})
+            self.assertEqual(manifest['predicates'][-1]['value'],'000001028284dd0412345601')
+            for pred in rule['predicates'][:2] + rule['predicates'][3:] + [
+                    {'field':'wifi_requested_ssid_prefix','value':'Flock-'}]:
+                rule['radio'] = 'ble'; rule['predicates'] = [pred]
+                (base/'rule.json').write_text(json.dumps(document))
+                with self.assertRaises(ValueError): generate.validate(self.settings)
+
     def test_text_prefix_limits_use_utf8_bytes(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)
