@@ -9,8 +9,18 @@ python3 tools/export_observations.py /path/to/logs/WK*.LOG -o detections.csv
 python3 tools/export_observations.py /path/to/logs/WK*.LOG -o detections.geojson
 ```
 
-When logging used internal flash, first [read back and extract the flash logs](storage.md#reading-flash-logs).
-The extracted files use the same JSON Lines format and export commands.
+For internal flash, close the serial monitor, activate ESP-IDF v5.5.1, and run:
+
+```sh
+python3 tools/export_flash.py --port /dev/ttyACM1 --format csv
+```
+
+This automatically resets the board into download mode, backs up its logs, and
+restarts it after readback. It then extracts the logs and writes `detections.csv`
+in a new `flash-export-*` directory. No BOOT/RESET button presses are normally
+needed on USB connections supporting automatic reset. Omit `--port` to select it
+interactively. JSON is the default; JSONL, TSV and GeoJSON are also supported.
+See [flash export options and recovery](storage.md#reading-flash-logs).
 
 The output extension selects the format; use `--format` to override it. With no
 `-o`, the default is JSON on stdout. Supported formats:

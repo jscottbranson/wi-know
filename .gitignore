@@ -5,3 +5,4 @@ firmware/sdkconfig
 firmware/sdkconfig.old
 __pycache__/
 *.pyc
+flash-export-*/

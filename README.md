@@ -55,7 +55,9 @@ continued Wi-Fi/BLE sightings with GPS displacement, with an ignore list and
 configurable distance and delay.
 Settings and rules are validated and compiled into firmware; rebuild after changes.
 Parents prefer a configured, writable microSD card and otherwise save logs to
-[bounded internal-flash storage](docs/storage.md). The LCD and serial status show
+[bounded internal-flash storage](docs/storage.md). Export flash logs over USB with
+`python3 tools/export_flash.py --format csv` from an activated ESP-IDF terminal;
+the helper handles readback, extraction, and automatic board reset. The LCD and serial status show
 the selected destination; workers do not write persistent logs.
 Export recorded detections to JSON, JSONL, CSV, TSV or GeoJSON with the
 [sharing and mapping tool](docs/exporting.md), including rule evidence and receiver

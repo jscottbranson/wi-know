@@ -83,8 +83,46 @@ must check free heap, flash writes during Wi-Fi/BLE reception, and drop counts.
 
 ## Reading flash logs
 
-Close the serial monitor and put the board in download mode before readback.
-For this partition layout, in an activated ESP-IDF v5.5.1 terminal:
+Close the serial monitor, connect the parent over USB, and run this in an
+activated ESP-IDF v5.5.1 terminal:
+
+```sh
+python3 tools/export_flash.py --port /dev/ttyACM1 --format csv
+```
+
+The helper uses automatic USB reset to enter download mode and restart the board
+after readback, so BOOT/RESET button presses are normally unnecessary. Automatic
+reset depends on the board's USB connection and still needs physical validation.
+Scanning pauses during readback, and resetting can lose records buffered in RAM.
+The helper reads only the `logs` partition described by this repository's
+`firmware/partitions.csv`; use it with firmware using that same layout.
+It does not build, flash, or erase firmware.
+
+Omit `--port` for an interactive port menu. Each invocation creates a new
+`flash-export-*` directory containing the raw `logs.bin` backup, an `extracted/`
+directory of original logs (including status records), and `detections.json` by
+default. Use `--format csv`, `tsv`, `jsonl`, or `geojson` to change the export.
+Use `--directory my-backup` to name the directory; it must not already exist.
+Raw and extracted data are retained if extraction or conversion fails.
+
+Re-export a saved backup without connecting a board:
+
+```sh
+python3 tools/export_flash.py --image flash-export-EXAMPLE/logs.bin --format geojson
+```
+
+Both modes accept `--location`, `--matches-only`, and `--skip-invalid` as described
+in [the export guide](exporting.md). Offline extraction still requires ESP-IDF's
+FAT parser and activated Python environment. `--idf-path` can select that checkout.
+Malformed records fail conversion by default; use `--skip-invalid` explicitly
+to recover complete records from a log with an interrupted final write.
+
+If automatic connection fails, check the port, USB cable, and serial permissions.
+For boards requiring manual reset, hold BOOT, tap RESET, release BOOT, then run
+the helper with `--manual-reset`. Tap RESET afterward to resume scanning. A failed
+or interrupted read may also leave the board in download mode; reset it if needed.
+
+For manual readback and extraction of this partition layout:
 
 ```sh
 mkdir -p flash-log-backup
