@@ -27,6 +27,7 @@ class FlashExportTests(unittest.TestCase):
         self.calls = []
         self.malformed = False
         self.no_logs = False
+        self.priority_logs = False
         self.fail_read = False
         self.short_read = False
         for name, kwargs in (
@@ -55,6 +56,10 @@ class FlashExportTests(unittest.TestCase):
             (volume / 'wk00000002.log').write_text(json.dumps(record) + '\n')
             record['sequence'] = 1
             (volume / 'WK00000001.LOG').write_text(json.dumps(record) + '\n' + ('{"broken"' if self.malformed else ''))
+            if self.priority_logs:
+                for name, sequence in [('wu00000003.log', 3), ('WM00000004.LOG', 4)]:
+                    record['sequence'] = sequence
+                    (volume / name).write_text(json.dumps(record) + '\n')
             (volume / 'unrelated.LOG').write_text('invalid')
         return subprocess.CompletedProcess(command, 0)
 
@@ -71,6 +76,12 @@ class FlashExportTests(unittest.TestCase):
         self.assertEqual((self.output / 'logs.bin').stat().st_size, self.size)
         rows = json.loads((self.output / 'detections.json').read_text())
         self.assertEqual([r['sequence'] for r in rows], [1, 2])
+
+    def test_legacy_and_priority_logs_export_in_global_sequence_order(self):
+        self.priority_logs = True
+        self.assertEqual(self.invoke('--port', '/dev/test'), 0)
+        rows = json.loads((self.output / 'detections.json').read_text())
+        self.assertEqual([r['sequence'] for r in rows], [1, 2, 3, 4])
 
     def test_default_exports_use_unique_directories_under_repository_tmp(self):
         partition = export_flash.log_partition()

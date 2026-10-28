@@ -1,8 +1,11 @@
 # SD and internal-flash logging
 
 At boot, a parent tries the configured microSD interface if `sd.enabled` is true.
-If the card mounts and a new log can be opened with enough free space, logging
-uses SD. Otherwise it tries the internal `logs` partition. With SD disabled,
+If the card mounts and its log directory and free-space information can be read,
+logging uses SD. Files open lazily when records arrive; startup does not delete
+evidence just to create an empty log. The first record is flushed durably to
+verify writes; if that first SD open/write/flush fails, selection falls back to
+flash and retries the record. Retention-policy drops do not trigger fallback. Otherwise it tries the internal `logs` partition. With SD disabled,
 the parent goes directly to flash; unassigned SD pins are never accessed.
 Workers do not mount either filesystem. USB console output remains independent.
 
@@ -11,7 +14,7 @@ Serial startup and periodic parent status identify `storage=SD`, `FLASH`, or
 storage initialization has not finished. In standalone mode, the scan page and
 storage page alternate with the other status pages.
 
-Selection happens once per boot. Insert/remove the card while powered off, then
+Selection becomes final after the first successful persistent write. Insert/remove the card while powered off, then
 restart. There is no hot-swap support or automatic copying between flash and SD.
 If the selected medium later fails to write, flush, or rotate, persistent logging
 stops with `OFF` and an error on serial; scanning and console output continue.
@@ -60,15 +63,43 @@ This includes old firmware bytes left in that region, a damaged filesystem, or
 an interrupted first-time format. Such failures report `OFF`; preserve/read back
 the partition before deliberately erasing it for recovery.
 
-Both media store JSON Lines in `WK########.LOG`, starting a new file on each boot.
-Only files with those exact names are eligible for retention deletion. Before a
-new file opens, oldest logs are removed to satisfy the file-count limit and leave
-space for a full next file plus 8 KiB of metadata headroom. Unrelated files are
-never deleted; if they occupy the space needed, logging cannot open a new file.
+Both media store separate JSON Lines streams: `WM########.LOG` contains records
+from observations that match at least one enabled rule; `WU########.LOG` contains
+unmatched observations and status records. All records from one matched
+observation (including every matching classification, decoded Remote ID record,
+and any following alert) carry the matched classification explicitly through the
+storage queue. A decoded Remote ID broadcast or following alert **without a rule
+match is unmatched**, even in matches-only logging mode. Neither implies a rule
+match. Console JSON and export schemas remain unchanged.
+
+The two streams share one file-count budget. Before opening a file, retention
+removes **unmatched files first, oldest sequence number first**, then (only for
+incoming matched records) the oldest matched files. Unmatched arrivals never
+delete matched evidence: if it cannot make room, the record is discarded,
+`local_drops` increases, and serial reports a rate-limited retention-drop total.
+Logging stays enabled so later matched records can still be stored. Deletion is
+whole-file, not per observation: rotating a matched file can remove several
+observations/classifications together.
+
+At most two files are open. Retention never unlinks an open file: a matched
+arrival may first close the unmatched stream to reclaim it. Both streams count
+against the configured limit, including a limit of one. Space reservations cover
+a full file per open stream (including buffered writes), rounded up to the
+mounted volume's actual allocation-cluster size, plus 8 KiB of metadata headroom. Unrelated files are never deleted; if they occupy all usable space,
+incoming records are dropped. Filesystem/open/write/flush failures instead stop
+persistent logging with `OFF`. Do not modify the mounted filesystem concurrently.
+
+Existing `WK########.LOG` files may contain mixed data. They are never rewritten,
+appended, or scanned for JSON classification; they receive **matched retention
+priority** to protect unknown evidence, and can only be deleted for new matched
+records. New files use sequence numbers above all existing owned names, so a
+restart never appends to an earlier session. Only regular files with exactly the
+`WK`, `WM`, or `WU` prefix, eight decimal digits, and `.LOG` suffix are eligible
+for deletion. Export accepts all three prefixes, preserving legacy compatibility.
 
 SD uses `logging.rotate_bytes`, `logging.max_files`, and
 `logging.flush_interval_ms`. Flash caps those first two settings at **32 KiB per
-file and eight files**, including the active file; smaller configured limits
+file and eight files**, including both active streams; smaller configured limits
 still apply. Flash flushes dirty data no more often than every five seconds
 (or the configured interval if longer), using buffered writes and wear levelling.
 Recent buffered records can be lost at power failure. Flash has finite write
@@ -137,7 +168,7 @@ python "$IDF_PATH/components/fatfs/fatfsparse.py" --wl-layer enabled logs.bin
 Use the board's current port. Keep `logs.bin` as a raw backup. ESP-IDF's parser
 extracts the FAT directory tree under its volume-label directory in the current
 directory; use a fresh backup directory for each extraction. Feed the extracted
-`WK*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
+`W[KMU]*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
 with BOOT released afterward to resume operation. Entering download mode can
 lose records that were still buffered in RAM.
 
@@ -147,7 +178,7 @@ lose records that were still buffered in RAM.
    `storage=SD`, generate a lab detection, and verify a JSON record on the card.
 2. Power down, remove the card, and boot. Verify `storage=FLASH` and the LCD's
    storage page, generate detections, and read back the flash logs.
-3. Reboot without a card and confirm a new file is created while earlier logs
-   remain. Exercise rotation with a small configured limit.
+3. Reboot without a card and generate another detection. Confirm a new file is
+   created while earlier logs remain. Exercise rotation with a small configured limit.
 4. Reinsert the SD card while powered off. Confirm the next boot selects SD and
    leaves earlier flash logs intact. Confirm Wi-Fi/BLE remain active in each case.

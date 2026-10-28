@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "settings.hpp"
+#include "log_helpers.hpp"
 #include "wiknow/core.hpp"
 #include "wiknow/discovery.hpp"
 #include <atomic>
@@ -33,7 +34,7 @@ void start_peripherals();
 void gps_update(wiknow::Gps &gps);
 void indicators(wiknow::Trend trend, bool beep);
 void screen(const char *line1, const char *line2);
-void write_log(const char *json);
+void write_log(const char *json, LogClass classification = LogClass::unmatched);
 void storage_tick();
 const char *storage_name();
 void start_storage();

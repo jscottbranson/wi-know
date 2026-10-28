@@ -197,6 +197,8 @@ static void consume(Observation o) {
     platform::gps_update(gps);
     Fix fix = gps.tag(o, c::gps_max_fix_age_ms, c::gps_max_timing_uncertainty_ms);
     uint64_t received = platform::now_ms();
+    const Match match = best_match(c::rules.data(), c::rules.size(), o);
+    const auto log_class = match.rule ? platform::LogClass::matched : platform::LogClass::unmatched;
     double distance_m = 0;
     Fix following_fix = fix;
     // Buffered captures must not trigger an alert after the device has disappeared.
@@ -211,7 +213,7 @@ static void consume(Observation o) {
         char event[1024];
         if (platform::following_alert_json(o, fix, gps, distance_m, c::following_alert_delay_ms,
                                            event, sizeof(event)))
-            platform::write_log(event);
+            platform::write_log(event, log_class);
         else
             ++platform::dropped;
         if (!has_beeped || received - last_beep >= uint64_t(c::buzzer_cooldown_ms)) {
@@ -220,7 +222,6 @@ static void consume(Observation o) {
             has_beeped = true;
         }
     }
-    Match match = best_match(c::rules.data(), c::rules.size(), o);
     // Preserve matching target state even when logging is matches-only.
     const auto drone = remote_id_messages(o);
     if (!match.rule && !drone.count && std::strcmp(c::logging_mode, "all") != 0)
@@ -266,7 +267,7 @@ static void consume(Observation o) {
     char json[log_line_capacity];
     for (size_t i = 0; i < drone.count; ++i) {
         if (drone_detection_json(o, i, fix, gps, json, sizeof(json)))
-            platform::write_log(json);
+            platform::write_log(json, log_class);
         else
             ++platform::dropped;
     }
@@ -276,12 +277,12 @@ static void consume(Observation o) {
         for (const auto &rule : c::rules)
             if (matches(rule, o)) {
                 if (observation_json(o, track, Match{&rule}, fix, gps, json, sizeof(json)))
-                    platform::write_log(json);
+                    platform::write_log(json, log_class);
                 else
                     ++platform::dropped;
             }
     } else if (observation_json(o, track, {}, fix, gps, json, sizeof(json)))
-        platform::write_log(json);
+        platform::write_log(json, log_class);
     else
         ++platform::dropped;
 }
