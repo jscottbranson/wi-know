@@ -1,3 +1,4 @@
+#include "fixtures/nan_reference.hpp"
 #include "wiknow/alert_cooldown.hpp"
 #include "wiknow/remote_id.hpp"
 #include <algorithm>
@@ -54,7 +55,59 @@ static Rule rule(Radio radio, std::initializer_list<Predicate> predicates, bool 
     std::copy(predicates.begin(), predicates.end(), r.predicates.begin());
     return r;
 }
+static void nan_rules() {
+    // Exact OpenDroneID transmitter fixture, also used by the NAN capture/decoder tests.
+    const std::vector<uint8_t> frame(std::begin(nan_reference), std::end(nan_reference));
+    Observation o{};
+    assert(parse_wifi(frame.data(), frame.size(), o));
+    const auto valid = rule(Radio::wifi, {{Field::rid_valid, "true"}});
+    const auto specific =
+        rule(Radio::wifi, {{Field::rid_basic_id_type, "1"}, {Field::rid_basic_id, "NAN-TEST-001"}});
+    const auto position = rule(
+        Radio::wifi, {{Field::rid_message_type, "location"}, {Field::rid_position_valid, "true"}});
+    assert(remote_id_messages(o).transport == RemoteIdTransport::wifi_nan);
+    assert(matches(valid, o) && matches(specific, o) && matches(position, o));
+    assert(!matches(rule(Radio::wifi, {{Field::rid_basic_id, "NAN-TEST-001"},
+                                       {Field::rid_position_valid, "true"}}),
+                    o));
+    assert(
+        matches(rule(Radio::wifi,
+                     {{Field::rid_basic_id, "wrong"}, {Field::rid_position_valid, "true"}}, false),
+                o));
+    Report report{};
+    report.has_observation = true;
+    report.observation = o;
+    Packet packet{};
+    Report decoded{};
+    assert(pack_report(report, packet) && unpack_report(packet, decoded));
+    assert(matches(specific, decoded.observation) && matches(position, decoded.observation));
+    auto disabled = valid;
+    disabled.enabled = false;
+    assert(!matches(disabled, o));
+    // Exercise matching independently of the capture parser: forwarded malformed
+    // action bodies and unrelated services must never satisfy a decoded predicate.
+    for (size_t n = 0; n < o.payload_size; ++n) {
+        auto bad = o;
+        bad.payload_size = n;
+        assert(!matches(valid, bad) && !matches(specific, bad));
+    }
+    for (size_t offset : {size_t(24), size_t(31), size_t(33), size_t(44), size_t(47)}) {
+        auto bad = o;
+        bad.payload[offset - 24] ^= 0x80; // header, attribute length, service, pack, inner message
+        assert(!matches(valid, bad));
+    }
+    auto bad = o;
+    bad.payload[44 - 24] = 0xf3; // Unsupported pack version.
+    assert(!matches(valid, bad));
+    bad = o;
+    bad.payload[47 - 24] = 0x03; // Unsupported Basic ID invalidates the entire envelope.
+    assert(!matches(valid, bad) && !matches(position, bad));
+    bad = o;
+    std::fill(bad.payload.begin() + 72 - 24 + 5, bad.payload.begin() + 72 - 24 + 13, 0);
+    assert(matches(valid, bad) && matches(specific, bad) && !matches(position, bad));
+}
 int main() {
+    nan_rules();
     const auto id = basic("WI-KNOW-TEST-001");
     Message location{};
     location[0] = 0x12;
