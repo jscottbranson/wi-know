@@ -65,8 +65,8 @@ supported NAN Remote ID actions, not ordinary client data. Probe requests requir
 independently reviewed rules; adding parser support does not identify probe-only
 Flock devices. Requested SSIDs never match `ssid_prefix` rules. BLE OUI rules only
 work with public, globally administered addresses. Names/company IDs can still match random
-addresses. Raw `BWCDEVICE` payload substring matching and 128-bit service UUIDs
-are unsupported and were not approximated. Exact probe IE fingerprints are
+addresses. Raw `BWCDEVICE` payload substring matching is unsupported and was
+not approximated. Native 128-bit service UUID matching is supported. Exact probe IE fingerprints are
 supported as described below; no production fingerprints are imported. No signal
 does not mean no camera.
 
@@ -98,6 +98,7 @@ Supported predicates:
 
 | `field` | `value` format |
 | --- | --- |
+| `mac` | Exact six-byte transmitter/advertiser address, e.g. `02:11:22:33:44:55`; supports local/random addresses |
 | `oui` | Three address bytes, e.g. `00:11:22`; ignored for local/random addresses |
 | `ssid_prefix` | Case-sensitive UTF-8 advertised Wi-Fi SSID prefix, at most 32 encoded bytes; excludes probe requests |
 | `wifi_subtype` | `probe_request`, `probe_response`, `beacon`, or `nan_action` |
@@ -107,6 +108,7 @@ Supported predicates:
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
 | `manufacturer_prefix` | Hex prefix of BLE AD type `0xff`, including little-endian company ID bytes |
 | `service_uuid16` | Conventional 16-bit UUID text, e.g. `180F`; compared against little-endian AD bytes |
+| `service_uuid128` | BLE canonical UUID text, e.g. `00112233-4455-6677-8899-aabbccddeeff`; case-insensitive input, normalized to lowercase |
 | `rid_valid` | String `"true"`: at least one structurally valid supported decoded Remote ID message |
 | `rid_message_type` | `basic_id`, `location`, `authentication`, `self_id`, `system`, or `operator_id` |
 | `rid_basic_id` | Exact, case-sensitive Basic ID text, 1–20 printable ASCII characters; serial (type 1) and CAA registration (type 2) only |
@@ -127,6 +129,24 @@ Every matching rule produces a classification record with its category,
 confidence and priority; records for the same capture share the same observation
 identity and count. The highest-priority match controls alerts and target selection.
 OUI matches indicate a possible vendor association, not confirmed equipment identity.
+
+`mac` accepts exactly six colon-separated, two-digit hexadecimal octets, with
+uppercase or lowercase digits. The generator normalizes the value to lowercase
+in both C++ and the provenance manifest. Compact, hyphenated, space-separated,
+masked, wildcard, and partial addresses are rejected. Matching compares all six
+bytes of the Wi-Fi transmitter (address 2) or BLE advertiser; it does not inspect
+Wi-Fi receiver or BSSID addresses. The predicate is not address-type qualified:
+identical BLE bytes match on both public and random addresses, and locally
+administered Wi-Fi addresses match too. Existing `oui` exclusions are unchanged.
+Private addresses rotate and cannot establish persistent identity. A firmware-default
+MAC is neither vendor authentication nor proof of a particular device: defaults
+can be shared and addresses spoofed. Production signatures still require separate
+source and confidence review. No new vendor signatures are included by this capability.
+
+Exact address evidence already travels in the six-byte `Observation.address`
+field of protocol v3 reports and the JSONL `address` field; exact MAC matching
+adds no wire or log fields. The separate probe-evidence feature introduced v3. Local/standalone and forwarded observations use the same
+matcher, priority selection, and action flags.
 
 Every build also writes `settings.rules.json` beside its generated `settings.hpp`.
 This manifest preserves all compiled rules, their predicates, confidence, actions,
@@ -232,8 +252,7 @@ are rejected. Empty IE streams can be observed but cannot be fingerprint rules.
 
 Use `match: "all"` to combine four predicates: `wifi_subtype: "probe_request"`,
 `wifi_ssid_wildcard: "true"`, an independently reviewed address/identifier predicate,
-and `wifi_ie_fingerprint`. With exact MAC support, the third predicate can be
-`mac`; an OUI provides only vendor association and does not prove device identity.
+and `wifi_ie_fingerprint`. The third predicate can be `mac`; an OUI provides only vendor association and does not prove device identity.
 A wildcard probe or shared chipset fingerprint alone must never assert Flock
 identity. Shared defaults, random/private addresses, spoofing and common radio
 stacks remain limitations. No production probe signatures, generic chipset lists,
@@ -243,3 +262,49 @@ license. Any future external fingerprint requires a pinned source, license revie
 and independent confidence/evidence review before enabling it.
 
 See [probe evidence transport and hardware checks](../docs/probe-capture.md).
+
+### 128-bit BLE service UUIDs
+
+`service_uuid128` accepts exactly 8-4-4-4-12 hexadecimal digits with hyphens.
+Braces, URN prefixes, missing/misplaced separators, masks and wildcards are rejected.
+Generated C++ and the provenance manifest contain lowercase canonical text.
+BLE sends the entire 16-byte UUID least-significant octet first: the example
+above matches `ffeeddccbbaa99887766554433221100` in advertising data.
+
+Matching checks complete entries in incomplete/complete service lists (AD types
+`0x06`/`0x07`) and only the leading UUID in 128-bit service data (`0x21`). It never
+searches application data or manufacturer data for UUID bytes. A partial UUID in
+any of these elements makes this predicate fail for the whole report, even if
+another element matches; list lengths must be multiples of 16, and service data
+must have at least 16 UUID bytes. An empty service list contains no match. A zero
+AD length terminates parsing, consistently with other BLE predicates.
+
+Public and random advertiser addresses use the same UUID comparison. This is
+passive advertising matching, with no GATT connection or service discovery.
+The existing 255-byte complete-report/reassembly limit, scan-boundary quarantine,
+observation identity and deduplication policies are unchanged. Raw AD evidence
+already crosses the child-parent bus and is retained as `ble_ad_hex` in
+JSONL; no wire or log version change is required. Standalone and parent matching
+therefore receive identical UUID bytes. Use `all` to combine independent evidence,
+or `any` for alternatives, as with `service_uuid16`.
+
+A service UUID is a broadcast claim, not authentication or proof of a particular
+manufacturer. Generic Nordic DFU services must not be labeled Flock-specific.
+This feature introduces no production signatures or third-party fingerprints;
+new signatures require separate source/license and confidence review. UniFi and
+Ubiquiti remain excluded.
+
+Hardware validation for issue #32 remains **not performed**. Before closing it,
+use a controlled advertiser and actual XIAO ESP32-C5 receivers to:
+
+1. Advertise a synthetic UUID above in `0x06`, `0x07`, and leading `0x21` service
+   data, separately, using public and random addresses. Verify passive delivery
+   and matching with a temporary lab rule and no active discovery.
+2. Repeat with complete legacy reports and bounded extended advertising, including
+   split UUID bytes; verify over-255-byte/truncated reports cannot match and scan
+   restarts do not join fragments across boundaries.
+3. Compare standalone and child-parent captures, classification/actions, raw
+   `ble_ad_hex`, and generated `.rules.json` provenance. Test a UUID appearing
+   only inside service-data bytes and one-byte near misses; neither should match.
+4. Record firmware commit, advertiser setup, controller report behavior, JSONL,
+   and scan/queue counters. Host tests are software evidence, not hardware proof.

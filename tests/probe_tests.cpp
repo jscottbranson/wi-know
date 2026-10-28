@@ -14,7 +14,7 @@ using Bytes = std::vector<uint8_t>;
 static Bytes frame(Bytes ies, uint8_t subtype = 0x40) {
     Bytes bytes(subtype == 0x40 ? 24 : 36);
     bytes[0] = subtype;
-    const uint8_t transmitter[]{0x00, 0x11, 0x22, 0x33, 0x44, 0x55};
+    const uint8_t transmitter[]{0x02, 0x11, 0x22, 0x33, 0x44, 0x55};
     std::copy(transmitter, transmitter + 6, bytes.begin() + 10);
     bytes.insert(bytes.end(), ies.begin(), ies.end());
     return bytes;
@@ -69,12 +69,16 @@ int main() {
     assert(matches(r, o));
     r.predicates[1] = {Field::wifi_subtype, "probe_request"};
     r.predicates[2] = {Field::wifi_ssid_wildcard, "true"};
-    r.predicates[3] = {Field::oui, "001122"};
+    r.predicates[3] = {Field::mac, "02:11:22:33:44:55"};
     r.predicate_count = 4;
     r.priority = 123;
     r.buzzer = true;
     r.follow = true;
     assert(matches(r, o) && best_match(&r, 1, o).rule == &r);
+    assert(!matches(rule(Field::oui, "021122"), o)); // Local MAC never widens OUI inference.
+    auto other_address = o;
+    other_address.address[5] ^= 1;
+    assert(!matches(r, other_address));
     auto near = o;
     near.payload[5] ^= 1;
     assert(!matches(r, near));

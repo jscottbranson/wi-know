@@ -283,6 +283,49 @@ class ConfigTests(unittest.TestCase):
                                 with self.assertRaises(ValueError):
                                     generate.validate(self.settings, base=base)
 
+    def test_service_uuid128(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = '.'
+            doc = generate.load(ROOT/'rules/examples/lab.json')
+            doc['rules'] = doc['rules'][:1]
+            rule = doc['rules'][0]
+            rule['radio'] = 'ble'
+            value = '00112233-4455-6677-8899-aabbccddeeff'
+            rule['predicates'] = [{'field': 'service_uuid128', 'value': value.upper()}]
+            path = base/'uuid.json'
+            path.write_text(json.dumps(doc))
+            settings, rules = generate.validate(self.settings, base=base)
+            self.assertEqual(rules[0]['predicates'][0]['value'], value)
+            self.assertEqual(rules[0]['source'], rule['source'])
+            self.assertIn('Field::service_uuid128,"'+value+'"', generate.emit(settings, rules))
+            # Exercise the actual provenance sidecar, not only in-memory rules.
+            settings_path = base/'settings.config'
+            cli_settings = copy.deepcopy(self.settings)
+            cli_settings['detection']['rules_directory'] = str(base)
+            settings_path.write_text(json.dumps(cli_settings))
+            output = base/'settings.hpp'
+            subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                            '--config', str(settings_path), '--output', str(output)],
+                           check=True, capture_output=True)
+            manifest = json.loads(output.with_suffix('.rules.json').read_text())
+            self.assertEqual(manifest['rules'][0]['predicates'], rules[0]['predicates'])
+            self.assertEqual(manifest['rules'][0]['source'], rule['source'])
+            output.with_suffix('.rules.json').unlink()
+            for bad in (value.replace('-', ''), '{'+value+'}', 'urn:uuid:'+value,
+                        value.replace('-', ':'), value+' ', value[:-1], value+'0',
+                        value[:-1]+'g', '*', '', 123):
+                with self.subTest(value=bad):
+                    rule['predicates'][0]['value'] = bad
+                    path.write_text(json.dumps(doc))
+                    with self.assertRaises(ValueError):
+                        generate.validate(self.settings, base=base)
+            rule['predicates'][0]['value'] = value
+            rule['radio'] = 'wifi'
+            path.write_text(json.dumps(doc))
+            with self.assertRaisesRegex(ValueError, 'BLE predicate'):
+                generate.validate(self.settings, base=base)
+
     def test_malformed_rules(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)
@@ -386,7 +429,7 @@ class ConfigTests(unittest.TestCase):
                             generate.validate(self.settings)
             rule['predicates'] = [{'field': 'wifi_subtype', 'value': 'probe_request'},
                                   {'field': 'wifi_ssid_wildcard', 'value': 'true'},
-                                  {'field': 'oui', 'value': '001122'},
+                                  {'field': 'mac', 'value': '02:11:22:33:44:55'},
                                   {'field': 'wifi_ie_fingerprint', 'value': '000001028284DD0412345601'}]
             (base/'rule.json').write_text(json.dumps(document))
             config = base/'config/settings.json'; config.parent.mkdir()
@@ -397,6 +440,7 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(result.returncode,0,result.stderr)
             manifest = generate.load(output.with_suffix('.rules.json'))['rules'][0]
             self.assertEqual(manifest['source'],rule['source'])
+            self.assertEqual(manifest['predicates'][2], {'field':'mac','value':'02:11:22:33:44:55'})
             self.assertEqual(manifest['predicates'][-1]['value'],'000001028284dd0412345601')
             for pred in rule['predicates'][:2] + rule['predicates'][3:] + [
                     {'field':'wifi_requested_ssid_prefix','value':'Flock-'}]:
@@ -421,6 +465,50 @@ class ConfigTests(unittest.TestCase):
                     else:
                         with self.assertRaises(ValueError):
                             generate.validate(self.settings, base=base)
+
+    def test_mac_validation_canonicalization_and_manifest(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            document['rules'] = document['rules'][:1]
+            rule = document['rules'][0]
+            for radio in ('wifi', 'ble'):
+                rule['radio'] = radio
+                for value in ('02:ab:34:cd:56:ef', '02:AB:34:CD:56:EF',
+                              '00:00:00:00:00:00', 'FF:FF:FF:FF:FF:FF'):
+                    with self.subTest(radio=radio, value=value):
+                        rule['predicates'] = [{'field': 'mac', 'value': value}]
+                        (base/'rule.json').write_text(json.dumps(document))
+                        settings, rules = generate.validate(self.settings, base=base)
+                        self.assertEqual(rules[0]['predicates'][0]['value'], value.lower())
+                        self.assertIn('Predicate{Field::mac,"'+value.lower()+'"}',
+                                      generate.emit(settings, rules))
+                for invalid in ('', '02:ab:34', '02:ab:34:cd:56', '02:ab:34:cd:56:ef:00',
+                                '02:ab:34:cd:56:eg', '02:ab:34:cd:56:*', '02:ab:34:cd:56:ef/48',
+                                '02ab34cd56ef', '02-ab-34-cd-56-ef', '02 ab 34 cd 56 ef',
+                                ' 02:ab:34:cd:56:ef', '02:ab:34:cd:56:ef ', '0:2ab:34:cd:56:ef',
+                                '02:ab:34:cd:56:ef\n', None, 123):
+                    with self.subTest(radio=radio, invalid=invalid):
+                        rule['predicates'] = [{'field': 'mac', 'value': invalid}]
+                        (base/'rule.json').write_text(json.dumps(document))
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings, base=base)
+            rule['predicates'] = [{'field': 'mac', 'value': '02:AB:34:CD:56:EF'}]
+            (base/'rule.json').write_text(json.dumps(document))
+            # Put the config outside the globbed rules directory.
+            settings_file = base/'config/settings.json'
+            settings_file.parent.mkdir()
+            settings_file.write_text(json.dumps(self.settings))
+            output = base/'generated/settings.hpp'
+            result = subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                                     '--config', str(settings_file), '--output', str(output)],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = generate.load(output.with_suffix('.rules.json'))['rules'][0]
+            self.assertEqual(manifest['predicates'], [{'field': 'mac', 'value': '02:ab:34:cd:56:ef'}])
+            for field in ('source', 'actions', 'priority', 'confidence'):
+                self.assertEqual(manifest[field], rule[field])
 
     def test_manifest_preserves_provenance_and_effective_enablement(self):
         with tempfile.TemporaryDirectory() as folder:
