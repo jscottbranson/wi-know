@@ -64,7 +64,8 @@ those pins requires a reviewed hardware port, not a per-board build override.
 Manual role/ID overrides disable universal provisioning and require an isolated
 legacy bus. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-485.
 
-The default LCD address 39 (`0x27`) and PCF8574 mapping are assumptions to verify.
+The 5 V PCF8574 LCD backpack is configured at address 39 (`0x27`); verify its
+address and pin mapping against the driver configuration.
 Parents try enabled SD storage at boot, then fall back to internal flash if SD is
 disabled or unavailable. See [storage selection, limits and readback](../docs/storage.md).
 An unformatted card can be prepared with the explicit

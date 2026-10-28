@@ -117,7 +117,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Median RSSI windows, deadband and confirmation counts, with three active-high
   trend LEDs and an unknown/off state for stale data. These indicate strength, not bearing.
 - PWM buzzer with global cooldown, common PCF8574/HD44780 16×2 LCD driver, and
-  SD-over-SPI logging. LCD assumption: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
+  SD-over-SPI logging. LCD driver mapping: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
 - JSONL on console and SD with [internal-flash fallback](storage.md); matching-only/all-observation modes; bounded
   SD writer queue, periodic flush, size rotation and file-count retention.
   Existing files are not appended on reboot. SD formatting requires an explicit
