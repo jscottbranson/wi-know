@@ -9,6 +9,9 @@ python3 tools/export_observations.py /path/to/logs/WK*.LOG -o detections.csv
 python3 tools/export_observations.py /path/to/logs/WK*.LOG -o detections.geojson
 ```
 
+When logging used internal flash, first [read back and extract the flash logs](storage.md#reading-flash-logs).
+The extracted files use the same JSON Lines format and export commands.
+
 The output extension selects the format; use `--format` to override it. With no
 `-o`, the default is JSON on stdout. Supported formats:
 

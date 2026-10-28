@@ -54,6 +54,9 @@ Optional [following-device alerts](config/README.md#following-device-alerts) com
 continued Wi-Fi/BLE sightings with GPS displacement, with an ignore list and
 configurable distance and delay.
 Settings and rules are validated and compiled into firmware; rebuild after changes.
+Parents prefer a configured, writable microSD card and otherwise save logs to
+[bounded internal-flash storage](docs/storage.md). The LCD and serial status show
+the selected destination; workers do not write persistent logs.
 Export recorded detections to JSON, JSONL, CSV, TSV or GeoJSON with the
 [sharing and mapping tool](docs/exporting.md), including rule evidence and receiver
 locations at capture and peak signal strength.

@@ -6,9 +6,11 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
 #include "log_helpers.hpp"
+#include "log_storage.hpp"
 #include "nvs.h"
 #include "platform.hpp"
 #include "sdmmc_cmd.h"
@@ -71,7 +73,9 @@ static QueueHandle_t log_queue{}, console_queue{};
 // Each line is 2304 bytes. Keep output queues bounded without consuming the
 // internal RAM needed to initialize Wi-Fi and BLE on boards without enabled PSRAM.
 static constexpr unsigned log_queue_depth = 2;
-static std::atomic<bool> sd_ready{};
+static std::atomic<Storage> active_storage{Storage::starting};
+static const char *log_root = "/sdcard";
+static LogLimits limits{size_t(c::logging_rotate_bytes), size_t(c::logging_max_files)};
 struct LogLine {
     char data[wiknow::log_line_capacity];
 };
@@ -203,8 +207,8 @@ void indicators(wiknow::Trend trend, bool beep) {
     }
 }
 static void init_lcd() {
-    ESP_LOGI("lcd", "Initializing SDA=%d SCL=%d address=0x%02x",
-             c::display_sda_pin, c::display_scl_pin, unsigned(c::display_i2c_address));
+    ESP_LOGI("lcd", "Initializing SDA=%d SCL=%d address=0x%02x", c::display_sda_pin,
+             c::display_scl_pin, unsigned(c::display_i2c_address));
     i2c_master_bus_config_t bus{};
     bus.i2c_port = I2C_NUM_0;
     bus.sda_io_num = gpio_num_t(c::display_sda_pin);
@@ -236,6 +240,8 @@ static void init_lcd() {
     vTaskDelay(ticks(3));
     screen("wi-know", "Starting...");
 }
+static sdmmc_card_t *sd_card{};
+static wl_handle_t flash_handle = WL_INVALID_HANDLE;
 static bool mount_sd() {
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = SPI2_HOST;
@@ -259,8 +265,7 @@ static bool mount_sd() {
     mount.format_if_mount_failed = false;
     mount.max_files = 3;
     mount.allocation_unit_size = 16 * 1024;
-    sdmmc_card_t *card{};
-    error = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot, &mount, &card);
+    error = esp_vfs_fat_sdspi_mount("/sdcard", &host, &slot, &mount, &sd_card);
     if (error != ESP_OK) {
         ESP_LOGE("sd", "Mount failed (card is never auto-formatted): %s", esp_err_to_name(error));
         spi_bus_free(SPI2_HOST);
@@ -268,78 +273,115 @@ static bool mount_sd() {
     }
     return true;
 }
-struct LogFiles {
-    uint32_t newest{}, oldest{UINT32_MAX};
-    size_t count{};
-};
-static LogFiles files() {
-    LogFiles result{};
-    DIR *dir = opendir("/sdcard");
-    if (!dir)
-        return result;
-    while (auto *entry = readdir(dir)) {
-        uint32_t id{};
-        if (log_file_id(entry->d_name, id)) {
-            result.newest = std::max(result.newest, uint32_t(id));
-            result.oldest = std::min(result.oldest, uint32_t(id));
-            ++result.count;
-        }
+static bool mount_flash() {
+    const auto *partition =
+        esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_FAT, "logs");
+    if (!partition) {
+        ESP_LOGE("storage", "Flash log partition missing; flash the updated partition table");
+        return false;
     }
-    closedir(dir);
-    return result;
+    const bool blank =
+        erased_partition(partition->size, [partition](size_t offset, void *data, size_t n) {
+            return esp_partition_read(partition, offset, data, n) == ESP_OK;
+        });
+    esp_vfs_fat_mount_config_t mount{};
+    mount.format_if_mount_failed = blank;
+    mount.max_files = 2;
+    mount.allocation_unit_size = CONFIG_WL_SECTOR_SIZE;
+    if (blank)
+        ESP_LOGI("storage", "Initializing erased flash log partition");
+    const esp_err_t error =
+        esp_vfs_fat_spiflash_mount_rw_wl("/flashlog", "logs", &mount, &flash_handle);
+    if (error != ESP_OK) {
+        ESP_LOGE("storage", "Flash mount failed: %s; existing contents are not reformatted",
+                 esp_err_to_name(error));
+        return false;
+    }
+    return true;
 }
 static FILE *next_log() {
-    auto index = files();
-    if (index.newest >= 99999999)
-        return nullptr;
-    while (index.count >= size_t(c::logging_max_files)) {
-        char name[48];
-        std::snprintf(name, sizeof(name), "/sdcard/WK%08u.LOG", unsigned(index.oldest));
-        if (std::remove(name) != 0)
-            return nullptr;
-        index = files();
-    }
-    char name[48];
-    std::snprintf(name, sizeof(name), "/sdcard/WK%08u.LOG", unsigned(index.newest + 1));
-    return std::fopen(name, "w");
+    return open_next_log(log_root, limits.max_files, [] {
+        uint64_t total{}, free{};
+        if (esp_vfs_fat_info(log_root, &total, &free) != ESP_OK)
+            return -1;
+        // Reserve one complete file plus metadata headroom before opening it.
+        return free >= limits.rotate_bytes + 8192 ? 1 : 0;
+    });
 }
 static void logger(void *) {
     FILE *file = nullptr;
     size_t bytes = 0;
+    bool dirty = false;
     uint64_t last_flush = now_ms();
-    if (mount_sd())
-        file = next_log();
-    sd_ready = file != nullptr;
+    const Storage selected = select_storage(
+        c::sd_enabled,
+        [&] {
+            if (!mount_sd())
+                return false;
+            file = next_log();
+            if (!file) {
+                ESP_LOGW("storage", "SD log open failed; trying flash");
+                esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
+                spi_bus_free(SPI2_HOST);
+            }
+            return file != nullptr;
+        },
+        [&] {
+            if (!mount_flash())
+                return false;
+            log_root = "/flashlog";
+            limits = log_limits(Storage::flash, c::logging_rotate_bytes, c::logging_max_files);
+            file = next_log();
+            if (!file)
+                esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
+            return file != nullptr;
+        });
+    active_storage = selected;
+    ESP_LOGI("storage", "Logging=%s rotate=%u max_files=%u", storage_label(selected),
+             unsigned(limits.rotate_bytes), unsigned(limits.max_files));
     LogLine line{};
     for (;;) {
         if (xQueueReceive(log_queue, &line, ticks(100)) == pdTRUE) {
             size_t size = std::strlen(line.data);
-            if (file && bytes + size > size_t(c::logging_rotate_bytes)) {
+            if (file && bytes + size > limits.rotate_bytes) {
                 bool clean = std::fclose(file) == 0;
                 file = clean ? next_log() : nullptr;
                 bytes = 0;
-                sd_ready = file != nullptr;
+                dirty = false;
+                active_storage = file ? selected : Storage::off;
+                if (!file)
+                    ESP_LOGE("storage", "%s rotation failed; logging disabled until reboot",
+                             storage_label(selected));
             }
             if (file) {
                 if (std::fwrite(line.data, 1, size, file) != size) {
-                    ESP_LOGE("sd", "Write failed; logging disabled until reboot");
+                    ESP_LOGE("storage", "%s write failed; logging disabled until reboot",
+                             storage_label(selected));
                     std::fclose(file);
                     file = nullptr;
-                    sd_ready = false;
+                    active_storage = Storage::off;
                     ++dropped;
-                } else
+                } else {
                     bytes += size;
+                    dirty = true;
+                }
             } else
                 ++dropped;
         }
-        if (file && now_ms() - last_flush >= uint64_t(c::logging_flush_interval_ms)) {
+        const uint64_t flush_ms =
+            selected == Storage::flash
+                ? std::max(uint64_t(c::logging_flush_interval_ms), uint64_t(5000))
+                : uint64_t(c::logging_flush_interval_ms);
+        if (file && dirty && now_ms() - last_flush >= flush_ms) {
             if (std::fflush(file) != 0 || fsync(fileno(file)) != 0) {
-                ESP_LOGE("sd", "Flush failed; logging disabled until reboot");
+                ESP_LOGE("storage", "%s flush failed; logging disabled until reboot",
+                         storage_label(selected));
                 std::fclose(file);
                 file = nullptr;
-                sd_ready = false;
+                active_storage = Storage::off;
                 ++dropped;
             }
+            dirty = false;
             last_flush = now_ms();
         }
     }
@@ -365,13 +407,14 @@ void write_log(const char *json) {
         ++dropped;
 }
 void storage_tick() {}
-bool storage_ready() {
-    return sd_ready;
+const char *storage_name() {
+    return storage_label(active_storage.load());
 }
 static void boot_indicator_test() {
     if (!c::signal_trend_enabled && !c::buzzer_enabled)
         return;
-    ESP_LOGI("peripherals", "Boot test: LEDs 200 ms each, then buzzer 100 ms (enabled outputs only)");
+    ESP_LOGI("peripherals",
+             "Boot test: LEDs 200 ms each, then buzzer 100 ms (enabled outputs only)");
     if (c::signal_trend_enabled) {
         for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
                         c::signal_trend_steady_pin}) {
@@ -435,10 +478,17 @@ void start_peripherals() {
     boot_indicator_test();
     if (c::display_enabled)
         init_lcd();
-    if (c::sd_enabled) {
-        log_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
-        configASSERT(log_queue);
-        configASSERT(xTaskCreate(logger, "sd_writer", 6144, nullptr, 2, nullptr) == pdPASS);
+}
+void start_storage() {
+    if (role != wiknow::Role::parent)
+        return;
+    log_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
+    if (!log_queue || xTaskCreate(logger, "log_writer", 6144, nullptr, 2, nullptr) != pdPASS) {
+        if (log_queue)
+            vQueueDelete(log_queue);
+        log_queue = nullptr;
+        active_storage = Storage::off;
+        ESP_LOGE("storage", "No RAM for log writer; console logging only");
     }
 }
 } // namespace platform

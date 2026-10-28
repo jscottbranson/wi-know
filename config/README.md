@@ -51,7 +51,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `follower` | Enable target commands; release after no fresh matching observation |
 | `gps` | Air530 UART (9600 baud), maximum fix age, capture-time uncertainty limit |
 | `sd` | HW-125 SPI pins and conservative 4 MHz initial clock |
-| `logging` | `matches` or `all`; flush period, rotation bytes, number of retained logs |
+| `logging` | `matches` or `all`; flush period, rotation bytes, retained files; flash fallback caps apply |
 | `display` | I²C pins/address and page period; 16×2 PCF8574 backpack driver |
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
 | `signal_trend` | Optional active-high LED pins (`-1` omits each LED), median window, samples, deadband and confirmations |
@@ -65,6 +65,8 @@ Manual role/ID overrides disable universal provisioning and require an isolated
 legacy bus. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-485.
 
 The default LCD address 39 (`0x27`) and PCF8574 mapping are assumptions to verify.
+Parents try enabled SD storage at boot, then fall back to internal flash if SD is
+disabled or unavailable. See [storage selection, limits and readback](../docs/storage.md).
 Do not infer HW-125 supply voltage from its header labels. The RS-485 bus requires
 3.3 V-compatible transceivers, common ground, correct termination/biasing, and RTS
 wired to the transceiver's transmit-enable/receive-enable control. Bare UART TX
