@@ -76,7 +76,8 @@ Choose the parts before building:
 - **One or two LEDs:** keep `signal_trend.enabled: true`, and set each omitted
   LED's `increasing_pin`, `decreasing_pin` or `steady_pin` to `-1`. That GPIO is
   released. Each fitted LED still shows only its named trend; one LED does not
-  encode all three states. Unknown or stale signal turns all fitted LEDs off.
+  encode all three states. The steady LED also lights for a fresh matching signal
+  while trend samples accumulate. No fresh match turns all fitted LEDs off.
 - **No LEDs:** set `signal_trend.enabled: false` and leave those branches unwired.
 - **No display, GPS, microSD or buzzer:** set that section's `enabled` to `false` and omit
   its entire circuit. The freed pins can be reassigned in a custom configuration.
@@ -185,8 +186,10 @@ P1.8 / GPIO7 → tied DE and `/RE`. The XIAO workers retain GPIO12 as RX.
 
 Use one 470 Ω resistor per efficient red/green/amber LED (approximately 2–3 mA;
 actual current depends on forward voltage). Anode is usually the long lead;
-cathode is usually the short lead/flat edge. All LEDs turn off for unknown or stale
-signal strength. These indicate changes in strength, not transmitter direction.
+cathode is usually the short lead/flat edge. A fresh matching signal lights the
+amber LED while trend samples accumulate, then the LED for the measured trend.
+All LEDs turn off when the match becomes stale (`signal_trend.stale_ms`, 6 seconds
+by default). These indicate changes in strength, not transmitter direction.
 
 The buzzer circuit is designed for a **5 V passive magnetic buzzer drawing no more
 than 20 mA**, driven by the configured PWM frequency. Q1 is a 2N3904 NPN; check its
