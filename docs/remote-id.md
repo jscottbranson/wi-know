@@ -3,7 +3,8 @@
 The receiver decodes ASTM/OpenDroneID **protocol version 2** broadcasts using:
 
 - BLE Service Data (16-bit UUID `0xFFFA`, application code `0x0D`), including
-  individual messages and message packs in complete extended advertisements.
+  individual messages and message packs in complete or bounded reassembled
+  extended advertisements (see the BLE limits below).
 - Wi-Fi beacon/probe-response vendor information elements (`FA:0B:BC`, type `0x0D`)
   carrying message packs. Children forward the vendor IE through the existing bus
   observation payload; the parent performs the same decoding as for local BLE.
@@ -70,7 +71,7 @@ verification or reassembly. Older/newer protocol versions, unknown message types
 and malformed message envelopes are not classified as supported detections.
 
 Existing capture bounds remain: 512-byte Wi-Fi frames (excluding FCS), 255-byte
-BLE data, and complete unfragmented reports. NAN requires an unprotected,
+BLE data after reassembly. NAN requires an unprotected,
 unfragmented management action frame addressed to `51:6F:9A:01:00:00`, with the
 supported public-action header and one Remote ID service descriptor. The supported
 reference profile uses instance 1, requestor 0, service control `0x10`, and a single
@@ -141,3 +142,95 @@ BLE active on the real board; unchanged buffer sizes do not prove RF coverage or
 runtime headroom. No Mini 3 compatibility or other device interoperability is
 claimed without a captured compatible broadcast. Captured-device fixtures and
 those measurements must be added after hardware testing.
+
+## Bounded BLE extended-advertising reassembly
+
+The implementation targets **ESP-IDF v5.5.1** and its pinned esp-nimble revision
+[`b45dcedcafb7888174c3567002c36b342ec0b723`](https://github.com/espressif/esp-nimble/tree/b45dcedcafb7888174c3567002c36b342ec0b723).
+In that revision, [`ble_hs_hci_evt.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs_hci_evt.c)
+passes each HCI extended-report data pointer/length and data status directly to
+[`ble_gap_rx_ext_adv_report`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_gap.c).
+The host does **not** accumulate those bytes. Both the 1M and coded PHY scan
+parameters explicitly enable observer mode, bypassing the host's AD-flags filter
+so a fragment with a split AD header can reach the callback. This is source-level
+verification of the pinned host path; actual C5 controller delivery still needs
+hardware capture.
+
+An INCOMPLETE report begins/continues a chain; COMPLETE terminates it (or passes
+through directly if there is no chain); TRUNCATED discards the entire chain.
+Limits are **four simultaneous chains, eight fragments including the final
+fragment, 250 ms from the first fragment, and 255 total bytes**. The table and
+buffers have fixed capacity. The exact advertiser address/type and advertising
+SID identify a chain; advertising and scan-response chains are separate. Report
+properties, primary/secondary PHY, periodic interval and any directed destination
+must remain consistent. Anonymous/reserved address types are rejected rather
+than assigned a guessed identity. A known-address standalone COMPLETE report
+with unavailable SID (`0xff`) remains supported if no pending/poisoned chain for
+that advertiser could own it. Incomplete unavailable-SID reports or ambiguous
+same-advertiser completions quarantine reception until a scan boundary.
+Legacy COMPLETE advertisements remain supported.
+
+Overflow and inconsistent metadata poison a chain: subsequent fragments are
+ignored until its terminal report. A poisoned chain's terminal COMPLETE is never
+treated as standalone data. Timeouts or table saturation quarantine reception
+until a successful controller scan cancellation/restart; no live chain is evicted
+to make an unsafe late tail look like a new report. The maintenance timer checks
+every 50 ms and retries failed cancellations/starts. A normal scan stop, host reset,
+or standalone Wi-Fi/BLE transition also clears reassembly. A stop-command ACK
+alone is **not** a drain barrier: pinned
+[`ble_hs_hci.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs_hci.c)
+handles command ACKs synchronously while
+[`ble_hs.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs.c)
+queues advertising events individually. After a confirmed cancellation or reset/sync,
+all scan-start paths stay gated until a marker posted on the host event queue has
+drained older reports while discovery remains inactive. Overlapping boundaries
+post a fresh marker before releasing the gate; a Wi-Fi phase does not restart BLE.
+Completed reports carry
+a scan generation into a two-entry parser queue; both before parsing and at final
+observation insertion, reports from an earlier generation are discarded.
+
+Callbacks only check metadata and copy bounded bytes. A dedicated 4096-byte-stack
+worker parses AD structures, evaluates rules and decodes Remote ID. Capture time,
+RSSI, node and assignment policy come from the first fragment; the assembly span
+is retained in timing uncertainty. No payload, bus protocol or raw-evidence schema
+is enlarged. Completed payloads over 255 bytes are discarded entirely, without
+truncation or normalization. Console/export/storage use the same observation and
+Remote ID paths as a complete advertisement.
+
+The HCI descriptor has **no advertising-event identifier or fragment sequence
+number**. The assembler relies on ordered HCI COMPLETE/INCOMPLETE/TRUNCATED
+semantics for one identified advertising set. It does not infer boundaries from
+repeated byte contents or synthesize missing bytes. Invisible loss/reordering
+upstream of the callback cannot always be detected: a missing fragment that
+happens to leave valid AD structures, or a missing terminal followed promptly by
+another same-key event, is not distinguishable from valid input with this API.
+Malformed completed AD structures are rejected by the parser. This feature does
+not claim recovery from undelivered bytes or authentication of broadcast claims.
+
+Serial `ble` diagnostics every 30 seconds report completed assemblies, standalone
+complete reports, timeout/truncation/overflow/ambiguity counts, capacity resets,
+cancelled chains, completed-queue drops and stale-generation drops. Startup reports
+assembly-table and queue bytes plus the parser stack budget; periodic output
+includes current/minimum internal heap. These are instrumentation, not hardware
+headroom measurements. The additional buffers/tasks remain bounded, but physical
+validation with simultaneous Wi-Fi, storage and both PSRAM/no-PSRAM boards remains
+necessary.
+
+Host `ble_reassembly_tests` exercises every split point of a valid RID AD fixture,
+1M and coded metadata, interleaved advertisers/SIDs/scan responses, standalone
+COMPLETE and legacy input, repeated bytes, truncated/missing fragments, exact byte
+and fragment bounds, poisoned tails, table saturation, timeout and reset. Reassembled
+RID output and bus evidence are compared with the original fixture. A fake SDK/host
+queue reproduces synchronous stop-ACK bypass, queued old COMPLETE tails, overlapping
+reset/sync barriers, failed cancellation/start, standalone phase changes and stale
+completed-report generations. Unavailable-SID complete input and ambiguous tails
+have separate regression cases.
+
+For physical acceptance, use an extended-advertising transmitter with controlled
+fragmentation on both 1M and coded PHYs. Compare independent HCI/RF captures with
+`drone_detection` JSON, including split AD headers; then test missing/truncated
+fragments, advertiser interleaving, standalone scan-window cancellation, sustained
+storage writes and minimum internal heap. Confirm the pinned controller produces
+successive fragments rather than accumulated data in practice. No physical
+fragmentation test or captured-drone fixture has yet been performed; an existing
+drone may not emit a suitable fragmented fixture.

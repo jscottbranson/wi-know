@@ -90,9 +90,10 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   with version 2 firmware. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
 - Receive-only Wi-Fi beacon/probe-response metadata, NAN service discovery and passive BLE advertising
-  (legacy and complete extended reports). Wi-Fi frames over 512 bytes and BLE
-  advertising payloads over 255 bytes are currently skipped; fragmented reports
-  are not reassembled. Arbitrary data traffic is not captured.
+  (legacy, complete extended reports, and bounded extended-advertising reassembly).
+  Wi-Fi frames over 512 bytes and complete/reassembled BLE payloads over 255 bytes
+  are skipped. BLE chains are bounded to four advertisers/sets, eight fragments
+  and 250 ms; see [the reassembly policy](remote-id.md#bounded-ble-extended-advertising-reassembly). Arbitrary data traffic is not captured.
 - [Drone Remote ID decoding and storage](remote-id.md) for BLE, Wi-Fi NAN and beacon
   broadcasts: identity, location, velocity, system and operator data, with raw evidence.
   Supported detections are retained in matches-only mode without custom rules.
