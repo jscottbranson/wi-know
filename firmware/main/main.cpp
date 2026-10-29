@@ -4,6 +4,7 @@
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "sdkconfig.h"
 #include "wiknow/alert_cooldown.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
@@ -13,6 +14,10 @@
 #include <cstdio>
 #include <cstring>
 #include <new>
+
+static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE >= 13312,
+              "Set CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312 or greater in firmware/sdkconfig; "
+              "Wi-Fi header logging needs the updated main task stack budget");
 
 namespace {
 using namespace wiknow;

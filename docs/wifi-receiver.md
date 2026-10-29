@@ -61,8 +61,13 @@ grows by a 26-byte header and one size byte (plus compiler padding), including t
 bounded tracker/queue copies. No heap allocation is added to capture or parsing. Log-line capacity grows from
 2304 to 2816 bytes to accommodate maximum probe evidence plus address roles and
 GPS metadata: +512 bytes per stack-local line and +2 KiB across the two bounded
-two-entry disk/console queues. Existing main/logger stacks remain 12/6 KiB;
-hardware stack-watermark and heap checks remain necessary.
+two-entry disk/console queues. Preserve previous stack headroom by adding 512
+bytes to each console/logger stack (4608/6656 bytes), and 1024 bytes to the main
+stack (13312 bytes) for its nested formatting/write buffers. These stacks add
+2 KiB in total; hardware stack-watermark and heap checks remain necessary. A
+compile-time check rejects cached `firmware/sdkconfig` files with the old main
+stack budget: set `CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312` or greater, or regenerate
+that local configuration from the updated defaults.
 
 Bus protocol **4** carries the header length and 26-byte padded header field.
 Maximum report payload is 387 bytes, or 419 with the universal identity wrapper,
