@@ -461,8 +461,12 @@ static void parent_loop() {
                 else if (target_rule)
                     std::snprintf(line2, sizeof(line2), "%d P%d %.6s", int(target.rssi),
                                   target_peak, trend_name(visible));
-                else
-                    std::snprintf(line2, sizeof(line2), "Add rules/*.json");
+                else {
+                    const bool rules_enabled = std::any_of(c::rules.begin(), c::rules.end(),
+                        [](const wiknow::Rule &r) { return r.enabled; });
+                    std::snprintf(line2, sizeof(line2), "%s",
+                                  rules_enabled ? "Awaiting match" : "Add rules/*.json");
+                }
             } else if (page == 2) {
                 bool fresh = gps.nearest(now, c::gps_max_fix_age_ms).valid;
                 std::snprintf(line1, sizeof(line1), "GPS:%s", fresh ? "FIX" : "NO FIX");
