@@ -69,8 +69,9 @@ compile-time check rejects cached `firmware/sdkconfig` files with the old main
 stack budget: set `CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312` or greater, or regenerate
 that local configuration from the updated defaults.
 
-Bus protocol **4** carries the header length and 26-byte padded header field.
-Maximum report payload is 387 bytes, or 419 with the universal identity wrapper,
+Bus protocol **5** carries the header length and 26-byte padded header field,
+followed by the BLE acquisition discriminator.
+Maximum report payload is 388 bytes, or 420 with the universal identity wrapper,
 within the existing 512-byte payload and conservative bus timing budget. All
 nodes must be rebuilt/flashed together: earlier protocol versions are rejected.
 Wire decoding checks the subtype, header shape, transmitter identity, zero

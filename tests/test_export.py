@@ -102,6 +102,16 @@ class ExportTests(unittest.TestCase):
                     result = data['features'][0]['properties'] if kind == 'geojson' else data[0] if kind == 'json' else data
                 for key, value in evidence.items():
                     self.assertEqual(result[key], value)
+    def test_connected_service_evidence_exports(self):
+        evidence = {'ble_acquisition': 'connected_primary_discovery',
+                    'gatt_services_hex': '00112233445566778899aabbccddeeff',
+                    'ble_ad_hex': ''}
+        for kind in ('csv', 'tsv'):
+            self.assertEqual(self.run_export([observation(**evidence)], kind), 0)
+            with self.output.open() as stream:
+                row, = csv.DictReader(stream, delimiter=',' if kind == 'csv' else '\t')
+            for key, value in evidence.items():
+                self.assertEqual(row[key], value)
 
     def test_infers_extensions_and_defaults_stdout_to_json(self):
         self.log.write_text(json.dumps(observation()))

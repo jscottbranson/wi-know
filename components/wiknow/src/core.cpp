@@ -13,6 +13,8 @@ namespace wiknow {
 bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_m,
                                 uint64_t received_ms) {
     evidence_ = {};
+    if (o.ble_evidence != BleEvidence::advertisement)
+        return false;
     if (config_.scoring_enabled)
         return observe_scored(o, fix, distance_m, received_ms);
     if (!config_.enabled)
@@ -151,7 +153,8 @@ bool FollowingDetector::observe_scored(const Observation &o, Fix fix, double &di
     entry->last_seen = o.at_ms;
     entry->previous = fix;
     distance_m = distance(fix, entry->origin);
-    const uint64_t decay = (o.at_ms - entry->decay_at) / std::max<uint32_t>(1, config_.score_decay_ms);
+    const uint64_t decay =
+        (o.at_ms - entry->decay_at) / std::max<uint32_t>(1, config_.score_decay_ms);
     entry->score -= uint32_t(std::min<uint64_t>(decay, entry->score));
     entry->decay_at += decay * std::max<uint32_t>(1, config_.score_decay_ms);
     const bool hit = o.at_ms - entry->last_hit >= config_.hit_interval_ms;
@@ -367,7 +370,17 @@ bool ble_payload_contains(std::string_view value, const Observation &o) {
 bool predicate(const Predicate &p, const Observation &o) {
     uint8_t bytes[32]{};
     size_t size{};
+    if (o.ble_evidence == BleEvidence::gatt_primary_services &&
+        p.field != Field::gatt_service_uuid128 && p.field != Field::mac && p.field != Field::oui)
+        return false;
     switch (p.field) {
+    case Field::gatt_service_uuid128:
+        if (!valid_gatt_services(o) || !uuid128(p.value, bytes))
+            return false;
+        for (size_t at = 0; at < o.payload_size; at += 16)
+            if (std::equal(bytes, bytes + 16, o.payload.begin() + at))
+                return true;
+        return false;
     case Field::rid_valid:
     case Field::rid_message_type:
     case Field::rid_basic_id:
@@ -730,6 +743,7 @@ bool wifi_addresses(const Observation &o, WifiAddresses &out) {
     return true;
 }
 bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
+    out.ble_evidence = BleEvidence::advertisement;
     // Clear parse-owned state even when an Observation is reused after a failed parse.
     out.wifi_subtype = WifiSubtype::unknown;
     out.wifi_header_size = 0;
@@ -810,6 +824,7 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
     return true;
 }
 bool parse_ble(const uint8_t *data, size_t length, Observation &out) {
+    out.ble_evidence = BleEvidence::advertisement;
     out.wifi_subtype = WifiSubtype::unknown;
     out.wifi_header_size = 0;
     out.wifi_header.fill(0);
@@ -836,7 +851,40 @@ bool parse_ble(const uint8_t *data, size_t length, Observation &out) {
     }
     return true;
 }
+bool valid_gatt_services(const Observation &o) {
+    return o.radio == Radio::ble && o.ble_evidence == BleEvidence::gatt_primary_services &&
+           o.wifi_subtype == WifiSubtype::unknown && !o.wifi_header_size && o.payload_size <= 240 &&
+           o.payload_size % 16 == 0;
+}
+// A connected-discovery rule is deliberately narrower than an advertising rule:
+// all-match, exact device identity, and at least one discovered service predicate.
+bool gatt_candidate(const Rule *rules, size_t count, const Observation &o) {
+    for (size_t i = 0; i < count; ++i) {
+        const auto &r = rules[i];
+        if (!r.enabled || r.radio != Radio::ble || !r.require_all ||
+            r.predicate_count > r.predicates.size())
+            continue;
+        bool service = false, identity = false, eligible = true;
+        size_t identities = 0;
+        for (size_t j = 0; j < r.predicate_count; ++j) {
+            const auto &p = r.predicates[j];
+            if (p.field == Field::gatt_service_uuid128)
+                service = true;
+            else if (p.field == Field::mac) {
+                ++identities;
+                identity = predicate(p, o);
+            } else
+                eligible = false;
+        }
+        if (service && identity && identities == 1 && eligible)
+            return true;
+    }
+    return false;
+}
 bool matches(const Rule &r, const Observation &o) {
+    if (uint8_t(o.ble_evidence) > 1 || (o.ble_evidence == BleEvidence::gatt_primary_services &&
+                                        (!valid_gatt_services(o) || !gatt_candidate(&r, 1, o))))
+        return false;
     if (o.payload_size > o.payload.size() || !r.enabled || r.radio != o.radio ||
         !r.predicate_count || r.predicate_count > r.predicates.size())
         return false;
@@ -1070,7 +1118,8 @@ bool Gps::utc(uint64_t at, int64_t &out) const {
 }
 bool same_signal(const Observation &a, const Observation &b) {
     return a.node == b.node && a.boot == b.boot && a.radio == b.radio &&
-           a.address_type == b.address_type && a.address == b.address && a.channel == b.channel;
+           a.ble_evidence == b.ble_evidence && a.address_type == b.address_type &&
+           a.address == b.address && a.channel == b.channel;
 }
 Track &Tracker::observe(const Observation &o, Fix fix) {
     Track *t = nullptr;
@@ -1346,6 +1395,10 @@ bool pack_report(const Report &r, Packet &p) {
         ((subtype == WifiSubtype::data || subtype == WifiSubtype::qos_data) &&
          !r.observation.wifi_header_size))
         return false;
+    if (uint8_t(r.observation.ble_evidence) > 1 ||
+        (r.observation.ble_evidence == BleEvidence::gatt_primary_services &&
+         !valid_gatt_services(r.observation)))
+        return false;
     p.type = MessageType::report;
     auto *b = p.payload.data();
     b[0] = uint8_t(r.role);
@@ -1371,12 +1424,13 @@ bool pack_report(const Report &r, Packet &p) {
     std::memcpy(b + 36, o.ssid.data(), 33);
     std::memcpy(b + 69, o.name.data(), 33);
     put16(b + 102, o.payload_size);
-    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 132);
+    std::copy(o.payload.begin(), o.payload.begin() + o.payload_size, b + 133);
     b[104] = uint8_t(o.wifi_subtype);
     b[105] = o.wifi_header_size;
     std::fill(b + 106, b + 132, 0);
     std::copy(o.wifi_header.begin(), o.wifi_header.begin() + o.wifi_header_size, b + 106);
-    p.size = uint16_t(132 + o.payload_size);
+    b[132] = uint8_t(o.ble_evidence);
+    p.size = uint16_t(133 + o.payload_size);
     return true;
 }
 bool unpack_report(const Packet &p, Report &r) {
@@ -1401,7 +1455,7 @@ bool unpack_report(const Packet &p, Report &r) {
         return false;
     if (!r.has_observation)
         return p.size == 18;
-    if (p.size < 132 || get16(b + 102) > max_payload || p.size != 132 + get16(b + 102) ||
+    if (p.size < 133 || get16(b + 102) > max_payload || p.size != 133 + get16(b + 102) ||
         b[26] > 1 || b[27] > 1 || b[68] != 0 || b[101] != 0)
         return false;
     auto &o = r.observation;
@@ -1424,8 +1478,11 @@ bool unpack_report(const Packet &p, Report &r) {
     o.wifi_subtype = WifiSubtype(b[104]);
     if (o.radio == Radio::ble && o.wifi_subtype != WifiSubtype::unknown)
         return false;
+    if (b[132] > 1)
+        return false;
+    o.ble_evidence = BleEvidence(b[132]);
     o.payload_size = get16(b + 102);
-    std::copy(b + 132, b + 132 + o.payload_size, o.payload.begin());
+    std::copy(b + 133, b + 133 + o.payload_size, o.payload.begin());
     o.wifi_header_size = b[105];
     if (o.wifi_header_size > o.wifi_header.size() ||
         !std::all_of(b + 106 + o.wifi_header_size, b + 132, [](uint8_t v) { return v == 0; }))
@@ -1435,6 +1492,8 @@ bool unpack_report(const Packet &p, Report &r) {
     if ((o.wifi_header_size && !wifi_addresses(o, addresses)) ||
         ((o.wifi_subtype == WifiSubtype::data || o.wifi_subtype == WifiSubtype::qos_data) &&
          !o.wifi_header_size))
+        return false;
+    if (o.ble_evidence == BleEvidence::gatt_primary_services && !valid_gatt_services(o))
         return false;
     return o.wifi_subtype != WifiSubtype::probe_request ||
            valid_probe_ies(o.payload.data(), o.payload_size);
@@ -1492,10 +1551,19 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
     else
         j.add("null");
     j.add(",\"ble_ad_hex\":\"");
-    if (o.radio == Radio::ble)
+    if (o.radio == Radio::ble && o.ble_evidence == BleEvidence::advertisement)
         for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
             j.add("%02x", unsigned(o.payload[i]));
     j.add("\"");
+    if (o.radio == Radio::ble) {
+        j.add(",\"ble_acquisition\":\"%s\",\"gatt_services_hex\":\"",
+              o.ble_evidence == BleEvidence::advertisement ? "passive_advertisement"
+                                                           : "connected_primary_discovery");
+        if (o.ble_evidence == BleEvidence::gatt_primary_services)
+            for (size_t i = 0; i < std::min<size_t>(o.payload_size, o.payload.size()); ++i)
+                j.add("%02x", unsigned(o.payload[i]));
+        j.add("\"");
+    }
     const auto remote_messages = remote_id_messages(o);
     if (remote_messages.count)
         j.add(",\"remote_id_transport\":\"%s\"",

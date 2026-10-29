@@ -20,7 +20,7 @@ COLUMNS = (
     'rssi_dbm', 'receiver_latitude', 'receiver_longitude',
     'receiver_fix_at_ms', 'peak_dbm', 'peak_capture_ms', 'peak_utc_ms', 'peak_sequence',
     'peak_timing_uncertainty_ms', 'peak_receiver_latitude', 'peak_receiver_longitude', 'peak_receiver_fix_at_ms',
-    'peak_changed', 'observations', 'displacement_m', 'delay_ms', 'ble_ad_hex',
+    'peak_changed', 'observations', 'displacement_m', 'delay_ms', 'ble_ad_hex', 'ble_acquisition', 'gatt_services_hex',
     'wifi_subtype', 'wifi_payload_format', 'wifi_ie_hex', 'wifi_header_hex',
     'wifi_receiver', 'wifi_transmitter', 'wifi_source', 'wifi_destination', 'wifi_bssid',
     'rssi_role', 'match_evidence',

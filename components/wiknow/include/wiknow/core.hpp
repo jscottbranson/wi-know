@@ -42,7 +42,8 @@ enum class Field : uint8_t {
     wifi_ie_signature,
     ble_payload_contains,
     wifi_receiver_mac,
-    wifi_receiver_oui
+    wifi_receiver_oui,
+    gatt_service_uuid128
 };
 struct Channel {
     uint8_t number{};
@@ -64,6 +65,7 @@ enum class WifiSubtype : uint8_t {
     qos_data = 24, // data type + subtype 8
     unknown = 255
 };
+enum class BleEvidence : uint8_t { advertisement, gatt_primary_services };
 struct Observation {
     uint16_t node{};
     uint32_t boot{}, sequence{};
@@ -76,11 +78,12 @@ struct Observation {
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
     std::array<uint8_t, max_payload>
-        payload{}; // BLE AD; Wi-Fi probe: complete IEs; otherwise Remote ID IE/NAN body
+        payload{}; // BLE AD or canonical GATT UUIDs; Wi-Fi probe: complete IEs; otherwise Remote ID IE/NAN body
     uint16_t payload_size{};
     WifiSubtype wifi_subtype{WifiSubtype::unknown};
     std::array<uint8_t, 26> wifi_header{}; // MAC header only; never data contents
     uint8_t wifi_header_size{};
+    BleEvidence ble_evidence{BleEvidence::advertisement};
 };
 struct Predicate {
     Field field{};
@@ -105,6 +108,8 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out);
 // One complete controller report/reassembled advertisement, never a partial capture.
 // Returns false with cleared parse-owned evidence on malformed or oversized input.
 bool parse_ble(const uint8_t *data, size_t length, Observation &out);
+bool valid_gatt_services(const Observation &observation);
+bool gatt_candidate(const Rule *rules, size_t count, const Observation &observation);
 bool matches(const Rule &rule, const Observation &observation);
 Match best_match(const Rule *rules, size_t count, const Observation &observation);
 bool indirect_rule(const Rule &rule);
@@ -254,7 +259,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
-constexpr uint8_t protocol_version = 4;
+constexpr uint8_t protocol_version = 5;
 enum class MessageType : uint8_t {
     poll = 1,
     report = 2,

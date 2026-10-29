@@ -61,7 +61,7 @@ int main() {
                 report.has_observation = true;
                 report.observation = o;
                 Packet packet{};
-                assert(pack_report(report, packet) && packet.size == 132);
+                assert(pack_report(report, packet) && packet.size == 133);
                 Report restored{};
                 assert(unpack_report(packet, restored));
                 assert(matches(receiver, restored.observation));
@@ -85,7 +85,7 @@ int main() {
                 assert(!unpack_report(bad, restored));
                 bad = packet;
                 bad.payload[102] = 1;
-                bad.payload[132] = 0;
+                bad.payload[133] = 0;
                 ++bad.size;
                 assert(!unpack_report(bad, restored));
                 auto inconsistent = o;

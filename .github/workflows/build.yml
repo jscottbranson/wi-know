@@ -51,3 +51,13 @@ jobs:
             LICENSE
             rules/sources/
           if-no-files-found: error
+
+  esp32c5-gatt:
+    runs-on: ubuntu-latest
+    container: espressif/idf:v5.5.1
+    steps:
+      - uses: actions/checkout@v4
+      - shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          idf.py -C firmware -B build-gatt -DIDF_TARGET=esp32c5 -DSDKCONFIG=$PWD/build-gatt/sdkconfig '-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.gatt.defaults' -DWIKNOW_CONFIG=$PWD/tests/fixtures/gatt/settings.json build

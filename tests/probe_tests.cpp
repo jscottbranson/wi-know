@@ -205,7 +205,7 @@ int main() {
     packet.node = o.node;
     packet.boot = o.boot;
     assert(pack_report(report, packet));
-    assert(packet.size == 132 + o.payload_size && protocol_version == 4);
+    assert(packet.size == 133 + o.payload_size && protocol_version == 5);
     uint8_t wire[max_frame];
     auto n = encode_packet(packet, wire, sizeof(wire));
     Decoder decoder;
@@ -234,15 +234,15 @@ int main() {
     packet.payload[104] = 7;
     assert(!unpack_report(packet, forwarded));
     packet.payload[104] = 4;
-    packet.payload[106] = 255;
+    packet.payload[134] = 255;
     assert(!unpack_report(packet, forwarded));
     report.observation = full;
-    assert(pack_report(report, packet) && packet.size == 387);
+    assert(pack_report(report, packet) && packet.size == 388);
     Identity identity{};
     identity.parent[0] = 1;
     identity.worker[0] = 2;
     assert(pack_identity(identity, packet, MessageType::session_report));
-    assert(packet.size == 419);
+    assert(packet.size == 420);
     Packet inner;
     Identity restored;
     assert(unpack_identity(packet, restored, &inner) && unpack_report(inner, forwarded));

@@ -49,6 +49,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     if isinstance(settings.get('following_alert'), dict):
         for key, value in scoring_defaults.items():
             settings['following_alert'].setdefault(key, value)
+    settings.setdefault('gatt', {'enabled': False, 'timeout_ms': 3000, 'cooldown_ms': 60000, 'targets': []})
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
@@ -56,6 +57,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                                    'worker_tx_pin', 'worker_rx_pin', 'worker_rts_pin'), int),
         'wifi': {'country': str, 'channels': list, 'dwell_ms': int},
         'ble': {'enabled': bool},
+        'gatt': {'enabled': bool, 'timeout_ms': int, 'cooldown_ms': int, 'targets': list},
         'standalone': {'enabled': bool, 'ble_dwell_ms': int},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
         'detection': {'rules_directory': str, 'enabled_categories': list, 'disabled_categories': list},
@@ -173,6 +175,23 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         identity = (device['radio'], device['address_type'], device['address'].lower())
         require(identity not in identities, 'duplicate ignored device')
         identities.add(identity)
+    gatt = settings['gatt']
+    integer(gatt['timeout_ms'], 500, 10000, 'gatt.timeout_ms')
+    integer(gatt['cooldown_ms'], 60000, 86400000, 'gatt.cooldown_ms')
+    require(not gatt['enabled'] or settings['ble']['enabled'], 'GATT requires BLE')
+    require(len(gatt['targets']) <= 16, 'maximum 16 GATT targets')
+    require(not gatt['enabled'] or gatt['targets'], 'enabled GATT needs explicit targets')
+    targets = set()
+    for device in gatt['targets']:
+        require(type(device) is dict and set(device) == {'address_type', 'address'}, 'invalid GATT target keys')
+        integer(device['address_type'], 0, 1, 'GATT address_type')
+        require(type(device['address']) is str and re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', device['address']), 'GATT needs colon-separated address')
+        address = bytes.fromhex(device['address'].replace(':', ''))
+        require(address not in (bytes(6), b'\xff'*6), 'invalid GATT address')
+        require(device['address_type'] == 0 or address[0] & 0xc0 == 0xc0, 'GATT random target must be static')
+        identity = (device['address_type'], address)
+        require(identity not in targets, 'duplicate GATT target')
+        targets.add(identity)
     used = {}
     if universal:
         require(bus['enabled'], 'universal mode requires the bus')
@@ -230,7 +249,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             for pred in rule['predicates']:
                 require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
-                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'ble_payload_contains',
+                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'gatt_service_uuid128', 'ble_payload_contains',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
                                   'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci',
@@ -289,13 +308,13 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')
-                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'ble_payload_contains', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
+                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'gatt_service_uuid128', 'ble_payload_contains', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
                 require(not (rule['radio'] == 'ble' and field in ('ssid_prefix', 'ssid_contains_ci')), 'SSID predicate in BLE rule')
                 if field == 'ble_payload_contains':
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}){1,32}', value)),
                             'BLE payload pattern must be 1..32 contiguous hex bytes')
                     pred['value'] = value.lower()
-                if field == 'service_uuid128':
+                if field in ('service_uuid128', 'gatt_service_uuid128'):
                     require(bool(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', value)),
                             'UUID128 must be canonical 8-4-4-4-12 hex text')
                     pred['value'] = value.lower()
@@ -308,6 +327,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             if any(p['field'] in ('wifi_receiver_mac', 'wifi_receiver_oui') for p in rule['predicates']):
                 require(not rule['actions']['follow'], 'indirect receiver rules cannot follow')
                 require(rule['confidence'] == 'possible', 'indirect receiver confidence must be possible')
+            if any(p['field'] == 'gatt_service_uuid128' for p in rule['predicates']):
+                require(rule['match'] == 'all' and
+                        sum(p['field'] == 'mac' for p in rule['predicates']) == 1 and
+                        all(p['field'] in ('mac', 'gatt_service_uuid128') for p in rule['predicates']),
+                        'GATT rules require all-match with one exact mac and discovered services only')
+                require(not rule['actions']['follow'], 'GATT discovery cannot request signal following')
             rule['enabled'] = rule['enabled'] and rule['category'] in categories
             rules.append(rule)
     require(len(rules) <= 128, 'maximum 128 rules')
@@ -333,6 +358,12 @@ def emit(settings, rules):
             if isinstance(value, (bool, int, str)):
                 kind = 'bool' if isinstance(value, bool) else 'int' if isinstance(value, int) else 'auto'
                 out.append(f'inline constexpr {kind} {section}_{key} = {cpp(value)};')
+    targets = settings['gatt']['targets']
+    out.append(f'inline constexpr std::array<DeviceIdentity, {len(targets)}> gatt_targets = {{{{')
+    for device in targets:
+        address = ','.join('0x'+part for part in device['address'].split(':'))
+        out.append('DeviceIdentity{Radio::ble,'+str(device['address_type'])+',{{'+address+'}}},')
+    out.append('}};')
     ignored = settings['following_alert']['ignore_devices']
     out.append(f'inline constexpr std::array<DeviceIdentity, {len(ignored)}> following_ignore = {{{{')
     for device in ignored:

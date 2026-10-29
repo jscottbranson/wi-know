@@ -4,6 +4,7 @@
 #include "esp_netif.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
+#include "host/ble_gatt.h"
 #include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
 #include "nimble/nimble_port_freertos.h"
@@ -12,6 +13,7 @@
 #include "wiknow/ble_reassembly.hpp"
 #include "wiknow/ble_scan_lifecycle.hpp"
 #include "wiknow/capture_policy.hpp"
+#include "wiknow/gatt_discovery.hpp"
 #include "wiknow/observation_queue.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/standalone_scan.hpp"
@@ -194,6 +196,7 @@ static void reset_ble_assembly() {
     ble_assembler.reset();
     portEXIT_CRITICAL(&ble_assembly_lock);
 }
+static void gatt_offer(const wiknow::BleAdvertisement &);
 static void receive_ble_fragment(wiknow::BleFragment &fragment) {
     if (!ble_ready || !ble_gap_disc_active())
         return;
@@ -206,8 +209,9 @@ static void receive_ble_fragment(wiknow::BleFragment &fragment) {
     portEXIT_CRITICAL(&ble_assembly_lock);
     if (result == wiknow::BleAssemblyResult::rejected)
         ++dropped;
-    else if (result == wiknow::BleAssemblyResult::complete &&
-             xQueueSend(raw_ble, &raw, 0) != pdTRUE) {
+    if (result == wiknow::BleAssemblyResult::complete)
+        gatt_offer(raw.advertisement);
+    if (result == wiknow::BleAssemblyResult::complete && xQueueSend(raw_ble, &raw, 0) != pdTRUE) {
         ++ble_queue_drops;
         ++dropped;
     }
@@ -283,6 +287,192 @@ static bool ble_scan_desired() {
                                         wiknow::config::universal_enabled, local_scanning(),
                                         wifi_receiving);
 }
+#if CONFIG_BT_NIMBLE_ROLE_CENTRAL
+static wiknow::GattSchedule gatt_schedule(wiknow::config::gatt_targets.data(),
+                                          wiknow::config::gatt_targets.size(),
+                                          wiknow::config::gatt_cooldown_ms);
+using GattPhase = wiknow::GattLifecycle::Phase;
+static wiknow::GattLifecycle gatt_lifecycle;
+static wiknow::Observation gatt_result;
+static uint32_t gatt_attempts{}, gatt_completed{}, gatt_failed{};
+static bool gatt_busy() {
+    return gatt_lifecycle.busy() || gatt_schedule.pending();
+}
+static void gatt_finish() {
+    gatt_lifecycle.finish();
+    gatt_result = {};
+}
+static void gatt_cancel() {
+    gatt_schedule.cancel();
+    if (!gatt_lifecycle.busy())
+        return;
+    gatt_lifecycle.stop(now_ms());
+    if (gatt_lifecycle.handle() != BLE_HS_CONN_HANDLE_NONE)
+        ble_gap_terminate(gatt_lifecycle.handle(), BLE_ERR_REM_USER_CONN_TERM);
+    else if (ble_gap_conn_active())
+        ble_gap_conn_cancel(); // Wait for CONNECT cancellation callback, never reuse state early.
+}
+static bool gatt_assignment_current() {
+    // Discovery ends later than the advertisement that selected this device.
+    // Recheck the live lease/target, rather than publishing on an expired grant.
+    return wiknow::gatt_capture_allowed(gatt_result, capture_snapshot(), now_ms());
+}
+static int gatt_service(uint16_t handle, const ble_gatt_error *error, const ble_gatt_svc *service,
+                        void *arg) {
+    if (!gatt_lifecycle.service(uint32_t(uintptr_t(arg)), handle))
+        return 0;
+    if (gatt_lifecycle.expired(now_ms()) || !ble_scan_desired() || !gatt_assignment_current()) {
+        gatt_cancel();
+        return 0;
+    }
+    if (error->status == BLE_HS_EDONE) {
+        int8_t rssi{};
+        if (ble_gap_conn_rssi(handle, &rssi) == 0 && rssi <= 0 && rssi != -128) {
+            gatt_result.rssi = rssi;
+            gatt_result.at_ms = now_ms();
+            gatt_result.sequence = ++sequence;
+            // Only completed discovery is evidence. No advertising bytes are
+            // fabricated, and no intermediate or failed database is published.
+            enqueue_observation(gatt_result);
+            ++gatt_completed;
+        } else
+            ++gatt_failed;
+        gatt_cancel();
+        return 0;
+    }
+    if (error->status || !service || gatt_result.payload_size + 16 > 240) {
+        ++gatt_failed;
+        gatt_cancel();
+        return 0;
+    }
+    // UUID128 canonical big-endian bytes; standard 16/32-bit UUIDs expand into
+    // the Bluetooth base UUID, so every complete entry has exactly 16 octets.
+    uint8_t uuid[16]{0, 0, 0, 0, 0, 0, 0x10, 0, 0x80, 0, 0, 0x80, 0x5f, 0x9b, 0x34, 0xfb};
+    const auto *u = &service->uuid.u;
+    if (u->type == BLE_UUID_TYPE_128)
+        std::reverse_copy(BLE_UUID128(u)->value, BLE_UUID128(u)->value + 16, uuid);
+    else if (u->type == BLE_UUID_TYPE_16) {
+        uuid[2] = uint8_t(BLE_UUID16(u)->value >> 8);
+        uuid[3] = uint8_t(BLE_UUID16(u)->value);
+    } else if (u->type == BLE_UUID_TYPE_32) {
+        const auto value = BLE_UUID32(u)->value;
+        for (unsigned i = 0; i < 4; ++i)
+            uuid[i] = uint8_t(value >> (24 - 8 * i));
+    } else {
+        ++gatt_failed;
+        gatt_cancel();
+        return 0;
+    }
+    std::copy(uuid, uuid + 16, gatt_result.payload.begin() + gatt_result.payload_size);
+    gatt_result.payload_size += 16;
+    return 0;
+}
+static int gatt_gap(struct ble_gap_event *event, void *arg) {
+    if (!gatt_lifecycle.current(uint32_t(uintptr_t(arg))))
+        return 0;
+    if (event->type == BLE_GAP_EVENT_CONNECT) {
+        if (event->connect.status) {
+            ++gatt_failed;
+            gatt_finish();
+            return 0;
+        }
+        if (!gatt_lifecycle.connected(uint32_t(uintptr_t(arg)), event->connect.conn_handle,
+                                      now_ms(), ble_scan_desired() && gatt_assignment_current())) {
+            gatt_cancel();
+            return 0;
+        }
+        if (ble_gattc_disc_all_svcs(gatt_lifecycle.handle(), gatt_service, arg)) {
+            ++gatt_failed;
+            gatt_cancel();
+        }
+    } else if (event->type == BLE_GAP_EVENT_DISCONNECT) {
+        if (event->disconnect.conn.conn_handle == gatt_lifecycle.handle())
+            gatt_finish();
+    } else if (event->type == BLE_GAP_EVENT_PASSKEY_ACTION) {
+        // Never pair, provide credentials, read characteristics, or write them.
+        gatt_cancel();
+    }
+    return 0;
+}
+static void gatt_offer(const wiknow::BleAdvertisement &a) {
+    if (!wiknow::config::gatt_enabled || gatt_busy() || !ble_scan_desired() ||
+        a.key.address_type > 1 || a.key.primary_phy > 1 || !(a.key.properties & 1) ||
+        (a.key.properties & 8))
+        return;
+    wiknow::Observation o{};
+    o.radio = wiknow::Radio::ble;
+    o.address = a.key.address;
+    o.address_type = a.key.address_type;
+    o.node = a.capture.policy.node;
+    o.boot = boot_id;
+    o.at_ms = a.capture.at_ms;
+    if (!a.capture.policy.accepts(o))
+        return;
+    gatt_schedule.offer(o, true, now_ms(), wiknow::config::rules.data(),
+                        wiknow::config::rules.size());
+}
+static void gatt_tick() {
+    if (!wiknow::config::gatt_enabled)
+        return;
+    const auto now = now_ms();
+    static uint64_t last_diagnostics{};
+    if (now - last_diagnostics >= 30000) {
+        ESP_LOGI("gatt",
+                 "attempts=%u completed=%u failed=%u state=%u internal_free=%u internal_min=%u",
+                 unsigned(gatt_attempts), unsigned(gatt_completed), unsigned(gatt_failed),
+                 unsigned(gatt_lifecycle.phase()),
+                 unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
+                 unsigned(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
+        last_diagnostics = now;
+    }
+    if (gatt_lifecycle.busy()) {
+        if (!ble_scan_desired() || gatt_lifecycle.expired(now) || !gatt_assignment_current())
+            gatt_cancel();
+        if (gatt_lifecycle.request_reset(now)) {
+            // Termination failure cannot keep a connection alive indefinitely.
+            // Host reset destroys handles; reset callback invalidates all state.
+            ble_hs_sched_reset(BLE_HS_ETIMEOUT);
+        }
+        return;
+    }
+    if (!gatt_schedule.pending())
+        return;
+    if (!ble_scan_desired() || !ble_ready) {
+        gatt_schedule.cancel();
+        return;
+    }
+    if (ble_gap_disc_active()) {
+        if (ble_gap_disc_cancel() == 0)
+            ble_boundary();
+        return;
+    }
+    if (ble_scan_lifecycle.pending())
+        return;
+    if (!gatt_schedule.take(now, gatt_result))
+        return;
+    if (!gatt_assignment_current())
+        return;
+    gatt_result.ble_evidence = wiknow::BleEvidence::gatt_primary_services;
+    ble_addr_t peer{};
+    peer.type = gatt_result.address_type;
+    std::reverse_copy(gatt_result.address.begin(), gatt_result.address.end(), peer.val);
+    gatt_lifecycle.begin(now, wiknow::config::gatt_timeout_ms);
+    ++gatt_attempts;
+    if (ble_gap_connect(own_type, &peer, wiknow::config::gatt_timeout_ms, nullptr, gatt_gap,
+                        reinterpret_cast<void *>(uintptr_t(gatt_lifecycle.token())))) {
+        ++gatt_failed;
+        gatt_finish();
+    }
+}
+#else
+static bool gatt_busy() {
+    return false;
+}
+static void gatt_cancel() {}
+static void gatt_offer(const wiknow::BleAdvertisement &) {}
+static void gatt_tick() {}
+#endif
+
 static void ble_barrier_drained(struct ble_npl_event *) {
     if (ble_scan_lifecycle.drained(post_ble_barrier))
         scan_ble();
@@ -294,8 +484,9 @@ static int gap_event(struct ble_gap_event *event, void *) {
         std::reverse_copy(d.addr.val, d.addr.val + 6, fragment.key.address.begin());
         fragment.key.address_type = d.addr.type;
         fragment.key.sid = 0xff;
-        fragment.key.properties =
-            0x10 | (d.event_type == BLE_HCI_ADV_RPT_EVTYPE_SCAN_RSP ? 0x08 : 0);
+        fragment.key.properties = 0x10 |
+                                  (d.event_type == BLE_HCI_ADV_RPT_EVTYPE_SCAN_RSP ? 0x08 : 0) |
+                                  (d.event_type == BLE_HCI_ADV_RPT_EVTYPE_ADV_IND ? 1 : 0);
         fragment.capture.rssi = d.rssi;
         fragment.data = d.data;
         fragment.size = d.length_data;
@@ -328,7 +519,7 @@ static int gap_event(struct ble_gap_event *event, void *) {
     return 0;
 }
 static void scan_ble() {
-    const bool desired = ble_scan_desired();
+    const bool desired = ble_scan_desired() && !gatt_busy();
     const bool active = ble_scan_lifecycle.start(
         ble_ready, desired, [] { return ble_gap_disc_active(); },
         [] {
@@ -369,6 +560,9 @@ static void standalone_step() {
     }
     if (!standalone_scan.due(now))
         return;
+    gatt_cancel();
+    if (gatt_busy())
+        return; // Wait for disconnect before changing the radio phase.
     // Do not tune Wi-Fi until cancellation has succeeded. A failed cancellation
     // leaves the current phase intact and is retried on the next timer tick.
     if (c::ble_enabled && ble_gap_disc_active()) {
@@ -412,6 +606,10 @@ static void ble_sync() {
 }
 static void ble_reset(int reason) {
     ble_ready = false;
+#if CONFIG_BT_NIMBLE_ROLE_CENTRAL
+    gatt_schedule.cancel();
+    gatt_finish();
+#endif
     ble_boundary();
     if (standalone_scheduler() && standalone_channel == 0)
         standalone_channel = -1;
@@ -435,6 +633,7 @@ static void ble_maintenance(struct ble_npl_event *) {
     }
     // Retry failed starts only when this phase wants BLE. The lifecycle gate
     // prevents this timer, sync, or standalone callbacks bypassing the barrier.
+    gatt_tick();
     scan_ble();
     ble_npl_callout_reset(&ble_maintenance_timer, ble_npl_time_ms_to_ticks32(50));
 }
@@ -443,6 +642,15 @@ static void ble_task(void *) {
     nimble_port_freertos_deinit();
 }
 void start_radios() {
+#if CONFIG_BT_NIMBLE_SECURITY_ENABLE
+    static_assert(!wiknow::config::gatt_enabled,
+                  "Active discovery requires CONFIG_BT_NIMBLE_SECURITY_ENABLE=n (no pairing)");
+#endif
+#if !CONFIG_BT_NIMBLE_ROLE_CENTRAL
+    static_assert(
+        !wiknow::config::gatt_enabled,
+        "GATT requires sdkconfig.gatt.defaults central build; see docs/gatt-discovery.md");
+#endif
     set_runtime_role(role.load(), node_id.load());
     local_scanning(standalone_scheduler());
     if (role != wiknow::Role::parent || standalone_scheduler()) {
