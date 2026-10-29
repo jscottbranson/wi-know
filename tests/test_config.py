@@ -85,7 +85,7 @@ class ConfigTests(unittest.TestCase):
             'gps': {'rx_pin': 12},
             'sd': {'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11},
             'buzzer': {'pin': 7},
-            'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 0, 'steady_pin': 25},
+            'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 25, 'steady_pin': 0},
         }
         pins = []
         for section, expected in assignments.items():
@@ -151,10 +151,10 @@ class ConfigTests(unittest.TestCase):
         # An omitted LED releases its GPIO for another peripheral.
         settings = copy.deepcopy(example)
         settings['signal_trend']['steady_pin'] = -1
-        settings['gps'].update(enabled=True, rx_pin=25)
+        settings['gps'].update(enabled=True, rx_pin=0)
         generate.validate(settings)
-        settings['signal_trend']['steady_pin'] = 25
-        with self.assertRaisesRegex(ValueError, 'GPIO 25 used'):
+        settings['signal_trend']['steady_pin'] = 0
+        with self.assertRaisesRegex(ValueError, 'GPIO 0 used'):
             generate.validate(settings)
         for section, key in [('display', 'sda_pin'), ('buzzer', 'pin')]:
             settings = copy.deepcopy(example)

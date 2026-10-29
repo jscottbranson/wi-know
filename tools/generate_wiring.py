@@ -310,7 +310,7 @@ def standalone_wiring(png):
                 'Priority: screen > GPS > microSD > buzzer > LEDs. All five fit on the 11 header GPIOs.', 2790)
     d.note(182, 'Manual standalone parent / config/settings.standalone-wiring.example.json', [
         'Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.',
-        'Buzzer D3/7; LEDs D0/1 increasing, D1/0 decreasing, D2/25 steady. Labels show D-number / GPIO.',
+        'Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.',
         'Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.',
     ])
     # Reuse the verified circuits, presenting the blocks in build-priority order.
@@ -355,7 +355,7 @@ def standalone_wiring(png):
     buzzer_wiring(d, 7, '4  Buzzer / passive + NPN driver')
     d.parts.append('</g>')
     d.parts.append('<g transform="translate(694,1265)">')
-    led_wiring(d, (1, 0, 25), '5  LEDs / three optional trend indicators')
+    led_wiring(d, (1, 25, 0), '5  LEDs / three optional trend indicators')
     d.parts.append('</g>')
 
     d.box(48, 2045, 1344, 400)
@@ -382,7 +382,7 @@ def standalone_wiring(png):
     d.note(2470, 'Build in priority order / remove optional blocks as needed', [
         'Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.',
         'All five sections are enabled in this example. Disable absent sections; omit individual LEDs with pin=-1.',
-        'One LED shows only its assigned trend. Unknown/stale signal turns LEDs off. Rebuild and flash after edits.',
+        'Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.',
         'LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.',
         'Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.',
     ], ORANGE)
@@ -518,7 +518,7 @@ def main():
         'sd': {'enabled': True, 'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11, 'clock_khz': 4000},
         'display': {'enabled': True, 'sda_pin': 23, 'scl_pin': 24, 'i2c_address': 39},
         'buzzer': {'enabled': True, 'pin': 7},
-        'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 0, 'steady_pin': 25},
+        'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 25, 'steady_pin': 0},
     }
     for section, values in expected_standalone.items():
         if any(standalone[section][key] != value for key, value in values.items()):

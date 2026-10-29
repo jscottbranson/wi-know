@@ -10,7 +10,7 @@
 <rect x="48" y="182" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Manual standalone parent / config/settings.standalone-wiring.example.json</text>
 <text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.</text>
-<text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Buzzer D3/7; LEDs D0/1 increasing, D1/0 decreasing, D2/25 steady. Labels show D-number / GPIO.</text>
+<text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.</text>
 <text x="70" y="304" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.</text>
 <g transform="translate(0,-430)">
 <rect x="48" y="780" width="1344" height="470" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
@@ -161,7 +161,7 @@
 <polyline points="344,427 358,413" fill="none" stroke="#147d64" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <path d="M358,413 l-8,3 l5,5 Z" fill="#147d64"/>
 <text x="420" y="456" fill="#147d64" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Increasing / green</text>
-<text x="70" y="541" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO0</text>
+<text x="70" y="541" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO25</text>
 <polyline points="155,535 190,535" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="190" y="525" width="70" height="20" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
 <text x="225" y="515" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">470 Ω</text>
@@ -177,7 +177,7 @@
 <polyline points="344,512 358,498" fill="none" stroke="#b83543" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <path d="M358,498 l-8,3 l5,5 Z" fill="#b83543"/>
 <text x="420" y="541" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Decreasing / red</text>
-<text x="70" y="626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO25</text>
+<text x="70" y="626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO0</text>
 <polyline points="155,620 190,620" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="190" y="610" width="70" height="20" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
 <text x="225" y="600" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">470 Ω</text>
@@ -222,7 +222,7 @@
 <text x="70" y="2503" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Build in priority order / remove optional blocks as needed</text>
 <text x="70" y="2536" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.</text>
 <text x="70" y="2564" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">All five sections are enabled in this example. Disable absent sections; omit individual LEDs with pin=-1.</text>
-<text x="70" y="2592" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">One LED shows only its assigned trend. Unknown/stale signal turns LEDs off. Rebuild and flash after edits.</text>
+<text x="70" y="2592" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.</text>
 <text x="70" y="2620" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.</text>
 <text x="70" y="2648" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.</text>
 <text x="48" y="2766" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>

@@ -148,7 +148,8 @@ settings to retain GPS, storage, screen, LEDs and buzzer. For a mini XIAO with
 [`settings.standalone-wiring.example.json`](settings.standalone-wiring.example.json)
 and the [standalone wiring and selection guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
 This profile enables all five: LCD on GPIO23/24, receive-only GPS on GPIO12,
-SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1/0/25.
+SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1 (D0, green/increasing), GPIO0 (D1, amber/steady), and
+GPIO25 (D2, red/decreasing).
 All 11 header GPIOs fit without changing the previous indicator wiring. For the
 compact screen/GPS/storage build, disable `buzzer` and `signal_trend`. Disable
 each other omitted peripheral through its `enabled` setting before rebuilding.

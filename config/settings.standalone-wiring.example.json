@@ -124,8 +124,8 @@
   "signal_trend": {
     "enabled": true,
     "increasing_pin": 1,
-    "decreasing_pin": 0,
-    "steady_pin": 25,
+    "decreasing_pin": 25,
+    "steady_pin": 0,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,

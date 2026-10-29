@@ -49,8 +49,8 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | HiLetgo SPI microSD reader (5 V VCC) | D8 / GPIO8; D9 / GPIO9; D10 / GPIO10; D6 / GPIO11 | SCK; MISO/DO; MOSI/DI; CS respectively | 4 |
 | Buzzer | D3 / GPIO7 | 1 kΩ to 2N3904 base; driver circuit as drawn | 1 |
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
-| Decreasing LED (red) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
-| Steady LED (amber) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
+| Decreasing LED (red) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
+| Steady LED (amber) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
 
 Screen + GPS + microSD use **7 GPIOs**; adding the buzzer uses 8; adding all
 three LEDs uses **all 11 D0–D10 header GPIOs**. GPS is receive-only, so it needs
@@ -117,7 +117,7 @@ remain at **3.3 V**, never 5 V. Account for card-side resistors already fitted;
 CMD and DAT0–DAT3 need separate 10 kΩ pull-ups, including unused DAT1/DAT2.
 No pull-up or pull-down is needed on CLK. Keep SPI wires short.
 See the [module details and sources below](#parent-leds-buzzer-screen-and-gps).
-GPIO25 remains the steady LED; this profile uses SPI2, not SDIO.
+GPIO25 drives the red decreasing LED; this profile uses SPI2, not SDIO.
 
 Insert a card before boot. Unrecognized/damaged filesystems are automatically
 formatted by default, erasing existing data; back up the card first. Set
