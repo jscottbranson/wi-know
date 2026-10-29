@@ -229,21 +229,25 @@ class ConfigTests(unittest.TestCase):
                         with self.assertRaises(ValueError):
                             generate.validate(self.settings)
 
-    def test_detection_category_defaults_and_opt_in(self):
+    def test_detection_category_defaults_and_opt_out(self):
         disabled = {'ble_trackers', 'unifi_cameras'}
         for path in sorted((ROOT/'config').glob('settings*.json')):
             with self.subTest(profile=path.name):
                 original = generate.load(path)
                 settings, rules = generate.validate(original)
-                self.assertEqual(set(settings['detection']['disabled_categories']), disabled)
-                self.assertEqual({r['category'] for r in rules if not r['enabled']}, disabled)
-                self.assertTrue(all(r['enabled'] for r in rules if r['category'] not in disabled))
+                self.assertEqual(settings['detection']['disabled_categories'], [])
+                self.assertTrue(rules)
+                self.assertTrue(all(r['enabled'] for r in rules))
+                self.assertTrue({'cameras', *disabled} <= {r['category'] for r in rules})
                 self.assertTrue(all(len(r['source']['revision']) >= 7 for r in rules))
-                original['detection']['disabled_categories'] = []
-                original['detection']['enabled_categories'] += sorted(disabled)
-                _, opted_in = generate.validate(original)
-                self.assertTrue(all(r['enabled'] for r in opted_in))
-        self.settings['detection']['enabled_categories'].append('ble_trackers')
+                original['detection']['disabled_categories'] = sorted(disabled)
+                original['detection']['enabled_categories'] = [
+                    category for category in original['detection']['enabled_categories']
+                    if category not in disabled]
+                _, opted_out = generate.validate(original)
+                self.assertEqual({r['category'] for r in opted_out if not r['enabled']}, disabled)
+                self.assertTrue(all(r['enabled'] for r in opted_out if r['category'] not in disabled))
+        self.settings['detection']['disabled_categories'].append('ble_trackers')
         with self.assertRaisesRegex(ValueError, 'both enabled and disabled'):
             generate.validate(self.settings)
 

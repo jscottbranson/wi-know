@@ -60,6 +60,8 @@
       "ring",
       "acoustic_sensors",
       "cameras",
+      "unifi_cameras",
+      "ble_trackers",
       "device_services",
       "mesh_radios",
       "serial_modules",
@@ -67,7 +69,7 @@
       "smart_glasses",
       "lab"
     ],
-    "disabled_categories": ["ble_trackers", "unifi_cameras"]
+    "disabled_categories": []
   },
   "following_alert": {
     "enabled": false,
