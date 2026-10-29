@@ -95,6 +95,11 @@ target_link_libraries(uuid128_tests PRIVATE wiknow)
 target_compile_options(uuid128_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME uuid128 COMMAND uuid128_tests)
 
+add_executable(ble_payload_tests tests/ble_payload_tests.cpp)
+target_link_libraries(ble_payload_tests PRIVATE wiknow)
+target_compile_options(ble_payload_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME ble_payload COMMAND ble_payload_tests)
+
 add_executable(expanded_detection_tests tests/expanded_detection_tests.cpp)
 target_link_libraries(expanded_detection_tests PRIVATE wiknow)
 target_include_directories(expanded_detection_tests PRIVATE ${CMAKE_BINARY_DIR}/generated)

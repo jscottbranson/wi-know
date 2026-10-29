@@ -110,6 +110,7 @@ Supported predicates:
 | `wifi_requested_ssid_prefix` | Case-sensitive printable UTF-8 prefix of a probe request's raw SSID bytes, at most 32 encoded bytes |
 | `name_prefix` | Case-sensitive UTF-8 BLE advertised name prefix, at most 32 encoded bytes |
 | `manufacturer_prefix` | Hex prefix of BLE AD type `0xff`, including little-endian company ID bytes |
+| `ble_payload_contains` | Raw BLE payload substring, 1–32 contiguous hex bytes (2–64 hex digits), normalized to lowercase |
 | `service_uuid16` | Conventional 16-bit UUID text, e.g. `180F`; compared against little-endian AD bytes |
 | `service_uuid128` | BLE canonical UUID text, e.g. `00112233-4455-6677-8899-aabbccddeeff`; case-insensitive input, normalized to lowercase |
 | `rid_valid` | String `"true"`: at least one structurally valid supported decoded Remote ID message |
@@ -309,3 +310,43 @@ use a controlled advertiser and actual XIAO ESP32-C5 receivers to:
    only inside service-data bytes and one-byte near misses; neither should match.
 4. Record firmware commit, advertiser setup, controller report behavior, JSONL,
    and scan/queue counters. Host tests are software evidence, not hardware proof.
+
+
+### Raw BLE payload substring
+
+`ble_payload_contains` accepts a nonempty pattern of 1–32 bytes encoded as
+contiguous hexadecimal digits. Uppercase input is normalized to lowercase in
+generated C++ and the provenance manifest. Separators, whitespace, `0x` prefixes,
+odd digit counts, non-hex characters and oversized patterns are rejected. For
+example, ASCII `BWCDEVICE` encodes as `425743444556494345`; binary patterns such
+as `00ff80` also work without text or NUL-termination assumptions.
+
+The search domain is exactly one complete captured BLE advertising payload,
+`payload[0:payload_size]` (at most 255 bytes), retained as `ble_ad_hex`. It excludes
+addresses, radio headers, RSSI and unused buffer capacity. This is a **raw byte**
+search: a match may span AD elements or include their length/type bytes, and
+includes any captured bytes after a zero-length AD terminator. It is not evidence
+of a validated name, manufacturer field or service UUID. Use their separate
+predicates when those semantics are needed. Invalid AD length envelopes before
+the terminator are rejected, including a valid prefix followed by a truncated AD.
+
+A successfully completed bounded extended-advertisement assembly uses the same
+matcher as a complete legacy report. Truncated, over-limit or abandoned chains
+cannot produce a partial match. Separate sightings and advertising/scan-response
+reports are never joined by this predicate; existing assembly identity, timeout
+and scan-boundary policies still apply. Wi-Fi payloads have different evidence
+contracts and cannot use this predicate.
+
+Matching uses a fixed 32-byte pattern buffer and at most 255 candidate positions,
+with at most 32 byte comparisons per position; no allocation or unbounded work
+is added. It runs with the existing parsing/matching task, outside radio callbacks.
+`all`/`any`, category enablement, matching-queue priority and action selection are
+unchanged. Local and worker-parent paths carry the identical complete bytes;
+existing bus and JSONL formats need no version change. Generated provenance
+retains the normalized predicate and the rule's source attribution.
+
+This adds matcher capability only, with synthetic fixtures under the repository
+license. No production BWCDEVICE signature or external detector implementation
+is imported. A matching tag is a claimed identifier, not authentication or proof
+of recording. Production signatures still require pinned evidence, license review
+and a cautious confidence label. Existing category settings remain unchanged.
