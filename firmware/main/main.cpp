@@ -151,7 +151,7 @@ static void init_tracker() {
 static Gps gps;
 static FollowingDetector following(c::following_config, c::following_ignore.data(),
                                    c::following_ignore.size());
-static bool following_visible{};
+static bool following_visible{}, persistence_visible{};
 static uint64_t following_alert_at{};
 static char following_address[18]{};
 static Observation target{};
@@ -213,19 +213,34 @@ static void consume(Observation o) {
     // Buffered captures must not trigger an alert after the device has disappeared.
     if (o.at_ms > received || received - o.at_ms > uint64_t(c::following_alert_max_gap_ms))
         following_fix.valid = false;
-    if (following.observe(o, following_fix, distance_m)) {
+    const bool followed = following.observe(o, following_fix, distance_m, received);
+    const auto &following_evidence = following.evidence();
+    if (following_evidence.event) {
+        char event[1280];
+        if (platform::following_alert_json(o, following_fix, gps, following_evidence.displacement_m,
+                                           c::following_alert_delay_ms, event, sizeof(event),
+                                           &following_evidence, c::following_alert_gps_jitter_m))
+            platform::write_log(event, log_class);
+        else
+            ++platform::dropped;
+    }
+    const bool persisted = following_evidence.event &&
+                           std::strcmp(following_evidence.event, "device_persistence") == 0;
+    if (followed || persisted) {
         std::snprintf(following_address, sizeof(following_address), "%02X:%02X:%02X:%02X:%02X:%02X",
                       o.address[0], o.address[1], o.address[2], o.address[3], o.address[4],
                       o.address[5]);
         following_visible = true;
+        persistence_visible = !followed;
         following_alert_at = received;
         char event[1024];
-        if (platform::following_alert_json(o, fix, gps, distance_m, c::following_alert_delay_ms,
+        if (!c::following_alert_scoring_enabled &&
+            platform::following_alert_json(o, fix, gps, distance_m, c::following_alert_delay_ms,
                                            event, sizeof(event)))
             platform::write_log(event, log_class);
-        else
+        else if (!c::following_alert_scoring_enabled)
             ++platform::dropped;
-        if (alert_cooldown.request(received, c::buzzer_cooldown_ms)) {
+        if (followed && alert_cooldown.request(received, c::buzzer_cooldown_ms)) {
             platform::indicators(target_led_trend(platform::now_ms()), true);
         }
     }
@@ -445,7 +460,8 @@ static void parent_loop() {
             char line1[32]{}, line2[32]{};
             size_t page = (now / c::display_page_interval_ms) % 5;
             if (following_visible && now - following_alert_at < 30000) {
-                std::snprintf(line1, sizeof(line1), "Following alert");
+                std::snprintf(line1, sizeof(line1), "%s",
+                              persistence_visible ? "Device persists" : "Following alert");
                 std::snprintf(line2, sizeof(line2), "%.16s", following_address);
             } else if (page == 0) {
                 auto plan = members.plan(c::channels.data(), c::channels.size());

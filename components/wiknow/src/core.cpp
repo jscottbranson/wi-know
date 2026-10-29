@@ -9,7 +9,11 @@
 #include <iterator>
 
 namespace wiknow {
-bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_m) {
+bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_m,
+                                uint64_t received_ms) {
+    evidence_ = {};
+    if (config_.scoring_enabled)
+        return observe_scored(o, fix, distance_m, received_ms);
     if (!config_.enabled)
         return false;
     auto equal = [&](const DeviceIdentity &id) {
@@ -62,6 +66,139 @@ bool FollowingDetector::observe(const Observation &o, Fix fix, double &distance_
     }
     if (!entry->alerted && o.at_ms - entry->beyond_since >= config_.delay_ms) {
         entry->alerted = true;
+        return true;
+    }
+    return false;
+}
+
+bool FollowingDetector::observe_scored(const Observation &o, Fix fix, double &distance_m,
+                                       uint64_t received_ms) {
+    if (!config_.enabled)
+        return false;
+    auto equal = [&](const DeviceIdentity &id) {
+        return id.radio == o.radio && id.address_type == o.address_type && id.address == o.address;
+    };
+    for (size_t i = 0; i < ignored_count_; ++i)
+        if (equal(ignored_[i]))
+            return false;
+    // Arrival clock is independent of potentially delayed distributed capture times.
+    if (received_ms && last_received_ && received_ms < last_received_) {
+        entries_ = {};
+        evidence_ = {"following_reset", "clock_discontinuity"};
+    }
+    if (received_ms)
+        last_received_ = received_ms;
+    Entry *entry = nullptr, *slot = &entries_[0];
+    for (auto &e : entries_) {
+        if (e.used && equal(e.identity)) {
+            entry = &e;
+            break;
+        }
+        if (!e.used || (slot->used && e.last_seen < slot->last_seen))
+            slot = &e;
+    }
+    if (entry && o.at_ms <= entry->last_seen)
+        return false;
+    const char *reset = nullptr;
+    if (received_ms && (o.at_ms > received_ms || received_ms - o.at_ms > config_.max_gap_ms))
+        reset = "late_capture";
+    else if (!fix.valid || !std::isfinite(fix.latitude) || !std::isfinite(fix.longitude) ||
+             std::abs(fix.latitude) > 90 || std::abs(fix.longitude) > 180 ||
+             o.timing_uncertainty_ms > config_.max_fix_age_ms ||
+             (fix.at_ms > o.at_ms ? fix.at_ms - o.at_ms : o.at_ms - fix.at_ms) >
+                 config_.max_fix_age_ms)
+        reset = "invalid_or_stale_gps";
+    auto distance = [](Fix a, Fix b) {
+        constexpr double radians = 3.14159265358979323846 / 180.0;
+        double lat = (a.latitude - b.latitude) * radians;
+        double lon = (a.longitude - b.longitude) * radians;
+        double h = std::sin(lat / 2) * std::sin(lat / 2) +
+                   std::cos(a.latitude * radians) * std::cos(b.latitude * radians) *
+                       std::sin(lon / 2) * std::sin(lon / 2);
+        return 6371000.0 * 2 * std::asin(std::sqrt(std::clamp(h, 0.0, 1.0)));
+    };
+    if (!reset && entry && o.at_ms - entry->last_seen <= config_.max_gap_ms) {
+        double step = distance(fix, entry->previous);
+        double elapsed = fix.at_ms >= entry->previous.at_ms
+                             ? double(fix.at_ms - entry->previous.at_ms) / 1000.0
+                             : -1;
+        if (elapsed < 0 || step > 2.0 * config_.gps_jitter_m + elapsed * config_.max_speed_mps)
+            reset = "gps_jump";
+    }
+    if (reset) {
+        if (entry) {
+            evidence_ = {"following_reset", reset, entry->hits, entry->score,
+                         o.at_ms - entry->first_seen};
+            *entry = {};
+        }
+        return false;
+    }
+    if (!entry || o.at_ms - entry->last_seen > config_.max_gap_ms) {
+        const char *reason = evidence_.reason ? evidence_.reason
+                             : entry ? "continuity_gap"
+                                     : (slot->used ? "capacity_replacement" : "new_encounter");
+        entry = entry ? entry : slot;
+        *entry = {};
+        entry->used = true;
+        entry->identity = {o.radio, o.address_type, o.address};
+        entry->origin = entry->previous = fix;
+        entry->first_seen = entry->last_seen = entry->last_hit = entry->decay_at = o.at_ms;
+        entry->hits = entry->score = 1;
+        evidence_ = {"following_score", reason, 1, 1, 0, 0};
+        return false;
+    }
+    entry->last_seen = o.at_ms;
+    entry->previous = fix;
+    distance_m = distance(fix, entry->origin);
+    const uint64_t decay = (o.at_ms - entry->decay_at) / std::max<uint32_t>(1, config_.score_decay_ms);
+    entry->score -= uint32_t(std::min<uint64_t>(decay, entry->score));
+    entry->decay_at += decay * std::max<uint32_t>(1, config_.score_decay_ms);
+    const bool hit = o.at_ms - entry->last_hit >= config_.hit_interval_ms;
+    if (hit) {
+        entry->last_hit = o.at_ms;
+        if (entry->hits < UINT32_MAX)
+            ++entry->hits;
+        if (entry->score < config_.score_threshold)
+            ++entry->score;
+    }
+    const uint64_t duration = o.at_ms - entry->first_seen;
+    const bool persistent = duration >= config_.min_duration_ms &&
+                            entry->hits >= config_.min_hits &&
+                            entry->score >= config_.score_threshold;
+    if (hit || decay)
+        evidence_ = {"following_score", decay ? "decay_and_sighting" : "sighting",
+                     entry->hits,       entry->score,
+                     duration,          distance_m};
+    if (persistent && !entry->persistent) {
+        entry->persistent = true;
+        evidence_ = {"device_persistence",
+                     "duration_hits_score",
+                     entry->hits,
+                     entry->score,
+                     duration,
+                     distance_m};
+    }
+    // Radial displacement, not accumulated path length. Both fixes may jitter.
+    if (distance_m < config_.distance_m + 2.0 * config_.gps_jitter_m) {
+        if (entry->waiting &&
+            (!evidence_.event || std::strcmp(evidence_.event, "device_persistence") != 0))
+            evidence_ = {"following_score", "inside_radius", entry->hits,
+                         entry->score,      duration,        distance_m};
+        entry->waiting = false;
+        return false;
+    }
+    if (!entry->waiting) {
+        entry->waiting = true;
+        entry->beyond_since = o.at_ms;
+        if (!evidence_.event || std::strcmp(evidence_.event, "device_persistence") != 0)
+            evidence_ = {"following_score", "beyond_radius", entry->hits,
+                         entry->score,      duration,        distance_m};
+    }
+    if (!entry->alerted && persistent && o.at_ms - entry->beyond_since >= config_.delay_ms) {
+        entry->alerted = true;
+        evidence_ = {"following_alert", "movement_duration_hits_score",
+                     entry->hits,       entry->score,
+                     duration,          distance_m};
         return true;
     }
     return false;

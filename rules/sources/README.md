@@ -55,6 +55,8 @@ root [NOTICE](../../NOTICE) for retained copyright and modification notices.
   `5dba436175fd670a67eb819c2e17407d6fe918e8`: `src/es_detect.h` pattern tables
   and `src/main.cpp` tracker/MeshCore/iBeacon/Remote ID identifiers. Apache-2.0;
   [license](eye-spy-LICENSE.txt) and unmodified [NOTICE](eye-spy-NOTICE.txt).
+  The optional following scorer also reviews the duration/hit/continuity logic
+  in these files; see [intentional differences](../../docs/following-scoring.md).
   Camera/vendor tables are attributed to Eye Spy, not presented as a fresh IEEE
   registry verification. Upstream high-confidence/shared-chipset labels are not
   inherited: broad vendor observations are explicitly possible associations.

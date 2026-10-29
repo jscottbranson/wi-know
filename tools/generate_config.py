@@ -45,6 +45,10 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                                     'worker_rx_pin': 12, 'worker_rts_pin': 7})
     if isinstance(settings.get('detection'), dict):
         settings['detection'].setdefault('disabled_categories', [])
+    scoring_defaults = {'scoring_enabled': False, 'min_duration_ms': 300000, 'min_hits': 3, 'hit_interval_ms': 1000, 'score_threshold': 3, 'score_decay_ms': 60000, 'gps_jitter_m': 20, 'max_speed_mps': 100, 'max_fix_age_ms': 2000}
+    if isinstance(settings.get('following_alert'), dict):
+        for key, value in scoring_defaults.items():
+            settings['following_alert'].setdefault(key, value)
     template = {
         'schema_version': int,
         'node': {'role': str, 'id': int},
@@ -55,7 +59,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         'standalone': {'enabled': bool, 'ble_dwell_ms': int},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
         'detection': {'rules_directory': str, 'enabled_categories': list, 'disabled_categories': list},
-        'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list},
+        'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list, **{k: type(v) for k, v in scoring_defaults.items()}},
         'follower': {'enabled': bool, 'release_after_ms': int},
         'gps': {'enabled': bool, 'model': str, 'backup_battery_present': bool, **dict.fromkeys(('uart', 'rx_pin', 'tx_pin', 'baud', 'max_fix_age_ms', 'max_timing_uncertainty_ms'), int)},
         'sd': {'enabled': bool, 'format_if_mount_failed': bool, 'model': str, **dict.fromkeys(('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin', 'clock_khz'), int)},
@@ -150,6 +154,13 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     integer(following['distance_m'], 1, 100000, 'following_alert.distance_m')
     integer(following['delay_ms'], 0, 3600000, 'following_alert.delay_ms')
     integer(following['max_gap_ms'], 1, 3600000, 'following_alert.max_gap_ms')
+    for key, low, high in [('min_duration_ms', 1000, 86400000), ('min_hits', 2, 1000000),
+                           ('hit_interval_ms', 100, 3600000), ('score_threshold', 2, 1000000),
+                           ('score_decay_ms', 1000, 86400000), ('gps_jitter_m', 1, 1000),
+                           ('max_speed_mps', 1, 500), ('max_fix_age_ms', 0, 60000)]:
+        integer(following[key], low, high, 'following_alert.' + key)
+    require(not following['scoring_enabled'] or following['enabled'], 'scoring requires following alerts enabled')
+    require(not following['scoring_enabled'] or following['hit_interval_ms'] <= following['max_gap_ms'], 'hit interval exceeds continuity gap')
     require(not following['enabled'] or settings['gps']['enabled'], 'following alerts require GPS')
     require(len(following['ignore_devices']) <= 64, 'maximum 64 ignored devices')
     identities = set()
@@ -325,7 +336,7 @@ def emit(settings, rules):
         address = ','.join('0x'+part for part in device['address'].split(':'))
         out.append('DeviceIdentity{Radio::'+device['radio']+','+str(device['address_type'])+',{{'+address+'}}},')
     out.append('}};')
-    out.append('inline constexpr FollowingConfig following_config{following_alert_enabled, following_alert_distance_m, following_alert_delay_ms, following_alert_max_gap_ms};')
+    out.append('inline constexpr FollowingConfig following_config{following_alert_enabled, following_alert_distance_m, following_alert_delay_ms, following_alert_max_gap_ms, following_alert_scoring_enabled, following_alert_min_duration_ms, following_alert_min_hits, following_alert_hit_interval_ms, following_alert_score_threshold, following_alert_score_decay_ms, following_alert_gps_jitter_m, following_alert_max_speed_mps, following_alert_max_fix_age_ms};')
     universal = settings['node']['role'] == 'universal'
     out.append(f'inline constexpr bool universal_enabled = {cpp(universal)};')
     role = 'child' if universal else settings['node']['role']

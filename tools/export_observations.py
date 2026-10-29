@@ -22,6 +22,7 @@ COLUMNS = (
     'peak_timing_uncertainty_ms', 'peak_receiver_latitude', 'peak_receiver_longitude', 'peak_receiver_fix_at_ms',
     'peak_changed', 'observations', 'displacement_m', 'delay_ms', 'ble_ad_hex',
     'wifi_subtype', 'wifi_payload_format', 'wifi_ie_hex',
+    'identity_basis', 'reason', 'hits', 'score', 'duration_ms', 'gps_jitter_allowance_m', 'displacement_basis',
     'location_role', 'schema_version', 'wifi_remote_id_hex', 'protocol',
     'protocol_version', 'authenticated', 'message_index', 'message_counter',
     'message_type', 'raw_hex', 'data', 'transport', 'remote_id_transport',
@@ -65,7 +66,8 @@ def records(paths, skip_invalid=False, matches_only=False, location=None):
                         raise ValueError('expected a JSON object')
                     # Status records remain in the source log; they are not detections.
                     event = record.get('event', 'observation')
-                    if event not in ('observation', 'following_alert', 'drone_detection'):
+                    if event not in ('observation', 'following_alert', 'drone_detection',
+                                     'device_persistence', 'following_score', 'following_reset'):
                         continue
                     version = record.get('schema_version', 1 if event == 'following_alert' else None)
                     if type(version) is not int or version != 1:

@@ -201,21 +201,40 @@ struct DeviceIdentity {
 struct FollowingConfig {
     bool enabled{};
     uint32_t distance_m{200}, delay_ms{30000}, max_gap_ms{15000};
+    bool scoring_enabled{};
+    uint32_t min_duration_ms{300000}, min_hits{3}, hit_interval_ms{1000};
+    uint32_t score_threshold{3}, score_decay_ms{60000};
+    uint32_t gps_jitter_m{20}, max_speed_mps{100}, max_fix_age_ms{2000};
+};
+struct FollowingEvidence {
+    const char *event{}; // null for duplicate/rate-limited/ignored observations
+    const char *reason{};
+    uint32_t hits{}, score{};
+    uint64_t duration_ms{};
+    double displacement_m{};
 };
 class FollowingDetector {
   public:
     FollowingDetector(FollowingConfig config, const DeviceIdentity *ignored, size_t count)
         : config_(config), ignored_(ignored), ignored_count_(count) {}
     // True once per continuous encounter, only on a fresh sighting beyond the radius.
-    bool observe(const Observation &observation, Fix fix, double &distance_m);
+    bool observe(const Observation &observation, Fix fix, double &distance_m,
+                 uint64_t received_ms = 0);
+    const FollowingEvidence &evidence() const {
+        return evidence_;
+    }
 
   private:
     struct Entry {
-        bool used{}, waiting{}, alerted{};
+        bool used{}, waiting{}, alerted{}, persistent{};
         DeviceIdentity identity{};
-        Fix origin{};
-        uint64_t last_seen{}, beyond_since{};
+        Fix origin{}, previous{};
+        uint64_t last_seen{}, beyond_since{}, first_seen{}, last_hit{}, decay_at{};
+        uint32_t hits{}, score{};
     };
+    bool observe_scored(const Observation &, Fix, double &, uint64_t);
+    FollowingEvidence evidence_{};
+    uint64_t last_received_{};
     FollowingConfig config_;
     const DeviceIdentity *ignored_;
     size_t ignored_count_;
