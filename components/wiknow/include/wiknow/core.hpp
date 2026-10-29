@@ -9,7 +9,7 @@ namespace wiknow {
 constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 128;
 constexpr size_t max_tracks = 64, max_payload = 255;
 constexpr size_t max_ble_payload_pattern = 32;
-constexpr size_t log_line_capacity = 2304;
+constexpr size_t log_line_capacity = 2816;
 // Serial numbers advance modulo 2^32; jumps of half the range are ambiguous.
 constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
     const uint32_t distance = candidate - previous;
@@ -40,7 +40,9 @@ enum class Field : uint8_t {
     name_exact,
     service_uuid16_range,
     wifi_ie_signature,
-    ble_payload_contains
+    ble_payload_contains,
+    wifi_receiver_mac,
+    wifi_receiver_oui
 };
 struct Channel {
     uint8_t number{};
@@ -58,6 +60,8 @@ enum class WifiSubtype : uint8_t {
     probe_response = 5,
     beacon = 8,
     nan_action = 13,
+    data = 16,     // data type + subtype 0 (distinct from management subtype values)
+    qos_data = 24, // data type + subtype 8
     unknown = 255
 };
 struct Observation {
@@ -75,6 +79,8 @@ struct Observation {
         payload{}; // BLE AD; Wi-Fi probe: complete IEs; otherwise Remote ID IE/NAN body
     uint16_t payload_size{};
     WifiSubtype wifi_subtype{WifiSubtype::unknown};
+    std::array<uint8_t, 26> wifi_header{}; // MAC header only; never data contents
+    uint8_t wifi_header_size{};
 };
 struct Predicate {
     Field field{};
@@ -101,6 +107,12 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out);
 bool parse_ble(const uint8_t *data, size_t length, Observation &out);
 bool matches(const Rule &rule, const Observation &observation);
 Match best_match(const Rule *rules, size_t count, const Observation &observation);
+bool indirect_rule(const Rule &rule);
+Match best_direct_match(const Rule *rules, size_t count, const Observation &observation);
+struct WifiAddresses {
+    std::array<uint8_t, 6> receiver{}, transmitter{}, source{}, destination{}, bssid{};
+};
+bool wifi_addresses(const Observation &observation, WifiAddresses &out);
 
 struct Node {
     uint16_t id{};
@@ -242,7 +254,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
-constexpr uint8_t protocol_version = 3;
+constexpr uint8_t protocol_version = 4;
 enum class MessageType : uint8_t {
     poll = 1,
     report = 2,

@@ -110,16 +110,23 @@ struct RawWifi {
     uint8_t frame[512];
 };
 static QueueHandle_t raw_wifi{};
+static wiknow::WifiDataAdmission data_admission{};
 static void wifi_rx(void *buffer, wifi_promiscuous_pkt_type_t type) {
-    if (type != WIFI_PKT_MGMT)
+    if (type != WIFI_PKT_MGMT && type != WIFI_PKT_DATA)
         return;
     const auto *packet = static_cast<const wifi_promiscuous_pkt_t *>(buffer);
     const size_t size = wiknow::wifi_capture_size(packet->payload, packet->rx_ctrl.sig_len,
                                                   packet->rx_ctrl.rx_state == 0);
     if (!size)
         return;
+    const uint64_t captured = now_ms();
+    if (type == WIFI_PKT_DATA &&
+        !data_admission.accept(captured, uxQueueSpacesAvailable(raw_wifi))) {
+        ++dropped;
+        return;
+    }
     RawWifi raw{};
-    raw.at = now_ms();
+    raw.at = captured;
     raw.policy = capture_snapshot();
     raw.node = raw.policy.node;
     raw.rssi = packet->rx_ctrl.rssi;
@@ -469,7 +476,7 @@ void start_radios() {
         configASSERT(raw_wifi);
         configASSERT(xTaskCreate(wifi_worker, "wifi_parse", 4096, nullptr, 4, nullptr) == pdPASS);
         wifi_promiscuous_filter_t filter{};
-        filter.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT;
+        filter.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA;
         ESP_ERROR_CHECK(esp_wifi_set_promiscuous_filter(&filter));
         ESP_ERROR_CHECK(esp_wifi_set_promiscuous_rx_cb(wifi_rx));
         // Reception starts when the first nonempty assignment is applied.

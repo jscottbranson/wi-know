@@ -73,7 +73,7 @@ void detect_identity() {
 static i2c_master_dev_handle_t lcd{};
 static uint64_t beep_until{};
 static QueueHandle_t log_queue{}, console_queue{};
-// Each line is 2304 bytes. Keep output queues bounded without consuming the
+// Each line is bounded by log_line_capacity. Keep output queues bounded without consuming the
 // internal RAM needed to initialize Wi-Fi and BLE on boards without enabled PSRAM.
 static constexpr unsigned log_queue_depth = 2;
 static std::atomic<Storage> active_storage{Storage::starting};
@@ -482,7 +482,7 @@ void start_peripherals() {
              c::display_enabled ? "enabled" : "disabled");
     console_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
     configASSERT(console_queue);
-    configASSERT(xTaskCreate(console_writer, "console_writer", 4096, nullptr, 1, nullptr) ==
+    configASSERT(xTaskCreate(console_writer, "console_writer", 4608, nullptr, 1, nullptr) ==
                  pdPASS);
     if (c::gps_enabled)
         uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
@@ -519,7 +519,7 @@ void start_storage() {
     if (role != wiknow::Role::parent)
         return;
     log_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
-    if (!log_queue || xTaskCreate(logger, "log_writer", 6144, nullptr, 2, nullptr) != pdPASS) {
+    if (!log_queue || xTaskCreate(logger, "log_writer", 6656, nullptr, 2, nullptr) != pdPASS) {
         if (log_queue)
             vQueueDelete(log_queue);
         log_queue = nullptr;

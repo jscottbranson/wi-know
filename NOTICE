@@ -1,6 +1,6 @@
 wi-know third-party detection notices
 
-rules/expanded.json is a modified adaptation of detection pattern data from:
+rules/expanded.json and rules/receiver.json are modified adaptations of detection pattern data from:
 
 Eye Spy — SimeonOnSecurity
 Copyright 2024 SimeonOnSecurity (https://github.com/simeononsecurity)
@@ -25,6 +25,9 @@ camera identification; reduced confidence; grouped alternatives; made tracker
 and UniFi categories opt-in; matched UUIDs only in structured advertising data;
 added decoded Remote ID rules; required vendor and wildcard-probe evidence for
 the community IE pattern; rejected malformed IEs instead of resynchronizing.
+Changes made by wi-know, 2026-10-29: receiver rules retain only the Flock-owned
+OUI on selected frame subtypes, at possible confidence with no following action;
+receiver evidence remains indirect and RSSI remains attributed to transmitter.
 No upstream detector implementation, proprietary firmware, or firmware dump is
 included. The independently written matcher is part of wi-know.
 

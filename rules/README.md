@@ -104,7 +104,9 @@ Supported predicates:
 | `mac` | Exact six-byte transmitter/advertiser address, e.g. `02:11:22:33:44:55`; supports local/random addresses |
 | `oui` | Three address bytes, e.g. `00:11:22`; ignored for local/random addresses |
 | `ssid_prefix` | Case-sensitive UTF-8 advertised Wi-Fi SSID prefix, at most 32 encoded bytes; excludes probe requests |
-| `wifi_subtype` | `probe_request`, `probe_response`, `beacon`, or `nan_action` |
+| `wifi_subtype` | `probe_request`, `probe_response`, `beacon`, `nan_action`, `data`, or `qos_data` |
+| `wifi_receiver_mac` | Exact six-octet receiver MAC; indirect evidence, not transmitter identity |
+| `wifi_receiver_oui` | Three-octet globally administered unicast receiver prefix; indirect evidence |
 | `wifi_ssid_wildcard` | `"true"` for a present empty probe SSID, `"false"` for a present nonempty probe SSID |
 | `wifi_ie_fingerprint` | Full ordered probe IE bytes as contiguous hex, at most 255 bytes; canonical lowercase |
 | `wifi_requested_ssid_prefix` | Case-sensitive printable UTF-8 prefix of a probe request's raw SSID bytes, at most 32 encoded bytes |
@@ -350,3 +352,11 @@ license. No production BWCDEVICE signature or external detector implementation
 is imported. A matching tag is a claimed identifier, not authentication or proof
 of recording. Production signatures still require pinned evidence, license review
 and a cautious confidence label. Existing category settings remain unchanged.
+
+## Passive receiver rules
+
+See [Wi-Fi receiver evidence](../docs/wifi-receiver.md) for address roles, header
+bounds, wire compatibility and hardware validation status. Receiver predicates
+require `confidence: "possible"` and `actions.follow: false`. They can log/buzz,
+but do not steer the signal target. `rules/receiver.json` adds three narrowly
+reviewed Flock receiver-prefix rules; shared chipset prefixes are not imported.

@@ -4,6 +4,7 @@
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
+#include "sdkconfig.h"
 #include "wiknow/alert_cooldown.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
@@ -13,6 +14,10 @@
 #include <cstdio>
 #include <cstring>
 #include <new>
+
+static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE >= 13312,
+              "Set CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312 or greater in firmware/sdkconfig; "
+              "Wi-Fi header logging needs the updated main task stack budget");
 
 namespace {
 using namespace wiknow;
@@ -249,15 +254,17 @@ static void consume(Observation o) {
     if (!match.rule && !drone.count && std::strcmp(c::logging_mode, "all") != 0)
         return;
     Track &track = tracker->observe(o, fix);
-    if (match.rule && received >= o.at_ms &&
+    // Indirect receiver matches must never steer tracking to the transmitting AP.
+    const Match direct = best_direct_match(c::rules.data(), c::rules.size(), o);
+    if (direct.rule && received >= o.at_ms &&
         received - o.at_ms <= uint64_t(c::signal_trend_stale_ms)) {
         bool current = target_rule && same_target(target, o);
         bool expired = !target_rule ||
                        platform::now_ms() - target_seen >= uint64_t(c::follower_release_after_ms);
         if ((current && o.at_ms >= target.at_ms) || expired ||
             (!current &&
-             (match.rule->priority > target_rule->priority ||
-              (match.rule->priority == target_rule->priority && o.at_ms >= target_seen)))) {
+             (direct.rule->priority > target_rule->priority ||
+              (direct.rule->priority == target_rule->priority && o.at_ms >= target_seen)))) {
             // Prefer the dedicated follower's measurements to avoid source-switch flicker.
             bool existing_follower = false, incoming_follower = false;
             for (const auto &n : members.nodes()) {
@@ -271,18 +278,18 @@ static void consume(Observation o) {
                 if (!target_rule || !same_signal(target, o))
                     tracker->reset_trend(track);
                 target = o;
-                target_rule = match.rule;
+                target_rule = direct.rule;
                 target_seen = current ? std::max(target_seen, o.at_ms) : o.at_ms;
                 target_peak = track.peak.rssi;
                 target_trend = tracker->trend(track, platform::now_ms());
             } else
                 target_seen = std::max(target_seen, o.at_ms);
         }
-        uint64_t now = platform::now_ms();
-        if (match.rule->buzzer && alert_cooldown.request(now, c::buzzer_cooldown_ms)) {
-            platform::indicators(target_led_trend(platform::now_ms()), true);
-        }
     }
+    if (match.rule && match.rule->buzzer && received >= o.at_ms &&
+        received - o.at_ms <= uint64_t(c::signal_trend_stale_ms) &&
+        alert_cooldown.request(received, c::buzzer_cooldown_ms))
+        platform::indicators(target_led_trend(received), true);
     char json[log_line_capacity];
     for (size_t i = 0; i < drone.count; ++i) {
         if (drone_detection_json(o, i, fix, gps, json, sizeof(json)))

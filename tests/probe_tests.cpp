@@ -157,7 +157,7 @@ int main() {
     Bytes maximal{0, 0, 1, 251};
     maximal.resize(255, 0x82);
     auto full = parse(frame(maximal));
-    assert(full.payload_size == 255);
+    assert(full.payload_size == 255 && full.wifi_header_size == 24);
     auto too_big = maximal;
     too_big.push_back(1);
     too_big.push_back(0);
@@ -205,7 +205,7 @@ int main() {
     packet.node = o.node;
     packet.boot = o.boot;
     assert(pack_report(report, packet));
-    assert(packet.size == 105 + o.payload_size && protocol_version == 3);
+    assert(packet.size == 132 + o.payload_size && protocol_version == 4);
     uint8_t wire[max_frame];
     auto n = encode_packet(packet, wire, sizeof(wire));
     Decoder decoder;
@@ -237,12 +237,12 @@ int main() {
     packet.payload[106] = 255;
     assert(!unpack_report(packet, forwarded));
     report.observation = full;
-    assert(pack_report(report, packet) && packet.size == 360);
+    assert(pack_report(report, packet) && packet.size == 387);
     Identity identity{};
     identity.parent[0] = 1;
     identity.worker[0] = 2;
     assert(pack_identity(identity, packet, MessageType::session_report));
-    assert(packet.size == 392);
+    assert(packet.size == 419);
     Packet inner;
     Identity restored;
     assert(unpack_identity(packet, restored, &inner) && unpack_report(inner, forwarded));
@@ -271,6 +271,7 @@ int main() {
     r.id = id;
     r.category = category;
     r.confidence = "broadcast";
-    auto &max_track = tracker.observe(full, {});
-    assert(observation_json(full, max_track, {&r}, {}, gps, json, sizeof(json)));
+    Fix maximum_fix{true, -90, -180, UINT64_MAX};
+    auto &max_track = tracker.observe(full, maximum_fix);
+    assert(observation_json(full, max_track, {&r}, maximum_fix, gps, json, sizeof(json)));
 }

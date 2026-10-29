@@ -84,6 +84,25 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(result['wifi_payload_format'],'probe_ie_v1')
                 self.assertEqual(result['wifi_ie_hex'],row['wifi_ie_hex'])
 
+    def test_receiver_evidence_exports(self):
+        evidence = dict(wifi_header_hex='08400000b41e520102031011120405062021220708090000',
+                        wifi_receiver='b4:1e:52:01:02:03', wifi_transmitter='10:11:12:04:05:06',
+                        wifi_source='10:11:12:04:05:06', wifi_destination='b4:1e:52:01:02:03',
+                        wifi_bssid='20:21:22:07:08:09', rssi_role='transmitter',
+                        match_evidence='indirect_receiver', wifi_payload_format='header_only_v1')
+        row = observation(**evidence)
+        for kind in ('csv', 'tsv', 'json', 'jsonl', 'geojson'):
+            with self.subTest(kind=kind):
+                self.assertEqual(self.run_export([row], kind), 0)
+                if kind in ('csv', 'tsv'):
+                    with self.output.open() as stream:
+                        result = next(csv.DictReader(stream, delimiter=',' if kind == 'csv' else '\t'))
+                else:
+                    data = json.loads(self.output.read_text())
+                    result = data['features'][0]['properties'] if kind == 'geojson' else data[0] if kind == 'json' else data
+                for key, value in evidence.items():
+                    self.assertEqual(result[key], value)
+
     def test_infers_extensions_and_defaults_stdout_to_json(self):
         self.log.write_text(json.dumps(observation()))
         for kind in ('json', 'jsonl', 'csv', 'tsv', 'geojson'):

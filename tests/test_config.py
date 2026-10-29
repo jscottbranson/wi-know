@@ -523,6 +523,49 @@ class ConfigTests(unittest.TestCase):
                     with self.assertRaises(ValueError):
                         generate.validate(self.settings, base=base)
 
+    def test_receiver_predicates(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            document = generate.load(ROOT/'rules/examples/lab.json')
+            rule = document['rules'][0]
+            rule.update(radio='wifi', confidence='possible')
+            rule['actions']['follow'] = False
+            for field, value, valid in [
+                    ('wifi_receiver_mac', 'B4:1E:52:01:02:03', True),
+                    ('wifi_receiver_mac', 'b4-1e-52-01-02-03', False),
+                    ('wifi_receiver_mac', 'b4:1e:52', False),
+                    ('wifi_receiver_oui', 'B4:1E:52', True),
+                    ('wifi_receiver_oui', 'b4:1e', False),
+                    ('wifi_receiver_oui', 'b4:1e:52:00', False),
+                    ('wifi_subtype', 'data', True), ('wifi_subtype', 'qos_data', True)]:
+                with self.subTest(field=field, value=value):
+                    rule['predicates'] = [{'field': field, 'value': value}]
+                    (base/'rule.json').write_text(json.dumps(document))
+                    if valid:
+                        settings, rules = generate.validate(self.settings)
+                        self.assertIn('Field::'+field, generate.emit(settings, rules))
+                    else:
+                        with self.assertRaises(ValueError):
+                            generate.validate(self.settings)
+            rule['predicates'] = [{'field': 'wifi_receiver_mac', 'value': 'b4:1e:52:01:02:03'}]
+            for field, value in [('radio', 'ble'), ('confidence', 'probable')]:
+                old = rule[field]; rule[field] = value
+                (base/'rule.json').write_text(json.dumps(document))
+                with self.assertRaises(ValueError):
+                    generate.validate(self.settings)
+                rule[field] = old
+            rule['actions']['follow'] = True
+            (base/'rule.json').write_text(json.dumps(document))
+            with self.assertRaisesRegex(ValueError, 'cannot follow'):
+                generate.validate(self.settings)
+        settings = generate.load(ROOT/'config/settings.json')
+        settings['detection']['enabled_categories'].remove('flock')
+        _, rules = generate.validate(settings)
+        receivers = [r for r in rules if r['id'].startswith('flock-receiver-')]
+        self.assertEqual(len(receivers), 3)
+        self.assertTrue(all(not r['enabled'] for r in receivers))
+
     def test_probe_predicates_and_manifest(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)

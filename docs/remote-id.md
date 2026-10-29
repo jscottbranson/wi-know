@@ -85,11 +85,11 @@ The entire NAN action body must fit 255 bytes: the reference profile's nine-mess
 pack occupies exactly 255 bytes (6-byte header, 242-byte descriptor attribute,
 7-byte extension). Smaller packs can include additional attributes within that
 same limit. Frames over 512 bytes, NAN bodies over 255 bytes, and packs over nine
-messages are rejected without truncation. Bus protocol version 3 adds the Wi-Fi subtype/evidence discriminator; the complete
-evidence fits within its 360-byte report payload. Update all parents and receivers
+messages are rejected without truncation. Bus protocol version 4 retains the Wi-Fi subtype/evidence discriminator and adds
+bounded MAC headers; complete evidence fits within its 387-byte report payload. Update all parents and receivers
 together; earlier bus framing versions are rejected. Probe IE evidence uses a
-distinct discriminator and is never interpreted as a Remote ID vendor body. No observation, capture queue or tracking
-buffer was enlarged; NAN parsing uses bounded views and no heap allocation.
+distinct discriminator and is never interpreted as a Remote ID vendor body. NAN parsing uses bounded views and no heap allocation. Wi-Fi MAC header
+evidence adds bounded observation storage as described in [receiver evidence](wifi-receiver.md).
 Each message is 25 bytes; packs contain at most nine messages. Reception depends on
 channel assignments and scanning duty cycle. Bounded observation and writer queues
 can drop records under load, including bursts of message packs. No hardware RF or
