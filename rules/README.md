@@ -150,8 +150,8 @@ can be shared and addresses spoofed. Production signatures still require separat
 source and confidence review. No new vendor signatures are included by this capability.
 
 Exact address evidence already travels in the six-byte `Observation.address`
-field of protocol v3 reports and the JSONL `address` field; exact MAC matching
-adds no wire or log fields. The separate probe-evidence feature introduced v3. Local/standalone and forwarded observations use the same
+field of protocol v5 reports and the JSONL `address` field; exact MAC matching
+adds no wire or log fields. Local/standalone and forwarded observations use the same
 matcher, priority selection, and action flags.
 
 Every build also writes `settings.rules.json` beside its generated `settings.hpp`.
