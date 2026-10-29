@@ -192,3 +192,7 @@ places is a validation error. Existing configs may omit `disabled_categories`.
 Category selection controls classifications and rule actions, not radio reception.
 Unifi/Ubiquiti OUIs also identify non-camera equipment. Generic camera keywords
 can independently match the same device even when its vendor category is off.
+
+Optional per-address persistence and following scoring is documented in
+[following scoring](../docs/following-scoring.md). `following_alert.scoring_enabled`
+is false in every shipped profile; enabling it requires GPS and `following_alert.enabled`.

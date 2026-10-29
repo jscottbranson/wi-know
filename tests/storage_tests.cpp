@@ -71,5 +71,11 @@ int main() {
     CHECK(platform::following_alert_json(observation, {}, gps, 200, 1, line, sizeof(line)));
     CHECK(std::strstr(line, "\"utc_ms\":1793102401000"));
     CHECK(std::strstr(line, "\"time_source\":\"gps_holdover\""));
+    wiknow::FollowingEvidence evidence{"device_persistence", "duration_hits_score", 3, 3, 300000, 0};
+    CHECK(platform::following_alert_json(observation, {}, gps, 0, 1000, line, sizeof(line), &evidence, 20));
+    CHECK(std::strstr(line, "\"event\":\"device_persistence\""));
+    CHECK(std::strstr(line, "\"hits\":3,\"score\":3,\"duration_ms\":300000"));
+    CHECK(std::strstr(line, "\"identity_basis\":\"radio_address_type_address\""));
+    CHECK(!platform::following_alert_json(observation, {}, gps, 0, 1000, line, 10, &evidence));
     std::puts("All firmware log tests passed");
 }

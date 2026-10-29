@@ -53,6 +53,21 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(self.run_export([], kind), 0)
                 self.assertEqual(self.output.read_text(), '[]\n' if kind == 'json' else '')
 
+    def test_following_scoring_evidence_exports(self):
+        for event in ('device_persistence', 'following_score', 'following_reset', 'following_alert'):
+            row = observation(event=event, hits=3, score=3, duration_ms=300000,
+                              reason='duration_hits_score', gps_jitter_allowance_m=20,
+                              identity_basis='radio_address_type_address',
+                              displacement_basis='radial_from_first_fix')
+            self.assertEqual(self.run_export([row], 'json'), 0)
+            self.assertEqual(json.loads(self.output.read_text())[0]['reason'], row['reason'])
+            self.assertEqual(self.run_export([row], 'csv'), 0)
+            with self.output.open() as stream:
+                result = list(csv.DictReader(stream))[0]
+            for key in ('event', 'reason', 'hits', 'score', 'duration_ms', 'identity_basis',
+                        'gps_jitter_allowance_m', 'displacement_basis'):
+                self.assertEqual(result[key], str(row[key]))
+
     def test_probe_evidence_exports(self):
         row = observation(wifi_subtype=4, wifi_payload_format='probe_ie_v1',
                           wifi_ie_hex='000001028284dd0412345601', wifi_remote_id_hex='')

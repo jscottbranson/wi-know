@@ -105,3 +105,8 @@ target_link_libraries(expanded_detection_tests PRIVATE wiknow)
 target_include_directories(expanded_detection_tests PRIVATE ${CMAKE_BINARY_DIR}/generated)
 target_compile_options(expanded_detection_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
 add_test(NAME expanded_detection COMMAND expanded_detection_tests)
+
+add_executable(following_scoring_tests tests/following_scoring_tests.cpp)
+target_link_libraries(following_scoring_tests PRIVATE wiknow)
+target_compile_options(following_scoring_tests PRIVATE -Wall -Wextra -Wpedantic -Werror)
+add_test(NAME following_scoring COMMAND following_scoring_tests)

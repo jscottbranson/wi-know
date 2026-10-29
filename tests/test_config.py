@@ -74,6 +74,26 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate.validate(invalid)
 
+    def test_legacy_following_short_gap(self):
+        self.settings['following_alert'] = dict(enabled=False, distance_m=100, delay_ms=0, max_gap_ms=1, ignore_devices=[])
+        settings, _ = generate.validate(self.settings)
+        self.assertFalse(settings['following_alert']['scoring_enabled'])
+
+    def test_following_scoring(self):
+        self.settings['gps'].update(enabled=True, rx_pin=5)
+        self.settings['following_alert'].update(enabled=True, scoring_enabled=True)
+        settings, rules = generate.validate(self.settings)
+        self.assertIn('following_alert_score_threshold', generate.emit(settings, rules))
+        for field, value in [('min_duration_ms', 0), ('min_hits', 1), ('hit_interval_ms', 0),
+                             ('score_threshold', True), ('score_decay_ms', 0), ('gps_jitter_m', 0),
+                             ('max_speed_mps', 501), ('max_fix_age_ms', -1), ('enabled', False)]:
+            invalid = copy.deepcopy(self.settings)
+            invalid['following_alert'][field] = value
+            with self.subTest(field=field), self.assertRaises(ValueError):
+                generate.validate(invalid)
+        for path in (ROOT / 'config').glob('settings*.json'):
+            self.assertFalse(generate.load(path)['following_alert']['scoring_enabled'])
+
     def test_standalone_wiring_uses_all_header_pins(self):
         settings, rules = generate.validate(generate.load(ROOT/'config/settings.standalone-wiring.example.json'))
         self.assertEqual(settings['node'], {'role': 'parent', 'id': 0})

@@ -46,7 +46,22 @@
     ],
     "disabled_categories": []
   },
-  "following_alert": { "enabled": false, "distance_m": 200, "delay_ms": 30000, "max_gap_ms": 15000, "ignore_devices": [] },
+  "following_alert": {
+    "enabled": false,
+    "distance_m": 200,
+    "delay_ms": 30000,
+    "max_gap_ms": 15000,
+    "ignore_devices": [],
+    "scoring_enabled": false,
+    "min_duration_ms": 300000,
+    "min_hits": 3,
+    "hit_interval_ms": 1000,
+    "score_threshold": 3,
+    "score_decay_ms": 60000,
+    "gps_jitter_m": 20,
+    "max_speed_mps": 100,
+    "max_fix_age_ms": 2000
+  },
   "follower": { "enabled": true, "release_after_ms": 30000 },
   "gps": {
     "enabled": false,
