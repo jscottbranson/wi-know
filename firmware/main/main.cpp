@@ -256,7 +256,7 @@ static void consume(Observation o) {
     Track &track = tracker->observe(o, fix);
     // Indirect receiver matches must never steer tracking to the transmitting AP.
     const Match direct = best_direct_match(c::rules.data(), c::rules.size(), o);
-    if (direct.rule && received >= o.at_ms &&
+    if (direct.rule && o.ble_evidence == BleEvidence::advertisement && received >= o.at_ms &&
         received - o.at_ms <= uint64_t(c::signal_trend_stale_ms)) {
         bool current = target_rule && same_target(target, o);
         bool expired = !target_rule ||
@@ -485,8 +485,9 @@ static void parent_loop() {
                     std::snprintf(line2, sizeof(line2), "%d P%d %.6s", int(target.rssi),
                                   target_peak, trend_name(visible));
                 else {
-                    const bool rules_enabled = std::any_of(c::rules.begin(), c::rules.end(),
-                        [](const wiknow::Rule &r) { return r.enabled; });
+                    const bool rules_enabled =
+                        std::any_of(c::rules.begin(), c::rules.end(),
+                                    [](const wiknow::Rule &r) { return r.enabled; });
                     std::snprintf(line2, sizeof(line2), "%s",
                                   rules_enabled ? "Awaiting match" : "Add rules/*.json");
                 }

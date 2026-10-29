@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "synthetic-gatt-service",
+      "category": "lab",
+      "enabled": true,
+      "radio": "ble",
+      "match": "all",
+      "priority": 10,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": false
+      },
+      "predicates": [
+        {
+          "field": "mac",
+          "value": "12:34:56:78:9a:bc"
+        },
+        {
+          "field": "gatt_service_uuid128",
+          "value": "00112233-4455-6677-8899-aabbccddeeff"
+        }
+      ],
+      "source": {
+        "url": "local:lab-fixture",
+        "revision": "1",
+        "license": "CC0-1.0",
+        "reviewed": "2026-10-27"
+      }
+    }
+  ]
+}

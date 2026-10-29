@@ -77,7 +77,7 @@ const char *remote_id_transport_name(RemoteIdTransport transport) {
 }
 RemoteIdMessages remote_id_messages(const Observation &o) {
     RemoteIdMessages out{};
-    if (o.payload_size > o.payload.size())
+    if (o.ble_evidence != BleEvidence::advertisement || o.payload_size > o.payload.size())
         return out;
     const auto *p = o.payload.data();
     if (o.radio == Radio::wifi) {

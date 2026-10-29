@@ -360,3 +360,13 @@ bounds, wire compatibility and hardware validation status. Receiver predicates
 require `confidence: "possible"` and `actions.follow: false`. They can log/buzz,
 but do not steer the signal target. `rules/receiver.json` adds three narrowly
 reviewed Flock receiver-prefix rules; shared chipset prefixes are not imported.
+### Connected primary-service rules
+
+`gatt_service_uuid128` matches completed connected discovery only, using canonical
+128-bit UUID text (standard 16/32-bit UUIDs use the Bluetooth base UUID). It never
+matches advertised services. Such rules require `match: "all"`, exactly one `mac`,
+one or more `gatt_service_uuid128` predicates, no other predicates, and
+`actions.follow: false`. Disabled rules/categories cannot trigger a connection.
+The configured address/type allowlist is also required. See
+[active discovery](../docs/gatt-discovery.md) for opt-in configuration and evidence
+format. No production signatures are added; generic services are not vendor identity.

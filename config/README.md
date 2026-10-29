@@ -196,3 +196,9 @@ can independently match the same device even when its vendor category is off.
 Optional per-address persistence and following scoring is documented in
 [following scoring](../docs/following-scoring.md). `following_alert.scoring_enabled`
 is false in every shipped profile; enabling it requires GPS and `following_alert.enabled`.
+### Optional connected BLE discovery
+
+All profiles ship with `gatt.enabled: false`. Active discovery requires an explicit
+stable-address target list, enabled GATT-specific rules, and a central/security-disabled
+SDK build. It transmits and connects. See [the configuration, limits, and hardware
+validation checklist](../docs/gatt-discovery.md) before enabling it.

@@ -97,5 +97,6 @@
     "minimum_samples": 3,
     "deadband_db": 3,
     "confirmations": 2
-  }
+  },
+  "gatt": { "enabled": false, "timeout_ms": 3000, "cooldown_ms": 60000, "targets": [] }
 }

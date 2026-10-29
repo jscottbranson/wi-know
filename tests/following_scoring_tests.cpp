@@ -35,6 +35,26 @@ struct Fixture {
     }
 };
 int main() {
+    Fixture gatt;
+    assert(!gatt.see(1000));
+    assert(!gatt.see(2000));
+    assert(!gatt.see(3000));
+    assert(gatt.event("device_persistence"));
+    gatt.o.ble_evidence = BleEvidence::gatt_primary_services;
+    assert(!gatt.see(4000, .0012));
+    assert(!gatt.d.evidence().event && !gatt.d.evidence().reason);
+    assert(gatt.d.evidence().hits == 0 && gatt.d.evidence().score == 0);
+    assert(!gatt.see(5000, .0013));
+    assert(!gatt.d.evidence().event); // connected sightings cannot escalate to following
+    gatt.o.ble_evidence = BleEvidence::advertisement;
+    assert(!gatt.see(5500, .0012));      // only now starts displacement delay
+    assert(gatt.d.evidence().hits == 4); // GATT did not increment persistence hits
+    assert(gatt.see(6500, .0013));
+    assert(gatt.event("following_alert"));
+    gatt.o.ble_evidence = BleEvidence::gatt_primary_services;
+    assert(!gatt.see(7000, .0014));
+    assert(!gatt.d.evidence().event); // no stale following event leaks to UI/logging
+
     Fixture stationary;
     assert(!stationary.see(1000));
     assert(!stationary.see(2000));
