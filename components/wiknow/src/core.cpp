@@ -150,9 +150,9 @@ bool FollowingDetector::observe_scored(const Observation &o, Fix fix, double &di
     entry->last_seen = o.at_ms;
     entry->previous = fix;
     distance_m = distance(fix, entry->origin);
-    const uint64_t decay = (o.at_ms - entry->decay_at) / std::max(1u, config_.score_decay_ms);
+    const uint64_t decay = (o.at_ms - entry->decay_at) / std::max<uint32_t>(1, config_.score_decay_ms);
     entry->score -= uint32_t(std::min<uint64_t>(decay, entry->score));
-    entry->decay_at += decay * std::max(1u, config_.score_decay_ms);
+    entry->decay_at += decay * std::max<uint32_t>(1, config_.score_decay_ms);
     const bool hit = o.at_ms - entry->last_hit >= config_.hit_interval_ms;
     if (hit) {
         entry->last_hit = o.at_ms;
