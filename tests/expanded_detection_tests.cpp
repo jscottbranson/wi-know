@@ -28,10 +28,9 @@ static Bytes service(unsigned id, bool wide = false) {
 }
 int main() {
     auto tile = rule("tile-services");
-    assert(!tile.enabled);
+    assert(tile.enabled);
     auto unifi = rule("unifi-vendor-wifi-1");
-    assert(!unifi.enabled);
-    tile.enabled = true;
+    assert(unifi.enabled);
     for (bool wide : {false, true}) {
         assert(matches(tile, ble(service(0xfeed, wide))));
         assert(matches(tile, ble(service(0xfeec, wide))));
@@ -69,7 +68,7 @@ int main() {
     bytes.back() = 0x0e;
     assert(!matches(meta, ble(bytes)));
     auto findmy = rule("apple-findmy-advertisement");
-    findmy.enabled = true;
+    assert(findmy.enabled);
     assert(matches(findmy, ble({4, 0xff, 0x4c, 0, 0x12})));
     assert(!matches(findmy, ble({4, 0x16, 0x4c, 0, 0x12})));
     assert(!matches(findmy, ble({4, 0xff, 0x4c, 0, 0x10})));

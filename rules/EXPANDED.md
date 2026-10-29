@@ -1,7 +1,7 @@
 # Expanded detection pack
 
 Reviewed 2026-10-28. `expanded.json` adds 67 rules to the existing 25-rule
-surveillance pack: 92 total, 85 enabled in every shipped profile. These are
+surveillance pack: 92 total, all enabled in every shipped profile. These are
 passive observations, not authenticated identities. No physical-device
 validation has been performed. Attribution, modifications and license obligations
 are recorded in [NOTICE](../NOTICE) and [source notes](sources/README.md).
@@ -9,8 +9,8 @@ are recorded in [NOTICE](../NOTICE) and [source notes](sources/README.md).
 | Category | Evidence and interpretation | Default |
 | --- | --- | --- |
 | `cameras` | Eye Spy camera-vendor Wi-Fi/BLE OUIs and advertised SSID keywords, including Axis, Hikvision, Dahua, Reolink, Wyze, Arlo, Nest, Amcrest, Vivotek, Hanwha, FLIR and Mobotix candidates | On |
-| `unifi_cameras` | Ubiquiti vendor OUIs on Wi-Fi/BLE; `unifi`/`protect` advertised SSID keywords. Also matches APs and other equipment; not camera-specific | **Off** |
-| `ble_trackers` | Tile FEED/FEEC, Samsung FD5A, Apple Find My manufacturer prefixes, iBeacon prefix | **Off** |
+| `unifi_cameras` | Ubiquiti vendor OUIs on Wi-Fi/BLE; `unifi`/`protect` advertised SSID keywords. Also matches APs and other equipment; not camera-specific | On |
+| `ble_trackers` | Tile FEED/FEEC, Samsung FD5A, Apple Find My manufacturer prefixes, iBeacon prefix | On |
 | `flock` | Additional case-insensitive SSID/BLE names, two exact firmware-default MACs, accessory UUID, advertised Raven 3100–3500 services, seven vendor-qualified community probe patterns | On |
 | `shared_radio_vendors` | Community Flock candidate OUIs, LiteOn/USI/Qualcomm and Motorola vendor evidence; these identify shared radio hardware, not Flock or ALPR | On |
 | `acoustic_sensors` | SoundThinking/ShotSpotter vendor OUI on Wi-Fi/BLE | On |
@@ -29,12 +29,13 @@ unrelated names; shared OUIs can be very noisy. Disable their categories if need
 A UniFi-branded device may independently match a generic camera keyword; disabling
 `unifi_cameras` disables that category, not every possible classification of that device.
 
-Every config explicitly lists `ble_trackers` and `unifi_cameras` in
-`detection.disabled_categories`. To opt in, move a category to
-`detection.enabled_categories`, then rebuild/reflash. A category cannot be in
-both lists. Omitted `disabled_categories` defaults to `[]` for existing configs.
-Rules stay individually enabled in the source pack so category opt-in is sufficient;
-the generated manifest records their effective disabled state. The limit is now
+Every config enables all shipped detection categories and leaves
+`detection.disabled_categories` empty. To opt out, move a category from
+`detection.enabled_categories` to `detection.disabled_categories`, then
+rebuild/reflash. A category cannot be in both lists. Omitted
+`disabled_categories` defaults to `[]` for existing configs. Rules stay individually
+enabled in the source pack; the generated manifest records their effective state.
+The limit is now
 128 rules, leaving 36 slots for custom rules. The inactive lab templates remain
 outside the production rule directory glob.
 

@@ -16,7 +16,7 @@ See [expanded detection coverage and configuration](EXPANDED.md) for the additio
 example profiles enable its categories, including `body_cameras` for Utility,
 Digital Ally, and legacy VIEVU. Existing custom profiles must add `body_cameras`
 to `detection.enabled_categories` to enable those rules.
-The separate [expanded pack](EXPANDED.md) includes Ubiquiti/UniFi identifiers, disabled by default alongside BLE trackers in every profile.
+The separate [expanded pack](EXPANDED.md) includes Ubiquiti/UniFi identifiers, enabled by default alongside BLE trackers in every profile.
 
 | Category | Coverage | Interpretation |
 | --- | --- | --- |
