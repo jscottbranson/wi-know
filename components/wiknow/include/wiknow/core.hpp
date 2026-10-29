@@ -8,6 +8,7 @@
 namespace wiknow {
 constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 128;
 constexpr size_t max_tracks = 64, max_payload = 255;
+constexpr size_t max_ble_payload_pattern = 32;
 constexpr size_t log_line_capacity = 2304;
 // Serial numbers advance modulo 2^32; jumps of half the range are ambiguous.
 constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
@@ -38,7 +39,8 @@ enum class Field : uint8_t {
     name_contains_ci,
     name_exact,
     service_uuid16_range,
-    wifi_ie_signature
+    wifi_ie_signature,
+    ble_payload_contains
 };
 struct Channel {
     uint8_t number{};
@@ -94,6 +96,8 @@ struct Match {
 // Input excludes FCS. Probe IEs must fit completely; no fingerprint truncation.
 bool valid_probe_ies(const uint8_t *data, size_t length);
 bool parse_wifi(const uint8_t *frame, size_t length, Observation &out);
+// One complete controller report/reassembled advertisement, never a partial capture.
+// Returns false with cleared parse-owned evidence on malformed or oversized input.
 bool parse_ble(const uint8_t *data, size_t length, Observation &out);
 bool matches(const Rule &rule, const Observation &observation);
 Match best_match(const Rule *rules, size_t count, const Observation &observation);

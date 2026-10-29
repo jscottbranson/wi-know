@@ -195,6 +195,37 @@ bool service_uuid128(std::string_view value, const Observation &o) {
     }
     return found;
 }
+bool valid_ble_payload(const uint8_t *data, size_t length) {
+    if (!data || length > max_payload)
+        return false;
+    for (size_t at = 0; at < length;) {
+        const size_t n = data[at];
+        if (!n)
+            break; // AD terminator; remaining captured bytes are still raw evidence.
+        if (n > length - at - 1)
+            return false;
+        at += n + 1;
+    }
+    return true;
+}
+bool ble_payload_contains(std::string_view value, const Observation &o) {
+    if (o.radio != Radio::ble || value.empty() || value.size() % 2 ||
+        value.size() > max_ble_payload_pattern * 2 ||
+        !valid_ble_payload(o.payload.data(), o.payload_size))
+        return false;
+    // Unlike legacy hex predicates, raw patterns require contiguous byte pairs.
+    for (const char c : value)
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
+            return false;
+    uint8_t bytes[max_ble_payload_pattern];
+    size_t size{};
+    if (!hex(value, bytes, size, sizeof(bytes)))
+        return false;
+    const auto end = o.payload.begin() + o.payload_size;
+    // Raw contiguous evidence may cross AD boundaries; never examine metadata
+    // or unused capacity, and never join separate observations.
+    return std::search(o.payload.begin(), end, bytes, bytes + size) != end;
+}
 bool predicate(const Predicate &p, const Observation &o) {
     uint8_t bytes[32]{};
     size_t size{};
@@ -310,6 +341,8 @@ bool predicate(const Predicate &p, const Observation &o) {
                std::equal(bytes, bytes + 3, o.address.begin());
     case Field::service_uuid128:
         return service_uuid128(p.value, o);
+    case Field::ble_payload_contains:
+        return ble_payload_contains(p.value, o);
     case Field::manufacturer_prefix:
     case Field::service_uuid16:
         if (o.radio != Radio::ble || !hex(p.value, bytes, size, sizeof(bytes)))
@@ -565,13 +598,14 @@ bool parse_wifi(const uint8_t *frame, size_t length, Observation &out) {
     return true;
 }
 bool parse_ble(const uint8_t *data, size_t length, Observation &out) {
-    if (!data || length > max_payload)
-        return false;
     out.wifi_subtype = WifiSubtype::unknown;
     out.ssid.fill(0);
     out.radio = Radio::ble;
-    out.payload_size = uint16_t(length);
+    out.payload_size = 0;
     out.name.fill(0);
+    if (!valid_ble_payload(data, length))
+        return false;
+    out.payload_size = uint16_t(length);
     std::copy(data, data + length, out.payload.begin());
     bool complete = false;
     for (size_t at = 0; at < length;) {

@@ -219,7 +219,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
             for pred in rule['predicates']:
                 require(type(pred) is dict and set(pred) == {'field', 'value'}, 'invalid predicate')
                 field, value = pred['field'], pred['value']
-                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128',
+                require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'ble_payload_contains',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
                                   'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci',
@@ -278,8 +278,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                     require(len(value.encode('utf-8')) <= 32 and
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')
-                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
+                require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'ble_payload_contains', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
                 require(not (rule['radio'] == 'ble' and field in ('ssid_prefix', 'ssid_contains_ci')), 'SSID predicate in BLE rule')
+                if field == 'ble_payload_contains':
+                    require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}){1,32}', value)),
+                            'BLE payload pattern must be 1..32 contiguous hex bytes')
+                    pred['value'] = value.lower()
                 if field == 'service_uuid128':
                     require(bool(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', value)),
                             'UUID128 must be canonical 8-4-4-4-12 hex text')

@@ -356,6 +356,48 @@ class ConfigTests(unittest.TestCase):
                                 with self.assertRaises(ValueError):
                                     generate.validate(self.settings, base=base)
 
+    def test_ble_payload_contains(self):
+        with tempfile.TemporaryDirectory() as folder:
+            base = pathlib.Path(folder)
+            self.settings['detection']['rules_directory'] = str(base)
+            doc = generate.load(ROOT/'rules/examples/lab.json')
+            doc['rules'] = doc['rules'][:1]
+            rule = doc['rules'][0]
+            rule['radio'] = 'ble'
+            rule['predicates'] = [{'field': 'ble_payload_contains', 'value': '00FF80'}]
+            path = base/'payload.json'
+            for value in ('00', 'FF'*32, '425743444556494345', '00FF80'):
+                with self.subTest(value=value):
+                    rule['predicates'][0]['value'] = value
+                    path.write_text(json.dumps(doc))
+                    settings, rules = generate.validate(self.settings)
+                    self.assertEqual(rules[0]['predicates'][0]['value'], value.lower())
+                    self.assertIn('Field::ble_payload_contains,"'+value.lower()+'"',
+                                  generate.emit(settings, rules))
+            # Check actual output sidecar retains normalized binary predicate and attribution.
+            settings_path = base/'settings.config'
+            settings_path.write_text(json.dumps(self.settings))
+            output = base/'settings.hpp'
+            subprocess.run([sys.executable, str(ROOT/'tools/generate_config.py'),
+                            '--config', str(settings_path), '--output', str(output)],
+                           check=True, capture_output=True)
+            manifest = json.loads(output.with_suffix('.rules.json').read_text())
+            self.assertEqual(manifest['rules'][0]['predicates'], rules[0]['predicates'])
+            self.assertEqual(manifest['rules'][0]['source'], rule['source'])
+            output.with_suffix('.rules.json').unlink()
+            for value in ('', '0', '123', 'ff'*33, 'GG', '0x00', '00:ff',
+                          '00-ff', '00 ff', ' ff', 'ff\n', 'ＡＢ', 42, None):
+                with self.subTest(value=value):
+                    rule['predicates'][0]['value'] = value
+                    path.write_text(json.dumps(doc))
+                    with self.assertRaises(ValueError):
+                        generate.validate(self.settings)
+            rule['predicates'][0]['value'] = '00ff'
+            rule['radio'] = 'wifi'
+            path.write_text(json.dumps(doc))
+            with self.assertRaisesRegex(ValueError, 'BLE predicate'):
+                generate.validate(self.settings)
+
     def test_service_uuid128(self):
         with tempfile.TemporaryDirectory() as folder:
             base = pathlib.Path(folder)
