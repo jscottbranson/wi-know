@@ -81,7 +81,8 @@ RemoteIdMessages remote_id_messages(const Observation &o) {
         return out;
     const auto *p = o.payload.data();
     if (o.radio == Radio::wifi) {
-        if (o.wifi_subtype == WifiSubtype::probe_request)
+        if (o.wifi_subtype == WifiSubtype::probe_request || o.wifi_subtype == WifiSubtype::data ||
+            o.wifi_subtype == WifiSubtype::qos_data)
             return {}; // Probe IEs are not a supported Remote ID transport.
         if (o.payload_size && p[0] == 4)
             return nan_messages(p, o.payload_size);

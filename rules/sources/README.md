@@ -80,3 +80,13 @@ The original CC0 dedication does not relicense Apache/MIT adaptations. Retain
 NOTICE, these upstream notices/licenses and the generated provenance manifest
 when distributing source or firmware. CI universal firmware artifacts include
 these files. The full IEEE database is still not bundled.
+
+## Receiver evidence (2026-10-29)
+
+`../receiver.json` adapts the receiver-side observation described in OUI Spy
+`src/raw/flockyou_promiscious.cpp` at the MIT revision pinned above. Only Flock
+Safety’s `b4:1e:52` prefix (also in the retained IEEE extract) is used, on probe
+responses, ordinary data and QoS data. These are indirect, possible associations
+with no follower action. Broad chipset/local prefix tables and upstream RSSI
+attribution are not adopted. No parser implementation is copied. See the full
+[design and validation notes](../../docs/wifi-receiver.md).

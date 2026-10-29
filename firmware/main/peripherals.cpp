@@ -73,7 +73,7 @@ void detect_identity() {
 static i2c_master_dev_handle_t lcd{};
 static uint64_t beep_until{};
 static QueueHandle_t log_queue{}, console_queue{};
-// Each line is 2304 bytes. Keep output queues bounded without consuming the
+// Each line is bounded by log_line_capacity. Keep output queues bounded without consuming the
 // internal RAM needed to initialize Wi-Fi and BLE on boards without enabled PSRAM.
 static constexpr unsigned log_queue_depth = 2;
 static std::atomic<Storage> active_storage{Storage::starting};

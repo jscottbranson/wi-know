@@ -234,12 +234,12 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
                                   'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci',
-                                  'name_contains_ci', 'name_exact', 'service_uuid16_range', 'wifi_ie_signature'), 'unknown predicate field')
+                                  'name_contains_ci', 'name_exact', 'service_uuid16_range', 'wifi_ie_signature', 'wifi_receiver_mac', 'wifi_receiver_oui'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= (510 if field == 'wifi_ie_fingerprint' else 96), 'invalid predicate value')
                 if field.startswith('wifi_'):
                     require(rule['radio'] == 'wifi', 'Wi-Fi predicate in BLE rule')
                 if field == 'wifi_subtype':
-                    require(value in ('probe_request', 'probe_response', 'beacon', 'nan_action'),
+                    require(value in ('probe_request', 'probe_response', 'beacon', 'nan_action', 'data', 'qos_data'),
                             'invalid Wi-Fi subtype')
                 if field == 'wifi_ssid_wildcard':
                     require(value in ('true', 'false'), 'wildcard must be true or false')
@@ -267,7 +267,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                         require(tag != 255 or size >= 1, 'extension IE needs extension ID')
                         at += 2 + size
                     pred['value'] = value.lower()
-                if field == 'mac':
+                if field in ('mac', 'wifi_receiver_mac'):
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', value)),
                             'MAC must be six colon-separated hex bytes')
                     pred['value'] = value.lower()
@@ -299,12 +299,15 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
                     require(bool(re.fullmatch(r'[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}', value)),
                             'UUID128 must be canonical 8-4-4-4-12 hex text')
                     pred['value'] = value.lower()
-                if field in ('oui', 'manufacturer_prefix', 'service_uuid16'):
+                if field in ('oui', 'wifi_receiver_oui', 'manufacturer_prefix', 'service_uuid16'):
                     require(bool(re.fullmatch(r'[0-9a-fA-F :\-]+', value)), 'invalid hex predicate')
                     raw = bytes.fromhex(value.replace(':', '').replace('-', ''))
                     require(0 < len(raw) <= 32, 'hex predicate size')
-                    require(field != 'oui' or len(raw) == 3, 'OUI must be 3 bytes')
+                    require(field not in ('oui', 'wifi_receiver_oui') or len(raw) == 3, 'OUI must be 3 bytes')
                     require(field != 'service_uuid16' or len(raw) == 2, 'UUID16 must be 2 bytes, big-endian text')
+            if any(p['field'] in ('wifi_receiver_mac', 'wifi_receiver_oui') for p in rule['predicates']):
+                require(not rule['actions']['follow'], 'indirect receiver rules cannot follow')
+                require(rule['confidence'] == 'possible', 'indirect receiver confidence must be possible')
             rule['enabled'] = rule['enabled'] and rule['category'] in categories
             rules.append(rule)
     require(len(rules) <= 128, 'maximum 128 rules')

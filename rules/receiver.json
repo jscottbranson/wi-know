@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "flock-receiver-probe-response",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 15,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": false
+      },
+      "predicates": [
+        {
+          "field": "wifi_subtype",
+          "value": "probe_response"
+        },
+        {
+          "field": "wifi_receiver_oui",
+          "value": "b4:1e:52"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT; modified adaptation; see rules/sources/oui-spy-LICENSE.txt",
+        "reviewed": "2026-10-29"
+      }
+    },
+    {
+      "id": "flock-receiver-data",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 15,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": false
+      },
+      "predicates": [
+        {
+          "field": "wifi_subtype",
+          "value": "data"
+        },
+        {
+          "field": "wifi_receiver_oui",
+          "value": "b4:1e:52"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT; modified adaptation; see rules/sources/oui-spy-LICENSE.txt",
+        "reviewed": "2026-10-29"
+      }
+    },
+    {
+      "id": "flock-receiver-qos-data",
+      "category": "flock",
+      "enabled": true,
+      "radio": "wifi",
+      "match": "all",
+      "priority": 15,
+      "confidence": "possible",
+      "actions": {
+        "buzzer": true,
+        "follow": false
+      },
+      "predicates": [
+        {
+          "field": "wifi_subtype",
+          "value": "qos_data"
+        },
+        {
+          "field": "wifi_receiver_oui",
+          "value": "b4:1e:52"
+        }
+      ],
+      "source": {
+        "url": "https://github.com/colonelpanichacks/oui-spy-unified-blue/blob/46eb13b2746ae72ad7070bbf5e42deb09b573623/src/raw/flockyou_promiscious.cpp",
+        "revision": "46eb13b2746ae72ad7070bbf5e42deb09b573623",
+        "license": "MIT; modified adaptation; see rules/sources/oui-spy-LICENSE.txt",
+        "reviewed": "2026-10-29"
+      }
+    }
+  ]
+}
