@@ -92,6 +92,9 @@ expires after one second and consumes its per-address cooldown even on cancellat
 or failure. Cooldown is 60 seconds–24 hours; total connection plus discovery deadline
 is 500 ms–10 seconds. Reboot clears cooldowns.
 
+Live node identity, assignment target and lease are checked before connecting,
+during discovery and before publishing; reassignment/expiry cancels stale work.
+
 Passive scanning stops before connecting and its existing queue barrier drains old
 advertisements. Scheduler transitions cancel pending work and wait for disconnection
 before tuning Wi-Fi. The next passive scan begins only after the session is released.

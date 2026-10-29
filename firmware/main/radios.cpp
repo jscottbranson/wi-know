@@ -312,11 +312,16 @@ static void gatt_cancel() {
     else if (ble_gap_conn_active())
         ble_gap_conn_cancel(); // Wait for CONNECT cancellation callback, never reuse state early.
 }
+static bool gatt_assignment_current() {
+    // Discovery ends later than the advertisement that selected this device.
+    // Recheck the live lease/target, rather than publishing on an expired grant.
+    return wiknow::gatt_capture_allowed(gatt_result, capture_snapshot(), now_ms());
+}
 static int gatt_service(uint16_t handle, const ble_gatt_error *error, const ble_gatt_svc *service,
                         void *arg) {
     if (!gatt_lifecycle.service(uint32_t(uintptr_t(arg)), handle))
         return 0;
-    if (gatt_lifecycle.expired(now_ms()) || !ble_scan_desired()) {
+    if (gatt_lifecycle.expired(now_ms()) || !ble_scan_desired() || !gatt_assignment_current()) {
         gatt_cancel();
         return 0;
     }
@@ -372,7 +377,7 @@ static int gatt_gap(struct ble_gap_event *event, void *arg) {
             return 0;
         }
         if (!gatt_lifecycle.connected(uint32_t(uintptr_t(arg)), event->connect.conn_handle,
-                                      now_ms(), ble_scan_desired())) {
+                                      now_ms(), ble_scan_desired() && gatt_assignment_current())) {
             gatt_cancel();
             return 0;
         }
@@ -421,7 +426,7 @@ static void gatt_tick() {
         last_diagnostics = now;
     }
     if (gatt_lifecycle.busy()) {
-        if (!ble_scan_desired() || gatt_lifecycle.expired(now))
+        if (!ble_scan_desired() || gatt_lifecycle.expired(now) || !gatt_assignment_current())
             gatt_cancel();
         if (gatt_lifecycle.request_reset(now)) {
             // Termination failure cannot keep a connection alive indefinitely.
@@ -444,6 +449,8 @@ static void gatt_tick() {
     if (ble_scan_lifecycle.pending())
         return;
     if (!gatt_schedule.take(now, gatt_result))
+        return;
+    if (!gatt_assignment_current())
         return;
     gatt_result.ble_evidence = wiknow::BleEvidence::gatt_primary_services;
     ble_addr_t peer{};

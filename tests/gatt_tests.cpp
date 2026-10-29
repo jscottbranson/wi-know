@@ -64,6 +64,27 @@ int main() {
     ad.address = {0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc};
     ad.rssi = -55;
     ad.at_ms = 100;
+    CapturePolicy policy;
+    policy.role = Role::follower;
+    policy.node = ad.node;
+    policy.expires = 1000;
+    policy.assignment.follow = true;
+    policy.assignment.target_radio = Radio::ble;
+    policy.assignment.target = ad.address;
+    assert(gatt_capture_allowed(ad, policy, 999));
+    assert(!gatt_capture_allowed(ad, policy, 1000)); // current lease, not original capture
+    ++policy.node;
+    assert(!gatt_capture_allowed(ad, policy, 999));
+    policy.node = ad.node;
+    policy.assignment.target[0]++;
+    assert(!gatt_capture_allowed(ad, policy, 999));
+    policy.assignment.target = ad.address;
+    policy.assignment.target_address_type = 1;
+    assert(!gatt_capture_allowed(ad, policy, 999));
+    policy.role = Role::child;
+    assert(!gatt_capture_allowed(ad, policy, 999));
+    policy.role = Role::parent;
+    assert(gatt_capture_allowed(ad, policy, 1001));
     const DeviceIdentity id{Radio::ble, 0, ad.address};
     GattSchedule s(&id, 1, 60000);
     assert(!s.offer(ad, false, 100, &r, 1));

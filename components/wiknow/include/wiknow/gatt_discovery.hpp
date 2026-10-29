@@ -1,7 +1,18 @@
 #pragma once
+#include "wiknow/capture_policy.hpp"
 #include "wiknow/core.hpp"
 
 namespace wiknow {
+inline bool gatt_capture_allowed(const Observation &candidate, const CapturePolicy &policy,
+                                 uint64_t now) {
+    Observation current{};
+    current.radio = candidate.radio;
+    current.address = candidate.address;
+    current.address_type = candidate.address_type;
+    current.at_ms = now;
+    return candidate.node == policy.node && policy.accepts(current);
+}
+
 // Fixed configured identities keep cooldowns even when unrelated advertisers flood
 // the receiver. No address correlation, queue eviction, or heap allocation.
 class GattSchedule {
