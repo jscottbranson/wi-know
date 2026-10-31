@@ -16,6 +16,40 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
+    def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
+        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        original = copy.deepcopy(source)
+        for board, reference in [('xiao', 'standalone'), ('n32r8', 'parent')]:
+            expected = generate.load(ROOT/f'config/settings.{reference}-wiring.example.json')
+            settings, rules = generate.validate(source, board_override=board)
+            self.assertEqual(settings['board']['model'], board)
+            for section in ('display', 'buzzer', 'signal_trend', 'gps', 'sd'):
+                self.assertEqual(settings[section], expected[section])
+            self.assertTrue(settings['standalone']['enabled'])
+            self.assertFalse(settings['bus']['enabled'])
+            self.assertEqual(settings['detection'], source['detection'])
+            self.assertIn(f'board_model = "{board}"', generate.emit(settings, rules))
+        self.assertEqual(source, original)
+
+    def test_board_profile_config_override_and_custom_escape_hatch(self):
+        self.settings['board'] = {'model': 'n32r8'}
+        settings, _ = generate.validate(self.settings)
+        self.assertEqual(settings['display']['sda_pin'], 4)
+        self.assertFalse(settings['display']['enabled'])
+        settings, _ = generate.validate(self.settings, board_override='custom')
+        self.assertEqual(settings['display']['sda_pin'], -1)
+        with self.assertRaisesRegex(ValueError, 'invalid board'):
+            generate.validate(self.settings, board_override='unknown')
+        with self.assertRaisesRegex(ValueError, 'manual role'):
+            generate.validate(self.settings, 'universal')
+
+    def test_board_mapping_is_checked_for_conflicts_after_resolution(self):
+        settings = generate.load(ROOT/'config/settings.parent-wiring.example.json')
+        with self.assertRaisesRegex(ValueError, 'GPIO .* used'):
+            generate.validate(settings, board_override='xiao')
+        settings, _ = generate.validate(self.settings, 'child', 1, board_override='xiao')
+        self.assertEqual(settings['bus']['rx_pin'], 12)
+
     def test_sd_formatting_defaults_on_with_explicit_boolean_opt_out(self):
         self.settings['sd'].pop('format_if_mount_failed', None)
         settings, rules = generate.validate(self.settings)

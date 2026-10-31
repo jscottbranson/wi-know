@@ -16,6 +16,26 @@ It enables those peripherals and changes parent bus RX to GPIO3, avoiding the
 onboard USB-UART TX connected to GPIO12. Check the board revision before using it with
 `-DWIKNOW_CONFIG=/absolute/path/settings.parent-wiring.example.json`.
 
+Optional `"board": {"model": "xiao"}` or `"board": {"model": "n32r8"}` selects
+the corresponding documented GPIO mapping for manual roles. `custom` (the default)
+keeps the pins in the JSON. `tools/flash.py --board` and `WIKNOW_BOARD` override the
+stored choice. Profile pins replace JSON pins before conflict validation; enable
+flags and standalone/bus settings are preserved. Use `custom` for custom wiring or
+universal images. See [board selection](../docs/flashing.md#select-the-board-wiring).
+
+| Peripheral | XIAO | N32R8 manual parent |
+| --- | --- | --- |
+| LCD SDA / SCL | 23 / 24 | 4 / 5 |
+| GPS RX (TX disabled) | 12 | 10 |
+| SD SCK / MOSI / MISO / CS | 8 / 10 / 9 / 11 | 23 / 24 / 2 / 25 |
+| Buzzer | 7 | 9 |
+| LEDs increasing / steady / decreasing | 1 / 0 / 25 | 0 / 8 / 1 |
+| Bus TX / RX / RTS | 11 / 12 / 7 | 11 / 3 / 7 |
+
+All values are SoC GPIO numbers. The XIAO full peripheral profile requires the bus
+to be disabled because it shares those pins. The N32R8 profile uses the manual
+schematic's GPS RX GPIO10, not the universal harness's GPIO26.
+
 Validate without an ESP32 toolchain:
 
 ```sh
