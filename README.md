@@ -67,6 +67,8 @@ An optional [parent peripheral wiring plan](docs/wiring.md#parent-leds-buzzer-sc
 includes LED resistors, buzzer transistor, LCD level shifting, GPS and microSD connections,
 with a matching example config. Default peripheral pins remain unassigned; use the matching parent example config. Nodes are
 assumed to travel together when sharing the parent's GPS.
+For explicit XIAO or N32R8 pin selection, see [board profiles](docs/flashing.md#select-the-board-wiring).
+
 For one mini XIAO, the [standalone wiring plan](docs/wiring.md#standalone-mini-xiao-esp32-c5)
 fits screen, GPS, microSD, buzzer and three LEDs on its 11 header GPIOs, with a
 matching configuration and options to omit lower-priority peripherals.

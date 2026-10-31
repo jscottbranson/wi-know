@@ -16,6 +16,34 @@ spec.loader.exec_module(flash)
 
 
 class FlashTests(unittest.TestCase):
+    def test_board_selection_remaps_standalone_and_reaches_every_stage(self):
+        config = ROOT/'config/settings.standalone-wiring.example.json'
+        status, output = self.run_main('--config', str(config), '--board', 'n32r8', '--dry-run')
+        self.assertEqual(status, 0, output)
+        self.assertIn('Device: parent', output)
+        self.assertIn('sda_pin=4, scl_pin=5', output)
+        self.assertIn('buzzer: pin=9', output)
+        for board in ('custom', 'xiao', 'n32r8'):
+            commands = flash.commands(['idf.py'], 'parent', 0, config, 'COM7', 115200,
+                                      False, True, board)
+            for command in commands:
+                self.assertIn(f'-DWIKNOW_BOARD={board}', command)
+        self.assertEqual(len({flash.build_directory('parent', 0, config, board)
+                              for board in ('custom', 'xiao', 'n32r8')}), 3)
+        status, output = self.run_main('--board', 'n32r8', '--role', 'universal', '--dry-run')
+        self.assertEqual(status, 1)
+        self.assertIn('manual role', output)
+
+    def test_board_from_config_reaches_build(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = pathlib.Path(folder)/'settings.json'
+            settings = flash.generate_config.load(ROOT/'config/settings.standalone-wiring.example.json')
+            settings['board'] = {'model': 'n32r8'}
+            config.write_text(json.dumps(settings))
+            status, output = self.run_main('--config', str(config), '--dry-run')
+            self.assertEqual(status, 0, output)
+            self.assertIn('-DWIKNOW_BOARD=n32r8', output)
+
     def test_changed_sdk_defaults_select_fresh_sdkconfig(self):
         with tempfile.TemporaryDirectory() as folder:
             defaults = pathlib.Path(folder)/'sdkconfig.defaults'

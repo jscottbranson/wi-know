@@ -26,7 +26,9 @@ def parser():
         'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
     result.add_argument('--role', choices=ROLES,
-                        help='Defaults to parent for standalone configs, otherwise universal')
+                        help='Defaults to parent for standalone configs or board profiles, otherwise universal')
+    result.add_argument('--board', choices=generate_config.BOARDS,
+                        help='Apply documented board pin mapping; custom keeps configured pins')
     result.add_argument('--node-id', type=int, help='Parent: 0; children/follower: unique bus ID')
     result.add_argument('--port', help='Serial device, e.g. /dev/ttyACM0 or COM5')
     result.add_argument('--config', type=Path, default=ROOT/'config/settings.json')
@@ -147,19 +149,19 @@ def idf_command(idf_path=None, dry_run=False):
     return [executable, str(script)]
 
 
-def build_directory(role, node_id, config):
+def build_directory(role, node_id, config, board='custom'):
     # Settings/rules rebuild incrementally, but changed SDK defaults need a new
     # sdkconfig: IDF does not override values already saved in an existing cache.
-    digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
+    digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + board.encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
     return ROOT/'build'/'devices'/f'{role}-{node_id}-{digest}'
 
 
-def commands(idf, role, node_id, config, port, baud, build_only, monitor):
-    directory = build_directory(role, node_id, config)
+def commands(idf, role, node_id, config, port, baud, build_only, monitor, board='custom'):
+    directory = build_directory(role, node_id, config, board)
     common = [*idf, '-C', str(ROOT/'firmware'), '-B', str(directory),
               '-DIDF_TARGET=esp32c5', f'-DSDKCONFIG={directory / "sdkconfig"}',
               f'-DWIKNOW_ROLE={role}', f'-DWIKNOW_NODE_ID={node_id}',
-              f'-DWIKNOW_CONFIG={config.resolve()}']
+              f'-DWIKNOW_CONFIG={config.resolve()}', f'-DWIKNOW_BOARD={board}']
     result = [[*common, 'build']]
     if not build_only:
         result.append([*common, '-p', port, '-b', str(baud), 'flash'])
@@ -197,13 +199,14 @@ def main(argv=None):
         raw = generate_config.load(config)
         # The menu/CLI selects role and ID independently of the stored defaults.
         # Validate the common settings first; validate the selected device below.
-        generate_config.validate(raw, 'parent', 0)
-        role = args.role or ('parent' if raw.get('standalone', {}).get('enabled', False) else 'universal')
+        generate_config.validate(raw, 'parent', 0, board_override=args.board)
+        board = args.board or raw.get('board', {}).get('model', 'custom')
+        role = args.role or ('parent' if raw.get('standalone', {}).get('enabled', False) or board != 'custom' else 'universal')
         first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
         if node_id is None:
             node_id = select_id(role, first, last)
-        validated, rules = generate_config.validate(raw, role, node_id)
+        validated, rules = generate_config.validate(raw, role, node_id, board_override=board)
         if role not in ('parent', 'universal') and not first <= node_id <= last:
             raise ValueError(f'Node ID {node_id} is outside the configured bus discovery range {first}–{last}.')
         port = args.port
@@ -212,12 +215,18 @@ def main(argv=None):
         if not args.build_only and port is None:
             port = '<serial-port>' if args.dry_run else select_port()
         idf = idf_command(args.idf_path, args.dry_run)
-        planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor)
+        planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor, board)
         print(f'\nDevice: {role} / node {node_id} / ESP32-C5')
+        print(f'Board:  {board}')
+        for section in generate_config.BOARD_PINS['xiao']:
+            if validated[section]['enabled']:
+                pins = ', '.join(f'{key}={value}' for key, value in validated[section].items()
+                                 if key.endswith('_pin') or key == 'pin')
+                print(f'  {section}: {pins}')
         print(f'Config: {config}')
         if role in ('parent', 'universal') and validated['sd']['enabled'] and validated['sd']['format_if_mount_failed']:
             print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')
-        print(f'Build:  {build_directory(role, node_id, config)}')
+        print(f'Build:  {build_directory(role, node_id, config, board)}')
         if port:
             print(f'Port:   {port}')
         if not any(rule['enabled'] for rule in rules):

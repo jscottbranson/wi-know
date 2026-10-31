@@ -744,6 +744,7 @@ extern "C" void app_main() {
     // An NVS error is surfaced instead of silently erasing stored state.
     ESP_ERROR_CHECK(nvs_flash_init());
     platform::boot_id = esp_random();
+    ESP_LOGI("wi-know", "board=%s", wiknow::config::board_model);
     platform::detect_identity();
     init_tracker();
     platform::init_observation_queues();

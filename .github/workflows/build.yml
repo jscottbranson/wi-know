@@ -27,6 +27,14 @@ jobs:
           - role: parent
             id: 0
             config: settings.standalone-wiring.example.json
+          - role: parent
+            id: 0
+            config: settings.standalone-wiring.example.json
+            board: xiao
+          - role: parent
+            id: 0
+            config: settings.standalone-wiring.example.json
+            board: n32r8
           - role: child
             id: 1
           - role: follower
@@ -36,7 +44,7 @@ jobs:
       - shell: bash
         run: |
           . /opt/esp/idf/export.sh
-          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build
+          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_BOARD=${{ matrix.board || 'custom' }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build
       - uses: actions/upload-artifact@v4
         if: matrix.role == 'universal'
         with:

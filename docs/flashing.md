@@ -39,7 +39,39 @@ Standalone configs automatically select the parent role when `--role` is omitted
 python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone-wiring.example.json
 ```
 
-Other configs default to the universal role. Explicit `--role` choices are still
+### Select the board wiring
+
+Use `--board xiao` or `--board n32r8` to apply the GPIO assignments from the
+corresponding wiring diagram. This is an explicit build-time selection; the
+firmware does not detect the carrier board or discover connected peripherals.
+For a standalone N32R8 with LCD, GPS, SD, buzzer and all three LEDs enabled:
+
+```sh
+python3 tools/flash.py --config config/settings.standalone-wiring.example.json --board n32r8 --dry-run
+python3 tools/flash.py --config config/settings.standalone-wiring.example.json --board n32r8
+```
+
+Use `--board xiao` with the same config for the standalone mini XIAO schematic.
+The helper prints the resolved GPIOs before building and flashing. Board selection
+preserves peripheral enable flags, standalone/bus mode, rules, and timing settings;
+it replaces every mapped pin, including individual LED assignments and GPS TX
+(the documented receive-only GPS connection uses TX `-1`). For omitted individual
+LEDs or other custom wiring, use `--board custom` and set the GPIOs in your config.
+
+You can persist the choice as `"board": {"model": "n32r8"}` in settings. The CLI
+option takes precedence. Without either, `custom` preserves existing pin settings.
+An explicit board profile defaults the flash helper to the parent role; pass
+`--role child --node-id 1` or `--role follower --node-id 2` for manual workers.
+Board profiles cannot be combined with `--role universal`: keep the existing
+universal configuration and identification harness for that workflow.
+
+For direct IDF builds, use `-DWIKNOW_BOARD=n32r8` (or `xiao`) together with
+`-DWIKNOW_ROLE=parent`. The generator also accepts `--board`. Each board profile
+gets an isolated flash-helper build directory, and firmware logs its selected
+board at startup. This selects wiring only; flash size and PSRAM settings remain
+controlled by the existing SDK configuration.
+
+Configs without a board profile or standalone mode default to the universal role. Explicit `--role` choices are still
 validated; standalone mode requires `parent`.
 
 Universal image (repeat for every board, changing only the USB port):

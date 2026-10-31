@@ -10,6 +10,29 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 
+# SoC GPIO numbers matching docs/wiring.md. Enable flags and other settings
+# remain user-controlled; custom preserves all explicitly configured pins.
+BOARD_PINS = {
+    'xiao': {
+        'bus': {'tx_pin': 11, 'rx_pin': 12, 'rts_pin': 7},
+        'gps': {'rx_pin': 12, 'tx_pin': -1},
+        'sd': {'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11},
+        'display': {'sda_pin': 23, 'scl_pin': 24},
+        'buzzer': {'pin': 7},
+        'signal_trend': {'increasing_pin': 1, 'steady_pin': 0, 'decreasing_pin': 25},
+    },
+    'n32r8': {
+        'bus': {'tx_pin': 11, 'rx_pin': 3, 'rts_pin': 7},
+        'gps': {'rx_pin': 10, 'tx_pin': -1},
+        'sd': {'sck_pin': 23, 'mosi_pin': 24, 'miso_pin': 2, 'cs_pin': 25},
+        'display': {'sda_pin': 4, 'scl_pin': 5},
+        'buzzer': {'pin': 9},
+        'signal_trend': {'increasing_pin': 0, 'steady_pin': 8, 'decreasing_pin': 1},
+    },
+}
+BOARDS = ('custom', *BOARD_PINS)
+
+
 def require(condition, message):
     if not condition:
         raise ValueError(message)
@@ -33,9 +56,10 @@ def load(path):
                       parse_constant=constant)
 
 
-def validate(settings, role_override=None, node_override=None, base=ROOT):
+def validate(settings, role_override=None, node_override=None, base=ROOT, board_override=None):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
+    settings.setdefault('board', {'model': 'custom'})
     if isinstance(settings.get('sd'), dict):
         settings['sd'].setdefault('format_if_mount_failed', True)
     # Optional section keeps existing schema-v1 configurations compatible.
@@ -52,6 +76,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
     settings.setdefault('gatt', {'enabled': False, 'timeout_ms': 3000, 'cooldown_ms': 60000, 'targets': []})
     template = {
         'schema_version': int,
+        'board': {'model': str},
         'node': {'role': str, 'id': int},
         'universal': dict.fromkeys(('strap_pin', 'parent_tx_pin', 'parent_rx_pin', 'parent_rts_pin',
                                    'worker_tx_pin', 'worker_rx_pin', 'worker_rts_pin'), int),
@@ -84,6 +109,15 @@ def validate(settings, role_override=None, node_override=None, base=ROOT):
         settings['node']['role'] = role_override
     if node_override is not None:
         settings['node']['id'] = node_override
+    if board_override is not None:
+        settings['board']['model'] = board_override
+    board = settings['board']['model']
+    require(board in BOARDS, 'invalid board model: expected custom, xiao, or n32r8')
+    if board != 'custom':
+        require(settings['node']['role'] != 'universal',
+                'board profiles require a manual role; universal uses its own identification harness')
+        for section, pins in BOARD_PINS[board].items():
+            settings[section].update(pins)
     node = settings['node']
     require(node['role'] in ('universal', 'parent', 'child', 'follower'), 'invalid role')
     universal = node['role'] == 'universal'
@@ -392,9 +426,10 @@ def main():
     parser.add_argument('--output', type=pathlib.Path)
     parser.add_argument('--role', choices=['universal', 'parent', 'child', 'follower'])
     parser.add_argument('--node-id', type=int)
+    parser.add_argument('--board', choices=BOARDS)
     args = parser.parse_args()
     try:
-        settings, rules = validate(load(args.config), args.role, args.node_id)
+        settings, rules = validate(load(args.config), args.role, args.node_id, board_override=args.board)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             content = emit(settings, rules)
