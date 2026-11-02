@@ -226,7 +226,7 @@
 <text x="70" y="2620" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.</text>
 <text x="70" y="2648" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.</text>
 <rect x="48" y="2815" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="2847" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch replaces the amber LED (never connect both)</text>
+<text x="70" y="2847" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
 <text x="70" y="2887" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
 <polyline points="250,2880 350,2880" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="350" cy="2880" r="5" fill="#b83543"/>
@@ -234,7 +234,7 @@
 <circle cx="420" cy="2880" r="5" fill="#b83543"/>
 <polyline points="420,2880 850,2880" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="480" y="2867" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Maintained switch</text>
-<text x="880" y="2887" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">XIAO D1 / GPIO0 input</text>
+<text x="880" y="2887" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">XIAO MTCK / GPIO4 pad input</text>
 <circle cx="750" cy="2880" r="5" fill="#176aa5"/>
 <polyline points="750,2880 750,2905" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="740" y="2905" width="20" height="35" rx="14" fill="white" stroke="#405165" stroke-width="2"/>
@@ -243,6 +243,7 @@
 <text x="750" y="2984" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND (common with controller)</text>
 <text x="70" y="2943" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">ON: fresh WU everything file + normal WM matches</text>
 <text x="70" y="2973" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">OFF: sync/close session; restore logging.mode</text>
-<text x="70" y="3020" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.standalone-capture.example.json; steady_pin=-1. Never use 5 V. Manual parent profiles only.</text>
+<text x="70" y="2999" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Solder to underside MTCK pad; keep native USB; do not connect an external pad JTAG probe.</text>
+<text x="70" y="3020" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.standalone-capture.example.json. Never use 5 V. Manual parent profiles only.</text>
 <text x="48" y="3056" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

@@ -47,6 +47,19 @@ class ConfigTests(unittest.TestCase):
         self.assertFalse(defaults['capture_switch']['enabled'])
         self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
 
+    def test_capture_examples_keep_all_leds_on_spare_pins(self):
+        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0)]:
+            source = generate.load(ROOT/f'config/settings.{variant}-capture.example.json')
+            settings, _ = generate.validate(source, board_override=source['board']['model'])
+            self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
+            self.assertEqual(settings['signal_trend']['steady_pin'], amber)
+            for key in ('increasing_pin', 'steady_pin', 'decreasing_pin'):
+                self.assertGreaterEqual(settings['signal_trend'][key], 0)
+            # A configurable input must still not overlap a fitted peripheral.
+            source['capture_switch']['gpio_pin'] = amber
+            with self.assertRaisesRegex(ValueError, 'used by'):
+                generate.validate(source)
+
     def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
         source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
         original = copy.deepcopy(source)

@@ -236,10 +236,11 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     if switch['enabled']:
         require(node['role'] == 'parent', 'capture switch requires manual parent role')
         require(board in BOARD_PINS, 'capture switch requires an explicit xiao or n32r8 board profile')
-        # Header-accessible input pins excluding straps, USB, flash/PSRAM and onboard loads.
+        # Exposed headers/pads excluding straps, USB, flash/PSRAM and onboard loads.
+        # XIAO GPIO3/4/5 are underside JTAG pads; use native USB, not a pad JTAG probe.
         # GPIO0/1 assume the optional 32 kHz crystal is absent (see wiring docs).
-        safe = ({0, 1, 8, 9, 10, 11, 12, 23, 24} if board == 'xiao'
-                else {0, 1, 4, 5, 8, 9, 10, 11, 23, 24})
+        safe = ({0, 1, 3, 4, 5, 8, 9, 10, 11, 12, 23, 24} if board == 'xiao'
+                else {0, 1, 4, 5, 8, 9, 10, 11, 23, 24, 26})
         require(switch['gpio_pin'] in safe, 'capture switch GPIO is reserved, strapping, or unavailable on selected board')
     used = {}
     if universal:

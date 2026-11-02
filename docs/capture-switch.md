@@ -9,15 +9,16 @@ valid; add this section to enable it with a supported board and available pin:
 ```json
 "capture_switch": {
   "enabled": true,
-  "gpio_pin": 8,
+  "gpio_pin": 26,
   "internal_pulldown": false,
   "debounce_ms": 50
 }
 ```
 
-This example is N32R8 GPIO8, with `board.model: "n32r8"` and
-`signal_trend.steady_pin: -1`. Use GPIO0 and `board.model: "xiao"` on standalone
-XIAO. Flash the matching capture example. GPIO configuration requires a rebuild;
+This example is N32R8 P1.12 / GPIO26, with `board.model: "n32r8"`.
+Use underside MTCK / GPIO4 and `board.model: "xiao"` on standalone XIAO.
+All three trend LEDs, including amber, remain connected. The XIAO pad requires
+soldering and must not also connect to an external JTAG probe; use native USB. Flash the matching capture example. GPIO configuration requires a rebuild;
 switch changes then apply live. Startup samples the physical level immediately;
 later changes require a stable level for `debounce_ms` (10–2000 ms). Sampling
 runs in the parent loop, so bus polling/storage latency adds to response time.

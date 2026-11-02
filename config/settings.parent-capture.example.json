@@ -136,7 +136,7 @@
     "enabled": true,
     "increasing_pin": 0,
     "decreasing_pin": 1,
-    "steady_pin": -1,
+    "steady_pin": 8,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,
@@ -154,7 +154,7 @@
   },
   "capture_switch": {
     "enabled": true,
-    "gpio_pin": 8,
+    "gpio_pin": 26,
     "internal_pulldown": false,
     "debounce_ms": 50
   }

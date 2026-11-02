@@ -51,6 +51,7 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
 | Decreasing LED (red) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
 | Steady LED (amber) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
+| Capture switch (optional) | Underside MTCK / GPIO4 | 3V3 → maintained switch → pad; 10 kΩ pad-to-GND | 1 underside pad |
 
 Screen + GPS + microSD use **7 GPIOs**; adding the buzzer uses 8; adding all
 three LEDs uses **all 11 D0–D10 header GPIOs**. GPS is receive-only, so it needs
@@ -173,6 +174,7 @@ used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
 | Q1 collector | Buzzer negative; buzzer positive → regulated +5 V |
 | GPIO4 / GPIO5 | SDA / SCL → level shifter LV side → HV side → LCD SDA / SCL |
 | GPIO10, UART0 RX | GPS TX; GPS RX left disconnected |
+| GPIO26 / P1.12 (optional) | 3V3 → maintained capture switch → GPIO26; 10 kΩ GPIO26-to-GND |
 | GPIO23 / P2.5 | microSD SCK / CLK |
 | GPIO24 / P2.4 | microSD MOSI / DI / CMD |
 | GPIO2 / P1.3 | microSD MISO / DO / DAT0 |
@@ -356,20 +358,26 @@ has not yet been verified on the physical boards.
 
 Use a maintained SPST switch: **controller 3V3 → switch → input GPIO**, with
 **10 kΩ from the input GPIO to common GND**. Never use 5 V. All parent/system
-and standalone diagrams above include this alternative circuit. It replaces the
-amber LED connection; remove that LED/resistor wire before connecting the switch.
+and standalone diagrams above include this additional circuit. All three trend
+LEDs, including amber, stay connected to their original GPIOs.
 
 | Controller | Input | Configuration |
 | --- | --- | --- |
-| N32R8 distributed or standalone parent | P1.9 / GPIO8 | [Parent capture example](../config/settings.parent-capture.example.json) |
-| XIAO standalone | D1 / GPIO0 | [Standalone capture example](../config/settings.standalone-capture.example.json) |
+| N32R8 distributed or standalone parent | P1.12 / GPIO26 | [Parent capture example](../config/settings.parent-capture.example.json) |
+| XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone capture example](../config/settings.standalone-capture.example.json) |
 
-Both examples set `signal_trend.steady_pin: -1` and select the corresponding
-`board.model`. Board profiles preserve individual LED assignments of `-1`.
-The original wiring examples still describe three LEDs without the switch.
-No spare header GPIO remains with all XIAO peripherals fitted. On N32R8, GPIO26
-is a strap, so it is deliberately excluded. GPIO0 on XIAO assumes no optional
-32 kHz crystal. The pin maps were checked against the
+Both examples select the corresponding `board.model` and preserve all three
+LEDs. No spare D0–D10 header GPIO remains on a fully populated XIAO; its underside
+**MTCK / GPIO4** pad supplies the extra input. Identify the pad using the
+[Seeed underside pinout](https://files.seeedstudio.com/wiki/XIAO_ESP32C5/Getting_started/XIAO_ESP32-C5_back_pinout.png),
+solder and secure a fine wire, and leave external pad JTAG probes disconnected.
+Native USB Serial/JTAG remains usable. Other exposed non-strapping JTAG pads
+GPIO3/5 are also allowed if unused; MTMS/GPIO2 is a strap and is rejected.
+
+N32R8 **P1.12 / GPIO26** is unused by the manual parent peripherals and is not a
+C5 strapping pin (the old header diagram mislabeled it). Do not use this wire
+with universal firmware: that profile already uses GPIO26 for GPS RX.
+The pin maps were checked against the
 [Seeed pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/),
 [Waveshare schematic](https://files.waveshare.com/wiki/ESP32-C5-WIFI6-KIT-NXRX/ESP32-C5-WIFI6-KIT-NXRX-Schematic.pdf),
 and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/gpio.html).

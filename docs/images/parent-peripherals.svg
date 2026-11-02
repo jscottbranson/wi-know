@@ -193,7 +193,7 @@
 <text x="70" y="2083" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Example config enables all five peripherals and remaps parent bus RX to GPIO3. Default config stays unchanged.</text>
 <text x="70" y="2111" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Avoid GPIO6 (battery ADC), GPIO15 (PSRAM), GPIO27 (RGB), GPIO28 (BOOT), GPIO12 (USB-UART TX).</text>
 <rect x="48" y="2215" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="2247" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch replaces the amber LED (never connect both)</text>
+<text x="70" y="2247" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
 <text x="70" y="2287" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
 <polyline points="250,2280 350,2280" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="350" cy="2280" r="5" fill="#b83543"/>
@@ -201,7 +201,7 @@
 <circle cx="420" cy="2280" r="5" fill="#b83543"/>
 <polyline points="420,2280 850,2280" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <text x="480" y="2267" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Maintained switch</text>
-<text x="880" y="2287" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">N32R8 P1.9 / GPIO8 input</text>
+<text x="880" y="2287" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">N32R8 P1.12 / GPIO26 input</text>
 <circle cx="750" cy="2280" r="5" fill="#176aa5"/>
 <polyline points="750,2280 750,2305" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="740" y="2305" width="20" height="35" rx="14" fill="white" stroke="#405165" stroke-width="2"/>
@@ -210,6 +210,6 @@
 <text x="750" y="2384" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND (common with controller)</text>
 <text x="70" y="2343" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">ON: fresh WU everything file + normal WM matches</text>
 <text x="70" y="2373" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">OFF: sync/close session; restore logging.mode</text>
-<text x="70" y="2420" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.parent-capture.example.json; steady_pin=-1. Never use 5 V. Manual parent profiles only.</text>
+<text x="70" y="2420" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.parent-capture.example.json. Never use 5 V. Manual parent profiles only.</text>
 <text x="48" y="2456" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>
