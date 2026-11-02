@@ -190,10 +190,7 @@ sources expire after `gps.max_fix_age_ms`; when neither is available, UTC is nul
 in logs and the display shows `--:--:--`. RMC `V` revokes GPS time immediately.
 Receiver position is independent and still expires using the configured fix age.
 
-Time updates emit `time_sync` events with the previous source and signed correction
-(null for first sync), and observations identify `gps`, `rtc`, or `unknown`.
-Only selected clock updates emit synchronization events. Separate `time_source`
-events record invalidation and timeout transitions, including unknown UTC.
+Observations identify the selected time source as `gps`, `rtc`, or `unknown`.
 RTC updates never count as satellite synchronization. UTC can jump on correction;
 sort records by boot and monotonic capture time. Buffered captures outside the
 available clock sample's freshness window also have null UTC.

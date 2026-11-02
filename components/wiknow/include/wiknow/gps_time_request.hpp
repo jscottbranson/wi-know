@@ -7,10 +7,7 @@ namespace wiknow {
 // Reserved fields stay empty. Do not save to module flash or reset its RTC.
 class GpsTimeRequest {
   public:
-    // CASIC section 1.6.7: PCAS06,0 queries firmware; replies are TXT messages.
-    // Queue both sentences together so partial UART writes cannot interleave them.
-    static constexpr char command[] = "$PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1*32\r\n"
-                                      "$PCAS06,0*1B\r\n";
+    static constexpr char command[] = "$PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1*32\r\n";
     const char *pending(uint64_t now, size_t &size) const {
         size = now >= next_at_ ? sizeof(command) - 1 - offset_ : 0;
         return command + offset_;
