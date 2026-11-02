@@ -1135,6 +1135,16 @@ bool Gps::sentence(uint64_t now) {
     if (std::strlen(fields[0]) != 5 || std::strcmp(fields[0] + 2, "RMC") || count < 10)
         return false;
     int64_t epoch{};
+    // Older Air530Z firmware can supply approximate receiver time in void RMC
+    // while lacking PCAS60. Accept its calendar, never its position or GPS sync.
+    rmc_time_.valid = false;
+    if (receiver_time_ && !std::strcmp(fields[2], "V")) {
+        gps_time_.valid = false;
+        if (!utc_value(fields[9], fields[1], epoch))
+            return false;
+        rmc_time_ = {true, now, epoch};
+        return !available(rtc_time_, now);
+    }
     if (std::strcmp(fields[2], "A") || !utc_value(fields[9], fields[1], epoch)) {
         gps_time_.valid = false;
         return false;
@@ -1188,7 +1198,7 @@ bool Gps::available(const ClockSample &sample, uint64_t at) const {
 TimeSource Gps::source(uint64_t at) const {
     if (available(gps_time_, at))
         return TimeSource::gps;
-    if (available(rtc_time_, at))
+    if (available(rtc_time_, at) || available(rmc_time_, at))
         return TimeSource::rtc;
     return TimeSource::unknown;
 }
@@ -1196,7 +1206,9 @@ bool Gps::utc(uint64_t at, int64_t &out) const {
     const auto selected = source(at);
     if (selected == TimeSource::unknown)
         return false;
-    const auto &sample = selected == TimeSource::gps ? gps_time_ : rtc_time_;
+    const auto &sample = selected == TimeSource::gps ? gps_time_
+                         : available(rtc_time_, at)  ? rtc_time_
+                                                     : rmc_time_;
     out = sample.utc + (at >= sample.at ? int64_t(at - sample.at) : -int64_t(sample.at - at));
     return true;
 }

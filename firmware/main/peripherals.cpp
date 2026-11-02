@@ -264,7 +264,8 @@ void gps_update(wiknow::Gps &gps) {
                      static_cast<unsigned long long>(now - diagnostics.last_tim_at),
                      diagnostics.last_tim_checksum_ok ? "ok" : "bad", diagnostics.last_tim);
         else
-            ESP_LOGI("gps", "No complete PCAS60 received; receiver time unavailable");
+            ESP_LOGI("gps",
+                     "No complete PCAS60 received; approximate RMC fallback may supply RTC time");
         ESP_LOGI("gps",
                  "sentences=%llu bad_checksums=%llu overflow=%llu resync=%llu "
                  "nonprintable=%llu",

@@ -250,8 +250,10 @@ validated against the selected board and other peripherals. Set `enabled: false`
 to disable the switch. Universal configurations explicitly keep it disabled.
 
 Air530Z retained-time startup is requested over GPS TX on the former amber LED
-pin. Valid receiver time is used until active GPS time arrives, and again on GPS
-loss. If neither source is available, logs have null UTC and the clock shows dashes.
+pin. Valid TIM receiver time is used until active GPS time arrives, and again on GPS
+loss. Older Air530Z firmware may not support TIM/`PCAS60`; checksum-valid void-RMC
+date/time is then accepted as approximate `rtc` time, without a valid position or
+GPS synchronization. Accuracy is unknown. See [receiver time limitations](../docs/air530-time.md). If neither source is available, logs have null UTC and the clock shows dashes.
 Boot and scanning never wait for either source.
 
 The amber LED and `signal_trend.steady_pin` setting are removed. Delete that key

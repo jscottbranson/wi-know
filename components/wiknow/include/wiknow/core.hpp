@@ -195,7 +195,7 @@ class Gps {
     bool collecting_{};
     std::array<Fix, 32> fixes_{};
     size_t next_fix_{};
-    ClockSample gps_time_{}, rtc_time_{};
+    ClockSample gps_time_{}, rtc_time_{}, rmc_time_{};
     uint64_t now_{};
     uint32_t max_time_age_ms_;
     bool receiver_time_{}, synced_{};
