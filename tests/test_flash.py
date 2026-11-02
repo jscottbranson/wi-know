@@ -42,6 +42,7 @@ class FlashTests(unittest.TestCase):
             status, output = self.run_main('--config', str(config), '--dry-run')
             self.assertEqual(status, 1)
             self.assertIn(f'Config: {config}', output)
+            self.assertIn(f'Validator: {ROOT / "tools/generate_config.py"}', output)
 
     def test_supported_installations_infer_roles_and_capture_pins(self):
         for variant, board, role, switch in [

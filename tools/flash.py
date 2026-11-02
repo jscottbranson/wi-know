@@ -197,6 +197,7 @@ def main(argv=None):
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
         print(f'Config: {config}')
+        print(f'Validator: {Path(generate_config.__file__).resolve()}')
         raw = generate_config.load(config)
         if isinstance(raw.get('signal_trend'), dict) and 'steady_pin' in raw['signal_trend']:
             print('NOTE: ignoring obsolete signal_trend.steady_pin; steady uses red + green LEDs.')

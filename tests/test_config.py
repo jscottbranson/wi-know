@@ -39,6 +39,14 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported GPS model'):
             generate.validate(self.settings)
 
+    def test_schema_error_distinguishes_missing_from_unknown_keys(self):
+        source = copy.deepcopy(self.settings)
+        del source['signal_trend']['increasing_pin']
+        source['signal_trend']['increasing_pni'] = 0
+        with self.assertRaisesRegex(ValueError,
+                r"missing keys: \['increasing_pin'\]; unknown keys: \['increasing_pni'\]"):
+            generate.validate(source)
+
     def test_all_shipped_configs_use_current_led_schema(self):
         paths = sorted((ROOT/'config').glob('*.json'))
         paths += sorted((ROOT/'tests/fixtures').glob('**/settings.json'))
@@ -62,7 +70,7 @@ class ConfigTests(unittest.TestCase):
                 self.assertEqual(source, original)
                 self.assertEqual(valid['gps']['tx_pin'], pin)
             source['signal_trend']['steady_pni'] = pin
-            with self.assertRaisesRegex(ValueError, 'missing/unknown keys'):
+            with self.assertRaisesRegex(ValueError, 'unknown keys'):
                 generate.validate(source, board_override=board)
 
     def test_gps_tx_conflict(self):

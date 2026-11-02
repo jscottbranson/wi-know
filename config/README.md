@@ -268,3 +268,9 @@ be `Grove GPS Air530Z` for TIM reception; Air530 remains active-RMC-only.
 `gps.backup_battery_present: false` does not disable reception or bypass validity.
 If UART initialization fails, firmware logs a warning and continues without GPS.
 An initially silent receiver can begin reporting later without an MCU reboot.
+
+If a current example produces `missing/unknown keys: {'steady_pin'}`, an older
+validator may be expecting the removed key. Update the complete repository,
+including `tools/flash.py` and `tools/generate_config.py`, from the same revision
+as the examples; do not add the amber LED setting back. The flash tool prints the
+resolved config and validator paths before validation to identify mixed checkouts.

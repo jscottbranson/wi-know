@@ -105,7 +105,10 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     def structure(value, expected, prefix=''):
         if isinstance(expected, dict):
             require(type(value) is dict, f'{prefix}: expected object')
-            require(value.keys() == expected.keys(), f'{prefix}: missing/unknown keys: {value.keys() ^ expected.keys()}')
+            missing = sorted(expected.keys() - value.keys())
+            unknown = sorted(value.keys() - expected.keys())
+            require(not missing and not unknown,
+                    f'{prefix}: missing keys: {missing}; unknown keys: {unknown}')
             for k in expected:
                 structure(value[k], expected[k], f'{prefix}.{k}')
         else:
