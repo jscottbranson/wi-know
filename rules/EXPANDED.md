@@ -24,10 +24,20 @@ are recorded in [NOTICE](../NOTICE) and [source notes](sources/README.md).
 Existing Axon, body-camera, Flock, Ring and Genetec coverage remains enabled.
 All single indicators, including the community probe pattern, are `possible`.
 The Meta composite is `probable`. Neither means authenticated identity.
-Broad keywords such as `cam`, `ring`, `axis`, `lpr` and `protect` can occur in
+Broad keywords such as `cam`, `axis`, `lpr` and `protect` can occur in
 unrelated names; shared OUIs can be very noisy. Disable their categories if needed.
 A UniFi-branded device may independently match a generic camera keyword; disabling
 `unifi_cameras` disables that category, not every possible classification of that device.
+
+The Ring name alternative in `camera-network-name-2` matches only complete,
+ASCII case-insensitive `Ring-` or `Ring Setup-` names with a nonempty ASCII
+alphanumeric suffix, following [Ring's setup examples](https://blog.ring.com/?p=8074).
+This is possible setup-network evidence only: Ring devices normally join an
+existing home network, so SSID naming is not a general detector for deployed
+Ring cameras. `Engineering`, `Steering`, `Harrington` and user-selected names
+such as `Ring 2.4GHz` do not qualify through this predicate. Other camera keywords
+and independent Ring vendor OUI rules still apply. SSID text and repeated
+observations do not confirm camera identity or establish physical device count.
 
 Every config enables all shipped detection categories and leaves
 `detection.disabled_categories` empty. To opt out, move a category from
@@ -51,6 +61,9 @@ receiver. Only services actually advertised are observed; no GATT queries occur.
 - `ssid_contains_ci`, `name_contains_ci`: nonempty printable UTF-8, at most 32
   encoded bytes. ASCII case-insensitive substring matching of captured display
   text (up to 32 bytes, stopping at NUL). SSIDs exclude probe requests.
+- `ssid_ring_setup`: value `"true"`; matches the complete Ring setup formats above
+  in captured advertised Wi-Fi SSID text (up to 32 bytes, stopping at NUL).
+  Excludes probe requests and BLE; suffixes cannot contain punctuation or spaces.
 - `name_exact`: case-sensitive equality with captured BLE name text.
 - `service_uuid16_range`: inclusive `3100-3500` hex range. Checks 16-bit service
   lists/data and equivalent Bluetooth-base 128-bit lists/data. Other 128-bit UUIDs

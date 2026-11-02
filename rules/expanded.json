@@ -677,15 +677,15 @@
           "value": "wyze"
         },
         {
-          "field": "ssid_contains_ci",
-          "value": "ring"
+          "field": "ssid_ring_setup",
+          "value": "true"
         }
       ],
       "source": {
         "url": "https://github.com/simeononsecurity/eye-spy/blob/5dba436175fd670a67eb819c2e17407d6fe918e8/src/es_detect.h",
-        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8",
+        "revision": "5dba436175fd670a67eb819c2e17407d6fe918e8; Ring setup restriction per https://blog.ring.com/?p=8074 (2026-05-18)",
         "license": "Apache-2.0; modified pattern adaptation; see rules/sources/eye-spy-NOTICE.txt",
-        "reviewed": "2026-10-28"
+        "reviewed": "2026-11-02"
       }
     },
     {

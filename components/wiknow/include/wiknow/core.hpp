@@ -43,7 +43,8 @@ enum class Field : uint8_t {
     ble_payload_contains,
     wifi_receiver_mac,
     wifi_receiver_oui,
-    gatt_service_uuid128
+    gatt_service_uuid128,
+    ssid_ring_setup
 };
 struct Channel {
     uint8_t number{};

@@ -302,7 +302,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
                 require(field in ('mac', 'oui', 'ssid_prefix', 'name_prefix', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'gatt_service_uuid128', 'ble_payload_contains',
                                   'rid_valid', 'rid_message_type', 'rid_basic_id', 'rid_basic_id_type',
                                   'rid_position_valid', 'wifi_subtype', 'wifi_ssid_wildcard',
-                                  'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci',
+                                  'wifi_ie_fingerprint', 'wifi_requested_ssid_prefix', 'ssid_contains_ci', 'ssid_ring_setup',
                                   'name_contains_ci', 'name_exact', 'service_uuid16_range', 'wifi_ie_signature', 'wifi_receiver_mac', 'wifi_receiver_oui'), 'unknown predicate field')
                 require(isinstance(value, str) and 0 < len(value) <= (510 if field == 'wifi_ie_fingerprint' else 96), 'invalid predicate value')
                 if field.startswith('wifi_'):
@@ -340,7 +340,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}', value)),
                             'MAC must be six colon-separated hex bytes')
                     pred['value'] = value.lower()
-                if field in ('rid_valid', 'rid_position_valid'):
+                if field in ('rid_valid', 'rid_position_valid', 'ssid_ring_setup'):
                     require(value == 'true', f'{field} must be "true"')
                 if field == 'rid_message_type':
                     require(value in ('basic_id', 'location', 'authentication', 'self_id', 'system', 'operator_id'),
@@ -359,7 +359,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
                             all(ord(c) >= 32 and ord(c) != 127 for c in value),
                             'text predicate must be printable UTF-8 within the 32-byte captured text limit')
                 require(not (rule['radio'] == 'wifi' and field in ('name_prefix', 'name_exact', 'name_contains_ci', 'manufacturer_prefix', 'service_uuid16', 'service_uuid128', 'gatt_service_uuid128', 'ble_payload_contains', 'service_uuid16_range')), 'BLE predicate in Wi-Fi rule')
-                require(not (rule['radio'] == 'ble' and field in ('ssid_prefix', 'ssid_contains_ci')), 'SSID predicate in BLE rule')
+                require(not (rule['radio'] == 'ble' and field in ('ssid_prefix', 'ssid_contains_ci', 'ssid_ring_setup')), 'SSID predicate in BLE rule')
                 if field == 'ble_payload_contains':
                     require(bool(re.fullmatch(r'(?:[0-9a-fA-F]{2}){1,32}', value)),
                             'BLE payload pattern must be 1..32 contiguous hex bytes')
