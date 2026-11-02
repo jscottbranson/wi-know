@@ -103,6 +103,7 @@ Supported predicates:
 | --- | --- |
 | `mac` | Exact six-byte transmitter/advertiser address, e.g. `02:11:22:33:44:55`; supports local/random addresses |
 | `oui` | Three address bytes, e.g. `00:11:22`; ignored for local/random addresses |
+| `ssid_ring_setup` | String `"true"`: ASCII case-insensitive complete `Ring-` or `Ring Setup-` plus one or more ASCII letters/digits; advertised SSIDs only, possible setup evidence (see [limitations](EXPANDED.md)) |
 | `ssid_prefix` | Case-sensitive UTF-8 advertised Wi-Fi SSID prefix, at most 32 encoded bytes; excludes probe requests |
 | `wifi_subtype` | `probe_request`, `probe_response`, `beacon`, `nan_action`, `data`, or `qos_data` |
 | `wifi_receiver_mac` | Exact six-octet receiver MAC; indirect evidence, not transmitter identity |

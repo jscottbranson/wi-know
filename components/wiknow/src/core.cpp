@@ -251,6 +251,18 @@ bool contains_ci(std::string_view text, std::string_view value) {
     return std::search(text.begin(), text.end(), value.begin(), value.end(),
                        [&](char a, char b) { return lower(a) == lower(b); }) != text.end();
 }
+// Match complete setup names, not arbitrary user-selected network names.
+bool ring_setup_ssid(std::string_view text) {
+    for (std::string_view prefix : {"Ring-", "Ring Setup-"}) {
+        if (text.size() <= prefix.size() || !contains_ci(text.substr(0, prefix.size()), prefix))
+            continue;
+        const auto suffix = text.substr(prefix.size());
+        return std::all_of(suffix.begin(), suffix.end(), [](unsigned char c) {
+            return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+        });
+    }
+    return false;
+}
 // Ranges apply to actual advertised service UUIDs, including Bluetooth-base
 // 128-bit encodings, never arbitrary bytes in manufacturer/application data.
 bool service_range(std::string_view value, const Observation &o) {
@@ -482,6 +494,9 @@ bool predicate(const Predicate &p, const Observation &o) {
     }
     case Field::ssid_prefix:
         return o.wifi_subtype != WifiSubtype::probe_request && starts(text_view(o.ssid), p.value);
+    case Field::ssid_ring_setup:
+        return p.value == "true" && o.radio == Radio::wifi &&
+               o.wifi_subtype != WifiSubtype::probe_request && ring_setup_ssid(text_view(o.ssid));
     case Field::ssid_contains_ci:
         return o.radio == Radio::wifi && o.wifi_subtype != WifiSubtype::probe_request &&
                contains_ci(text_view(o.ssid), p.value);

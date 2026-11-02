@@ -87,6 +87,41 @@ int main() {
     assert(matches(rule("flock-network-name-2"), wifi));
     wifi.wifi_subtype = WifiSubtype::probe_request;
     assert(!matches(rule("flock-network-name-2"), wifi));
+    auto camera = rule("camera-network-name-2");
+    assert(camera.confidence == "possible");
+    for (auto ssid : {"Ring-XXXXXX", "ring-a1B2c3", "RING-123456", "Ring Setup-XX", "rInG sEtUp-a9",
+                      "RING SETUP-01", "my-ReOlInK", "my-ARLO", "my-WyZe"}) {
+        std::strcpy(wifi.ssid.data(), ssid);
+        for (auto subtype : {WifiSubtype::beacon, WifiSubtype::probe_response}) {
+            wifi.wifi_subtype = subtype;
+            assert(matches(camera, wifi));
+        }
+        wifi.wifi_subtype = WifiSubtype::probe_request;
+        assert(!matches(camera, wifi));
+    }
+    wifi.wifi_subtype = WifiSubtype::beacon;
+    for (auto ssid : {"Engineering", "Steering", "Harrington", "ENGINEERING", "Ring 2.4GHz", "ring",
+                      "Ring-", "Ring Setup-", "My-Ring-ABC123", "Ring-ABC123-guest",
+                      "Ring Setup-XX guest", "Ring-12.34", "Ring-ä", ""}) {
+        std::strcpy(wifi.ssid.data(), ssid);
+        assert(!matches(camera, wifi));
+        // With no vendor evidence, none of the shipped camera rules should fire.
+        for (const auto &candidate : config::rules)
+            if (candidate.category == "cameras")
+                assert(!matches(candidate, wifi));
+    }
+    // Ring vendor evidence remains independent of an unrelated SSID.
+    std::strcpy(wifi.ssid.data(), "Engineering");
+    wifi.address = {0x00, 0xb4, 0x63, 1, 2, 3};
+    assert(matches(rule("ring-wifi-oui-1"), wifi));
+    Observation ring_ble = wifi;
+    ring_ble.radio = Radio::ble;
+    ring_ble.address_type = 0;
+    assert(matches(rule("ring-ble-oui-1"), ring_ble));
+    std::strcpy(ring_ble.ssid.data(), "Ring-ABC123");
+    camera.radio = Radio::ble; // Predicate itself also enforces the radio.
+    assert(!matches(camera, ring_ble));
+    wifi.wifi_subtype = WifiSubtype::probe_request;
     // Synthetic probe with the upstream ordered tags and exact vendor bytes.
     Bytes ies{0, 0, 2, 1,  0x82, 12,  0, 127, 1, 0, 221,  7,    0x50, 0x6f, 0x9a, 0x16,
               3, 1, 3, 45, 0,    191, 0, 221, 7, 0, 0x50, 0xf2, 8,    0,    0,    0};
