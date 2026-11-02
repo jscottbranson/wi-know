@@ -9,6 +9,7 @@
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
+#include "wiknow/gps_time_request.hpp"
 // These FAT helpers require types declared by esp_vfs_fat.h.
 // clang-format off
 #include "diskio_sdmmc.h"
@@ -210,18 +211,32 @@ void screen(const char *a, const char *b) {
 void gps_update(wiknow::Gps &gps) {
     if (role != wiknow::Role::parent || !c::gps_enabled || !gps_uart_ready)
         return;
+    uint64_t now = now_ms();
+    gps.expire(now, c::gps_max_fix_age_ms);
+    static GpsTimeEvents events;
+    char event[384];
+    if (events.update(now, boot_id, gps, false, 0, event, sizeof(event)))
+        write_log(event);
+    if (c::gps_tx_pin >= 0 && !std::strcmp(c::gps_model, "Grove GPS Air530Z")) {
+        static wiknow::GpsTimeRequest request;
+        size_t size{};
+        const char *command = request.pending(now, size);
+        if (size) {
+            // TX buffer is disabled: write only available FIFO space, never wait.
+            int sent = uart_tx_chars(uart_port_t(c::gps_uart), command, size);
+            if (sent > 0)
+                request.sent(now, size_t(sent));
+        }
+    }
     // One bounded, zero-wait read: neither a silent GPS nor missing RTC data gates scanning.
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
-    uint64_t now = now_ms();
     for (int i = 0; i < n; ++i) {
         int64_t previous_utc{};
-        const bool had_time = gps.utc(now, previous_utc);
-        if (gps.feed(char(data[i]), now)) {
-            char event[384];
-            if (time_sync_json(now, boot_id, had_time, previous_utc, gps, event, sizeof(event)))
-                write_log(event);
-        }
+        gps.utc(now, previous_utc);
+        const bool sample = gps.feed(char(data[i]), now);
+        if (events.update(now, boot_id, gps, sample, previous_utc, event, sizeof(event)))
+            write_log(event);
     }
     gps.expire(now, c::gps_max_fix_age_ms);
 }
@@ -473,7 +488,8 @@ static void logger(void *) {
                     written = false;
                     active_storage = selected;
                 } else {
-                    ESP_LOGE("storage", "Flush failed and no fallback; logging disabled until reboot");
+                    ESP_LOGE("storage",
+                             "Flush failed and no fallback; logging disabled until reboot");
                     writer.close_all();
                     active_storage = Storage::off;
                 }
@@ -530,8 +546,8 @@ static void boot_indicator_test() {
     ESP_LOGI("peripherals",
              "Boot test: green/red/both 200 ms each, then buzzer 100 ms (enabled outputs only)");
     if (c::signal_trend_enabled) {
-        for (auto trend : {wiknow::Trend::increasing, wiknow::Trend::decreasing,
-                           wiknow::Trend::steady}) {
+        for (auto trend :
+             {wiknow::Trend::increasing, wiknow::Trend::decreasing, wiknow::Trend::steady}) {
             const auto leds = wiknow::trend_leds(trend);
             if (!(leds.green && c::signal_trend_increasing_pin >= 0) &&
                 !(leds.red && c::signal_trend_decreasing_pin >= 0))
@@ -572,7 +588,8 @@ void start_peripherals() {
             ESP_LOGW("gps", "UART unavailable (%s); continuing without GPS until reboot",
                      esp_err_to_name(error));
         else
-            ESP_LOGI("gps", "UART ready; continuing without waiting for RTC data or a fix");
+            ESP_LOGI("gps",
+                     "UART ready; requesting Air530Z receiver time when TX is wired; no fix wait");
     }
     if (c::signal_trend_enabled) {
         for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin}) {

@@ -1049,6 +1049,7 @@ Plan Membership::plan(const Channel *channels, size_t count) const {
     return p;
 }
 bool Gps::feed(char byte, uint64_t now) {
+    now_ = now;
     if (byte == '$') {
         length_ = 0;
         collecting_ = true;
@@ -1095,15 +1096,51 @@ bool Gps::sentence(uint64_t now) {
                 return false;
             fields[count++] = p + 1;
         }
-    if (std::strlen(fields[0]) != 5 || std::strcmp(fields[0] + 2, "RMC") || count < 10 ||
-        std::strcmp(fields[2], "A"))
+    if (receiver_time_ && !std::strcmp(fields[0], "PCAS60")) {
+        // Air530Z receiver clock, including retained time. Never trust a date alone.
+        // CASIC 4.2 section 1.6.12: timeValid and leapsValid must both be set.
+        int64_t epoch{};
+        char date[7]{};
+        bool valid = count == 8 && !std::strcmp(fields[5], "1") && !std::strcmp(fields[7], "1") &&
+                     std::strlen(fields[2]) == 8;
+        auto unsigned_field = [](const char *field, unsigned maximum) {
+            if (!*field)
+                return false;
+            unsigned value = 0;
+            for (const char *p = field; *p; ++p) {
+                if (*p < '0' || *p > '9' || value > maximum / 10)
+                    return false;
+                value = value * 10 + unsigned(*p - '0');
+                if (value > maximum)
+                    return false;
+            }
+            return true;
+        };
+        if (valid) {
+            valid = unsigned_field(fields[3], 65535) && unsigned_field(fields[4], 604799) &&
+                    unsigned_field(fields[6], 64);
+            for (size_t i = 0; i < 8; ++i)
+                valid &= fields[2][i] >= '0' && fields[2][i] <= '9';
+            valid &= fields[2][4] == '2' && fields[2][5] == '0';
+            std::memcpy(date, fields[2], 4);
+            std::memcpy(date + 4, fields[2] + 6, 2);
+            valid = valid && utc_value(date, fields[1], epoch);
+        }
+        rtc_time_.valid = valid;
+        if (!valid)
+            return false;
+        rtc_time_ = {true, now, epoch};
+        return source(now) == TimeSource::rtc;
+    }
+    if (std::strlen(fields[0]) != 5 || std::strcmp(fields[0] + 2, "RMC") || count < 10)
         return false;
     int64_t epoch{};
-    if (!utc_value(fields[9], fields[1], epoch))
+    if (std::strcmp(fields[2], "A") || !utc_value(fields[9], fields[1], epoch)) {
+        gps_time_.valid = false;
         return false;
-    has_time_ = true;
-    time_at_ = now;
-    utc_at_ = epoch;
+    }
+    synced_ = true;
+    gps_time_ = {true, now, epoch};
     Fix fix{};
     fix.at_ms = now;
     fix.valid = coordinate(fields[3], fields[4], true, fix.latitude) &&
@@ -1133,11 +1170,34 @@ Fix Gps::tag(const Observation &o, uint32_t max_age, uint32_t max_uncertainty) c
     // The entire possible capture-time interval must be within the fix-age limit.
     return nearest(o.at_ms, max_age - o.timing_uncertainty_ms);
 }
+const char *time_source_name(TimeSource source) {
+    switch (source) {
+    case TimeSource::gps:
+        return "gps";
+    case TimeSource::rtc:
+        return "rtc";
+    default:
+        return "unknown";
+    }
+}
+bool Gps::available(const ClockSample &sample, uint64_t at) const {
+    // Require a live source now, and bound extrapolation for buffered captures too.
+    return sample.valid && now_ >= sample.at && now_ - sample.at <= max_time_age_ms_ &&
+           difference(at, sample.at) <= max_time_age_ms_;
+}
+TimeSource Gps::source(uint64_t at) const {
+    if (available(gps_time_, at))
+        return TimeSource::gps;
+    if (available(rtc_time_, at))
+        return TimeSource::rtc;
+    return TimeSource::unknown;
+}
 bool Gps::utc(uint64_t at, int64_t &out) const {
-    if (!has_time_)
+    const auto selected = source(at);
+    if (selected == TimeSource::unknown)
         return false;
-    // Avoid unsigned wrap when associating buffered observations before last sync.
-    out = utc_at_ + (at >= time_at_ ? int64_t(at - time_at_) : -int64_t(time_at_ - at));
+    const auto &sample = selected == TimeSource::gps ? gps_time_ : rtc_time_;
+    out = sample.utc + (at >= sample.at ? int64_t(at - sample.at) : -int64_t(sample.at - at));
     return true;
 }
 void Gps::utc_text(uint64_t at, char (&out)[9]) const {
@@ -1153,6 +1213,7 @@ void Gps::utc_text(uint64_t at, char (&out)[9]) const {
                   day_seconds % 60);
 }
 void Gps::expire(uint64_t now, uint32_t max_age_ms) {
+    now_ = now;
     for (auto &fix : fixes_)
         if (fix.valid && now >= fix.at_ms && now - fix.at_ms > max_age_ms)
             fix.valid = false;
@@ -1552,9 +1613,8 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         j.add("%lld", (long long)utc);
     else
         j.add("null");
-    j.add(",\"time_source\":\"%s\",\"gps_sync_age_ms\":",
-          gps.has_time() ? "gps_holdover" : "unknown");
-    if (gps.has_time() && o.at_ms >= gps.last_sync())
+    j.add(",\"time_source\":\"%s\",\"gps_sync_age_ms\":", time_source_name(gps.source(o.at_ms)));
+    if (gps.has_gps_sync() && o.at_ms >= gps.last_sync())
         j.add("%llu", (unsigned long long)(o.at_ms - gps.last_sync()));
     else
         j.add("null");

@@ -166,16 +166,16 @@ static void mac_test() {
             Gps gps;
             auto &track = tracker.observe(forwarded.observation, {});
             char json[log_line_capacity];
-            CHECK(observation_json(forwarded.observation, track, {&rule}, {}, gps,
-                                   json, sizeof(json)));
+            CHECK(observation_json(forwarded.observation, track, {&rule}, {}, gps, json,
+                                   sizeof(json)));
             CHECK(std::strstr(json, "\"address\":\"02:ab:34:cd:56:ef\""));
             CHECK(std::strstr(json, "\"rule_id\":\"exact-address\""));
         }
     }
-    for (const char *value : {"", "02:ab:34", "02:ab:34:cd:56", "02:ab:34:cd:56:ef:00",
-                              "02:ab:34:cd:56:eg", "02:ab:34:cd:56:*", "02:ab:34:cd:56:ef/48",
-                              "02ab34cd56ef", "02-ab-34-cd-56-ef", "02 ab 34 cd 56 ef",
-                              " 02:ab:34:cd:56:ef", "02:ab:34:cd:56:ef ", "0:2ab:34:cd:56:ef"}) {
+    for (const char *value :
+         {"", "02:ab:34", "02:ab:34:cd:56", "02:ab:34:cd:56:ef:00", "02:ab:34:cd:56:eg",
+          "02:ab:34:cd:56:*", "02:ab:34:cd:56:ef/48", "02ab34cd56ef", "02-ab-34-cd-56-ef",
+          "02 ab 34 cd 56 ef", " 02:ab:34:cd:56:ef", "02:ab:34:cd:56:ef ", "0:2ab:34:cd:56:ef"}) {
         rule.predicates[0].value = value;
         CHECK(!matches(rule, o));
     }
@@ -268,9 +268,8 @@ static void gps_test() {
     boundary.expire(4000, 3000);
     CHECK(boundary.has_time());
     boundary.expire(4001, 3000);
-    CHECK(boundary.has_time());
-    CHECK(boundary.utc(4001, utc));
-    CHECK(utc == 1793102403001LL);
+    CHECK(!boundary.has_time());
+    CHECK(!boundary.utc(4001, utc));
     CHECK(boundary.last_sync() == 1000);
     CHECK(!boundary.nearest(4001, 10000).valid);
     CHECK(feed(boundary, valid, 5000));
@@ -280,7 +279,7 @@ static void gps_test() {
     CHECK(std::strcmp(clock, "12:00:01") == 0);
     boundary.expire(86405000, 3000);
     boundary.utc_text(86405000, clock);
-    CHECK(std::strcmp(clock, "12:00:00") == 0);
+    CHECK(std::strcmp(clock, "--:--:--") == 0);
     CHECK(!boundary.nearest(86405000, 10000).valid);
     CHECK(feed(boundary, nmea("GNRMC,235959.500,A,,,,,,,271026,,,A"), 86406000));
     boundary.utc_text(86406500, clock);
@@ -302,7 +301,7 @@ static void gps_test() {
     capture.at_ms = 86408000;
     CHECK(observation_json(capture, track, {}, {}, boundary, json, sizeof(json)));
     CHECK(std::strstr(json, "\"gps_sync_age_ms\":1000"));
-    // Invalid input cannot refresh holdover's synchronization anchor.
+    // Invalid input cannot refresh the GPS synchronization anchor.
     CHECK(!feed(boundary, nmea("GNRMC,120500,V,,,,,,,271026,,,N"), 86409000));
     CHECK(boundary.last_sync() == 86407000);
 }

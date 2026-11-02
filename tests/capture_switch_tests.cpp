@@ -46,22 +46,28 @@ int main() {
         gps.feed(*p, 1000);
     assert(platform::capture_transition_json(true, true, false, 2000, 7, gps, json, sizeof(json)));
     assert(std::strstr(json, "\"utc_ms\":1793102401000"));
-    assert(std::strstr(json, "\"time_source\":\"gps_holdover\""));
+    assert(std::strstr(json, "\"time_source\":\"gps\""));
     assert(std::strstr(json, "\"latitude\":42.0000000"));
     gps.expire(4001, 3000);
     assert(
         platform::capture_transition_json(false, false, false, 4001, 7, gps, json, sizeof(json)));
-    assert(std::strstr(json, "\"utc_ms\":1793102403001"));
+    assert(std::strstr(json, "\"utc_ms\":null"));
     assert(std::strstr(json, "\"receiver_fix\":null"));
-    assert(std::strstr(json, "\"time_source\":\"gps_holdover\""));
-    assert(platform::time_sync_json(4001, 7, false, 0, gps, json, sizeof(json)));
+    assert(std::strstr(json, "\"time_source\":\"unknown\""));
+    for (const char *p = sentence; *p; ++p)
+        gps.feed(*p, 4001);
+    assert(
+        platform::time_sync_json(4001, 7, wiknow::TimeSource::unknown, 0, gps, json, sizeof(json)));
     assert(std::strstr(json, "\"correction_ms\":null"));
     assert(std::strstr(json, "\"previous_source\":\"unknown\""));
-    assert(platform::time_sync_json(4001, 7, true, 1793102404001LL, gps, json, sizeof(json)));
+    assert(platform::time_sync_json(4001, 7, wiknow::TimeSource::gps, 1793102401000LL, gps, json,
+                                    sizeof(json)));
     assert(std::strstr(json, "\"correction_ms\":-1000"));
     assert(std::strstr(json, "\"at_ms\":4001"));
-    assert(platform::time_sync_json(4001, 7, true, 1793102402001LL, gps, json, sizeof(json)));
+    assert(platform::time_sync_json(4001, 7, wiknow::TimeSource::gps, 1793102399000LL, gps, json,
+                                    sizeof(json)));
     assert(std::strstr(json, "\"correction_ms\":1000"));
-    assert(!platform::time_sync_json(4001, 7, false, 0, gps, json, 2));
-    assert(!platform::time_sync_json(0, 7, false, 0, wiknow::Gps{}, json, sizeof(json)));
+    assert(!platform::time_sync_json(4001, 7, wiknow::TimeSource::unknown, 0, gps, json, 2));
+    assert(!platform::time_sync_json(0, 7, wiknow::TimeSource::unknown, 0, wiknow::Gps{}, json,
+                                     sizeof(json)));
 }

@@ -85,8 +85,8 @@ struct Observation {
     uint64_t at_ms{}; // capture time mapped to parent's monotonic clock
     uint32_t timing_uncertainty_ms{};
     std::array<char, 33> ssid{}, name{};
-    std::array<uint8_t, max_payload>
-        payload{}; // BLE AD or canonical GATT UUIDs; Wi-Fi probe: complete IEs; otherwise Remote ID IE/NAN body
+    std::array<uint8_t, max_payload> payload{}; // BLE AD or canonical GATT UUIDs; Wi-Fi probe:
+                                                // complete IEs; otherwise Remote ID IE/NAN body
     uint16_t payload_size{};
     WifiSubtype wifi_subtype{WifiSubtype::unknown};
     std::array<uint8_t, 26> wifi_header{}; // MAC header only; never data contents
@@ -158,34 +158,47 @@ class Membership {
     std::array<Node, max_nodes> nodes_{};
 };
 
+enum class TimeSource { unknown, gps, rtc };
+const char *time_source_name(TimeSource source);
 class Gps {
   public:
-    bool feed(char byte, uint64_t now); // true when a valid RMC establishes UTC
+    explicit Gps(uint32_t max_time_age_ms = 3000, bool receiver_time = false)
+        : max_time_age_ms_(max_time_age_ms), receiver_time_(receiver_time) {}
+    bool feed(char byte, uint64_t now); // true when the selected clock receives a valid sample
     Fix nearest(uint64_t capture_ms, uint32_t max_age_ms) const;
-    // Receiver location at capture time, allowing for worker-to-parent timing error.
     Fix tag(const Observation &observation, uint32_t max_age_ms,
             uint32_t max_timing_uncertainty_ms) const;
+    TimeSource source(uint64_t at_ms) const;
     bool utc(uint64_t at_ms, int64_t &utc_ms) const;
     void utc_text(uint64_t at_ms, char (&out)[9]) const;
-    // Expire location history independently; UTC continues in software holdover.
     void expire(uint64_t now, uint32_t max_age_ms);
     bool has_time() const {
-        return has_time_;
+        return source(now_) != TimeSource::unknown;
+    }
+    bool has_gps_sync() const {
+        return synced_;
     }
     uint64_t last_sync() const {
-        return time_at_;
+        return gps_time_.at;
     }
 
   private:
+    struct ClockSample {
+        bool valid{};
+        uint64_t at{};
+        int64_t utc{};
+    };
+    bool available(const ClockSample &sample, uint64_t at) const;
     bool sentence(uint64_t now);
     std::array<char, 128> line_{};
     size_t length_{};
     bool collecting_{};
     std::array<Fix, 32> fixes_{};
     size_t next_fix_{};
-    bool has_time_{};
-    uint64_t time_at_{};
-    int64_t utc_at_{};
+    ClockSample gps_time_{}, rtc_time_{};
+    uint64_t now_{};
+    uint32_t max_time_age_ms_;
+    bool receiver_time_{}, synced_{};
 };
 
 struct TrendConfig {
