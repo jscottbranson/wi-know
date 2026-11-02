@@ -154,8 +154,8 @@
   },
   "capture_switch": {
     "enabled": true,
-    "gpio_pin": 26,
-    "internal_pulldown": false,
+    "gpio_pin": -1,
+    "internal_pulldown": true,
     "debounce_ms": 50
   }
 }

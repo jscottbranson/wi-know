@@ -4,9 +4,11 @@ At boot, a parent tries the configured microSD interface if `sd.enabled` is true
 If the card mounts and its log directory and free-space information can be read,
 logging uses SD. On a recognized FAT volume, files open lazily when records
 arrive; startup does not delete evidence just to create an empty log. The first record is flushed durably to
-verify writes; if that first SD open/write/flush fails, selection falls back to
-flash and retries the record. Retention-policy drops do not trigger fallback. Otherwise it tries the internal `logs` partition. With SD disabled,
-the parent goes directly to flash; unassigned SD pins are never accessed.
+verify writes. Any SD open/write/rotation failure falls back to internal flash and
+retries the current record. An SD flush failure switches subsequent records to
+flash; buffered records lost on the failed card cannot be recovered. Retention
+policy drops do not trigger fallback. With SD disabled or absent, the parent goes
+directly to the internal `logs` partition.
 Workers do not mount either filesystem. USB console output remains independent.
 
 Serial startup and periodic parent status identify `storage=SD`, `FLASH`, or
@@ -14,10 +16,11 @@ Serial startup and periodic parent status identify `storage=SD`, `FLASH`, or
 storage initialization has not finished. In standalone mode, the scan page and
 storage page alternate with the other status pages.
 
-Selection becomes final after the first successful persistent write. Insert/remove the card while powered off, then
-restart. There is no hot-swap support or automatic copying between flash and SD.
-If the selected medium later fails to write, flush, or rotate, persistent logging
-stops with `OFF` and an error on serial; scanning and console output continue.
+SD failure switches logging to flash for the rest of the boot. Reinserted cards
+are not automatically selected, and files are not copied between media. If flash
+also cannot be mounted or written, persistent logging reports `OFF`; scanning
+and console output continue. A retried record may also exist partially or fully
+on the failed SD card, so exported records may need deduplication.
 Reboot to select storage again. SD formatting is enabled by default; see the
 data-erasure behavior and opt-out below.
 

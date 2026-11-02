@@ -98,5 +98,6 @@
     "deadband_db": 3,
     "confirmations": 2
   },
-  "gatt": { "enabled": false, "timeout_ms": 3000, "cooldown_ms": 60000, "targets": [] }
+  "gatt": { "enabled": false, "timeout_ms": 3000, "cooldown_ms": 60000, "targets": [] },
+  "capture_switch": { "enabled": false, "gpio_pin": -1, "internal_pulldown": false, "debounce_ms": 50 }
 }

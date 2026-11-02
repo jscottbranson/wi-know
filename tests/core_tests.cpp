@@ -241,6 +241,15 @@ static void gps_test() {
     Gps boundary;
     CHECK(feed(boundary, nmea("GNRMC,120000.000,A,9000.000,N,18000.000,W,0,0,271026,,,A"), 1000));
     CHECK(boundary.nearest(1000, 0).valid);
+    boundary.expire(4000, 3000);
+    CHECK(boundary.has_time());
+    boundary.expire(4001, 3000);
+    CHECK(!boundary.has_time());
+    CHECK(!boundary.utc(4001, utc));
+    CHECK(!boundary.nearest(4001, 10000).valid);
+    CHECK(feed(boundary, valid, 5000));
+    CHECK(boundary.utc(5000, utc));
+    CHECK(boundary.nearest(5000, 0).valid);
 }
 static void gps_tagging_test() {
     Gps gps;

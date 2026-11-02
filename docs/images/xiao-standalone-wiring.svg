@@ -8,7 +8,7 @@
 <text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Priority: screen &gt; GPS &gt; microSD &gt; buzzer &gt; LEDs. All five fit on the 11 header GPIOs.</text>
 <polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="48" y="182" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Manual standalone parent / config/settings.standalone-wiring.example.json</text>
+<text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Manual standalone parent / config/settings.standalone.example.json</text>
 <text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.</text>
 <text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.</text>
 <text x="70" y="304" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.</text>
@@ -221,7 +221,7 @@
 <rect x="48" y="2470" width="1344" height="196" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="2503" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Build in priority order / remove optional blocks as needed</text>
 <text x="70" y="2536" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.</text>
-<text x="70" y="2564" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">All five sections are enabled in this example. Disable absent sections; omit individual LEDs with pin=-1.</text>
+<text x="70" y="2564" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">All five sections are enabled. Missing peripherals are ignored; absent SD uses flash; absent GPS logs null.</text>
 <text x="70" y="2592" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.</text>
 <text x="70" y="2620" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.</text>
 <text x="70" y="2648" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.</text>
@@ -244,6 +244,6 @@
 <text x="70" y="2943" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">ON: fresh WU everything file + normal WM matches</text>
 <text x="70" y="2973" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">OFF: sync/close session; restore logging.mode</text>
 <text x="70" y="2999" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Solder to underside MTCK pad; keep native USB; do not connect an external pad JTAG probe.</text>
-<text x="70" y="3020" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.standalone-capture.example.json. Never use 5 V. Manual parent profiles only.</text>
+<text x="70" y="3020" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.standalone.example.json. Never use 5 V. Manual parent profiles only.</text>
 <text x="48" y="3056" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

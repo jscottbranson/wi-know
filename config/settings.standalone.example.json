@@ -92,24 +92,24 @@
     "release_after_ms": 30000
   },
   "gps": {
-    "enabled": false,
+    "enabled": true,
     "model": "Grove GPS Air530",
     "backup_battery_present": true,
     "uart": 0,
-    "rx_pin": -1,
+    "rx_pin": 12,
     "tx_pin": -1,
     "baud": 9600,
     "max_fix_age_ms": 3000,
     "max_timing_uncertainty_ms": 250
   },
   "sd": {
-    "enabled": false,
+    "enabled": true,
     "format_if_mount_failed": true,
     "model": "HiLetgo B07BJ2P6X6 (5 V VCC, 3.3 V SPI)",
-    "sck_pin": -1,
-    "mosi_pin": -1,
-    "miso_pin": -1,
-    "cs_pin": -1,
+    "sck_pin": 8,
+    "mosi_pin": 10,
+    "miso_pin": 9,
+    "cs_pin": 11,
     "clock_khz": 4000
   },
   "logging": {
@@ -119,29 +119,43 @@
     "max_files": 100
   },
   "display": {
-    "enabled": false,
-    "sda_pin": -1,
-    "scl_pin": -1,
+    "enabled": true,
+    "sda_pin": 23,
+    "scl_pin": 24,
     "i2c_address": 39,
     "page_interval_ms": 3000
   },
   "buzzer": {
-    "enabled": false,
-    "pin": -1,
+    "enabled": true,
+    "pin": 7,
     "frequency_hz": 2000,
     "duration_ms": 150,
     "cooldown_ms": 10000
   },
   "signal_trend": {
-    "enabled": false,
-    "increasing_pin": -1,
-    "decreasing_pin": -1,
-    "steady_pin": -1,
+    "enabled": true,
+    "increasing_pin": 1,
+    "decreasing_pin": 25,
+    "steady_pin": 0,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,
     "deadband_db": 3,
     "confirmations": 2
   },
-  "gatt": { "enabled": false, "timeout_ms": 3000, "cooldown_ms": 60000, "targets": [] }
+  "gatt": {
+    "enabled": false,
+    "timeout_ms": 3000,
+    "cooldown_ms": 60000,
+    "targets": []
+  },
+  "board": {
+    "model": "xiao"
+  },
+  "capture_switch": {
+    "enabled": true,
+    "gpio_pin": -1,
+    "internal_pulldown": true,
+    "debounce_ms": 50
+  }
 }

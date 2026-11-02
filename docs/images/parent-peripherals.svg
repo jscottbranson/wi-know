@@ -8,7 +8,7 @@
 <text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.</text>
 <polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="48" y="182" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent GPIO map — config/settings.parent-wiring.example.json</text>
+<text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent GPIO map — config/settings.parent.example.json</text>
 <text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LEDs: GPIO0 increasing / GPIO1 decreasing / GPIO8 steady. Buzzer PWM: GPIO9.</text>
 <text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD: GPIO4 SDA / GPIO5 SCL. GPS: GPIO10 RX (UART0). GPS RX is unused; tx_pin = -1.</text>
 <text x="70" y="304" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.</text>
@@ -210,6 +210,6 @@
 <text x="750" y="2384" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND (common with controller)</text>
 <text x="70" y="2343" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">ON: fresh WU everything file + normal WM matches</text>
 <text x="70" y="2373" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">OFF: sync/close session; restore logging.mode</text>
-<text x="70" y="2420" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.parent-capture.example.json. Never use 5 V. Manual parent profiles only.</text>
+<text x="70" y="2420" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.parent.example.json. Never use 5 V. Manual parent profiles only.</text>
 <text x="48" y="2456" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

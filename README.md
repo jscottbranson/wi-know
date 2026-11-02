@@ -84,32 +84,27 @@ to avoid the onboard USB-UART output on GPIO12.
 
 ## Quick start
 
-After installing and activating ESP-IDF v5.5.1, connect a board by USB and run:
+After installing and activating ESP-IDF v5.5.1, connect the board by USB and
+choose its installation:
 
 ```sh
-python3 tools/flash.py
+# Standalone N32R8
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8
+# Standalone XIAO
+python3 tools/flash.py --config config/settings.standalone.example.json --board xiao
+# Distributed parent N32R8
+python3 tools/flash.py --config config/settings.parent.example.json --board n32r8
+# Child XIAO; assign a unique ID to each child
+python3 tools/flash.py --config config/settings.child.example.json --board xiao --node-id 1
 ```
 
-Select the USB port; repeat with the same settings for every board. The helper
-builds and flashes the universal image, with no per-board role or ID arguments.
-First fit the [parent identification harness](docs/universal.md). See [easy flashing instructions](docs/flashing.md)
-for setup, command-line options, dry runs and troubleshooting.
+Parent and standalone configurations include LCD, GPS, microSD, buzzer, LEDs,
+and a capture switch. Missing peripherals do not stop scanning; an absent SD
+card falls back to internal flash. The switch input defaults OFF when disconnected.
+See [flashing instructions](docs/flashing.md) and [configuration](config/README.md).
+The default `settings.json` retains the separate [universal workflow](docs/universal.md)
+for existing installations; the four commands above use manual roles.
 
-For a manual build without flashing:
-
-With ESP-IDF v5.5.1 activated, run from this directory:
-
-```sh
-python3 tools/generate_config.py
-idf.py -C firmware -B build-universal -DIDF_TARGET=esp32c5 build
-```
-
-Universal firmware selects TX GPIO11 and RTS GPIO7 on both boards, parent RX
-GPIO3 or worker RX GPIO12 before starting UART1. Unassigned peripherals remain
-disabled. Use `config/settings.universal.example.json` on every board to enable
-the parent peripherals; its GPS RX is GPIO26, reserving GPIO10 for identification.
-The existing wiring illustrations describe the manual profile; follow the
-[universal wiring changes](docs/universal.md) for the new image.
 The local surveillance ruleset covers Axon, Flock, Ring, selected body-camera
 vendors, and possible Genetec equipment; see [coverage and limitations](rules/README.md).
 The [expanded detection pack](rules/EXPANDED.md) adds cameras, acoustic sensors, smart glasses, Flock probe/accessory evidence, and more. Tile/BLE trackers and Ubiquiti/UniFi rules are included but disabled in every shipped profile. Disabled test templates are in `rules/examples/`.

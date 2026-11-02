@@ -16,39 +16,22 @@ jobs:
         include:
           - role: universal
             id: 0
-          - role: universal
-            id: 0
-            config: settings.universal.example.json
-          - role: parent
-            id: 0
           - role: parent
             id: 0
             config: settings.standalone.example.json
-          - role: parent
-            id: 0
-            config: settings.standalone-wiring.example.json
-          - role: parent
-            id: 0
-            config: settings.standalone-wiring.example.json
             board: xiao
           - role: parent
             id: 0
-            config: settings.standalone-wiring.example.json
+            config: settings.standalone.example.json
             board: n32r8
           - role: parent
             id: 0
-            config: settings.parent-capture.example.json
+            config: settings.parent.example.json
             board: n32r8
-          - role: parent
-            id: 0
-            config: settings.n32r8-standalone-capture.example.json
-            board: n32r8
-          - role: parent
-            id: 0
-            config: settings.standalone-capture.example.json
-            board: xiao
           - role: child
             id: 1
+            config: settings.child.example.json
+            board: xiao
           - role: follower
             id: 2
     steps:
@@ -56,7 +39,7 @@ jobs:
       - shell: bash
         run: |
           . /opt/esp/idf/export.sh
-          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_BOARD=${{ matrix.board || 'custom' }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build
+          idf.py -C firmware -B build -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=${{ matrix.role }} -DWIKNOW_NODE_ID=${{ matrix.id }} -DWIKNOW_BOARD=${{ matrix.board || '' }} -DWIKNOW_CONFIG=$PWD/config/${{ matrix.config || 'settings.json' }} build
       - uses: actions/upload-artifact@v4
         if: matrix.role == 'universal'
         with:

@@ -93,8 +93,9 @@ only from consistent epochs. Track time validity independently from position fix
 satellite count, HDOP and fix age. Reject invalid coordinates and stale fixes.
 
 Use GPS UTC date/time to synchronize the parent's software clock once validated.
-Continue from a monotonic clock during loss of GPS and mark the clock as holdover
-with age/uncertainty. An optional battery-backed I²C RTC can initialize UTC after
+Extrapolate between valid updates using the monotonic clock and report holdover
+age/uncertainty. After `gps.max_fix_age_ms` without valid RMC, discard cached GPS
+time and fixes; log null time/location until valid updates resume. An optional battery-backed I²C RTC can initialize UTC after
 power loss and be corrected from validated GPS. Check its oscillator/battery status
 before trusting it. The Grove Air530 includes an onboard backup battery, and the
 Air530 has an internal RTC and VBACKUP supply for retention/hot starts. Use this

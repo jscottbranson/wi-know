@@ -85,7 +85,7 @@ class Diagram:
             variant = 'standalone' if name == 'xiao-standalone-wiring' else 'parent'
             if variant == 'standalone':
                 self.text(70, y+184, 'Solder to underside MTCK pad; keep native USB; do not connect an external pad JTAG probe.', size=17)
-            self.text(70, y+205, f'Use config/settings.{variant}-capture.example.json. Never use 5 V. Manual parent profiles only.', size=17)
+            self.text(70, y+205, f'Use config/settings.{variant}.example.json. Never use 5 V. Manual parent profiles only.', size=17)
         self.text(48, self.height - 24, footer, size=15, color=MUTED)
         content = '\n'.join(self.parts + ['</svg>'])
         path = OUT / f'{name}.svg'
@@ -339,7 +339,7 @@ def indicator_wiring(d, led_pins=(0, 1, 8), buzzer_pin=9, lcd_pins=(4, 5), board
 def standalone_wiring(png):
     d = Diagram('XIAO ESP32-C5 / standalone with GPS + microSD',
                 'Priority: screen > GPS > microSD > buzzer > LEDs. All five fit on the 11 header GPIOs.', 2790)
-    d.note(182, 'Manual standalone parent / config/settings.standalone-wiring.example.json', [
+    d.note(182, 'Manual standalone parent / config/settings.standalone.example.json', [
         'Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.',
         'Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.',
         'Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.',
@@ -412,7 +412,7 @@ def standalone_wiring(png):
     d.text(70, 2411, 'Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.', size=18)
     d.note(2470, 'Build in priority order / remove optional blocks as needed', [
         'Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.',
-        'All five sections are enabled in this example. Disable absent sections; omit individual LEDs with pin=-1.',
+        'All five sections are enabled. Missing peripherals are ignored; absent SD uses flash; absent GPS logs null.',
         'Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.',
         'LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.',
         'Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.',
@@ -423,7 +423,7 @@ def standalone_wiring(png):
 def parent_wiring(png):
     d = Diagram('Parent LEDs, buzzer, LCD, GPS and microSD',
                 'ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.', 2190)
-    d.note(182, 'N32R8 parent GPIO map — config/settings.parent-wiring.example.json', [
+    d.note(182, 'N32R8 parent GPIO map — config/settings.parent.example.json', [
         'LEDs: GPIO0 increasing / GPIO1 decreasing / GPIO8 steady. Buzzer PWM: GPIO9.',
         'LCD: GPIO4 SDA / GPIO5 SCL. GPS: GPIO10 RX (UART0). GPS RX is unused; tx_pin = -1.',
         'Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.',
@@ -531,7 +531,7 @@ def main():
     bus = json.loads((ROOT / 'config/settings.json').read_text())['bus']
     if (bus['tx_pin'], bus['rx_pin'], bus['rts_pin'], bus['uart'], bus['baud'], bus['enabled']) != (11, 12, 7, 1, 115200, True):
         parser.error('Bus settings changed; update diagram labels/mappings before regenerating.')
-    parent = json.loads((ROOT / 'config/settings.parent-wiring.example.json').read_text())
+    parent = json.loads((ROOT / 'config/settings.parent.example.json').read_text())
     expected = {'gps': {'enabled': True, 'uart': 0, 'rx_pin': 10, 'tx_pin': -1, 'baud': 9600},
                 'display': {'enabled': True, 'sda_pin': 4, 'scl_pin': 5, 'i2c_address': 39},
                 'buzzer': {'enabled': True, 'pin': 9},
@@ -541,7 +541,7 @@ def main():
     for section, values in expected.items():
         if any(parent[section][key] != value for key, value in values.items()):
             parser.error(f'Parent example {section} changed; update the peripheral diagram before regenerating.')
-    standalone = json.loads((ROOT / 'config/settings.standalone-wiring.example.json').read_text())
+    standalone = json.loads((ROOT / 'config/settings.standalone.example.json').read_text())
     expected_standalone = {
         'node': {'role': 'parent', 'id': 0}, 'standalone': {'enabled': True},
         'bus': {'enabled': False},

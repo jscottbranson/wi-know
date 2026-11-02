@@ -159,6 +159,8 @@ class Gps {
     Fix tag(const Observation &observation, uint32_t max_age_ms,
             uint32_t max_timing_uncertainty_ms) const;
     bool utc(uint64_t at_ms, int64_t &utc_ms) const;
+    // Stop extrapolating time/location when the receiver stops providing valid RMC.
+    void expire(uint64_t now, uint32_t max_age_ms);
     bool has_time() const {
         return has_time_;
     }
