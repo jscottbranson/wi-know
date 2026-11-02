@@ -205,8 +205,15 @@ void gps_update(wiknow::Gps &gps) {
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
     uint64_t now = now_ms();
-    for (int i = 0; i < n; ++i)
-        gps.feed(char(data[i]), now);
+    for (int i = 0; i < n; ++i) {
+        int64_t previous_utc{};
+        const bool had_time = gps.utc(now, previous_utc);
+        if (gps.feed(char(data[i]), now)) {
+            char event[384];
+            if (time_sync_json(now, boot_id, had_time, previous_utc, gps, event, sizeof(event)))
+                write_log(event);
+        }
+    }
     gps.expire(now, c::gps_max_fix_age_ms);
 }
 void indicators(wiknow::Trend trend, bool beep) {

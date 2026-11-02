@@ -94,17 +94,11 @@ satellite count, HDOP and fix age. Reject invalid coordinates and stale fixes.
 
 Use GPS UTC date/time to synchronize the parent's software clock once validated.
 Extrapolate between valid updates using the monotonic clock and report holdover
-age/uncertainty. After `gps.max_fix_age_ms` without valid RMC, discard cached GPS
-time and fixes; log null time/location until valid updates resume. An optional battery-backed I²C RTC can initialize UTC after
-power loss and be corrected from validated GPS. Check its oscillator/battery status
-before trusting it. The Grove Air530 includes an onboard backup battery, and the
-Air530 has an internal RTC and VBACKUP supply for retention/hot starts. Use this
-battery-backed GPS clock as the baseline; a separate RTC is optional, not a required
-addition. Bench-test power cycling and startup without satellite reception to verify
-when retained date/time becomes available over UART and how validity is reported.
-The backup battery does not power the parent or keep normal UART reporting active
-while the GPS main supply is off. See the
-[Air530 manual](https://files.seeedstudio.com/wiki/Grove-GPS_Air_530/Air530_GPS_User_Booklet.V1.7.pdf).
+age. After `gps.max_fix_age_ms`, discard stale fixes while continuing software
+UTC holdover until reboot or another valid synchronization. UTC error is unbounded
+without a measured oscillator drift budget; capture timing uncertainty is a separate
+quantity. Boot starts with unknown UTC. See [Air530 retained-time investigation](air530-time.md)
+for the supported query, missing validity evidence, and hardware validation procedure.
 Without a trustworthy source, log UTC as null and preserve monotonic time and boot ID.
 Never fabricate timestamps; log time corrections without reordering monotonic events.
 

@@ -106,7 +106,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   then searches configured channels after 3 seconds without a target sample; parent
   releases stale targets. BLE follower filters broadcasts for the requested address.
 - Checksum-validated Air530 RMC parsing, receiver-fix history, GPS UTC holdover,
-  null UTC before validated synchronization or after GPS freshness expires, and capture-age-based association for
+  null UTC before validated synchronization, independent fix expiry, and capture-age-based association for
   buffered child observations. Full bus round-trip time is a conservative timing
   uncertainty; uncertain associations get null location. All nodes must be co-located.
   Tagging includes timing uncertainty in the fix-age limit, and the parent drains
@@ -181,3 +181,23 @@ Timestamps mapped from worker packet age are approximate; driver buffering and b
 latency remain. Only active RMC sentences establish UTC initially; backup time before
 GPS fix must be validated on the Air530. Satellite quality/HDOP and GGA parsing are
 not yet implemented. A peak receiver location is not a transmitter location.
+
+## UTC display and clock evidence
+
+The GPS page renders `UTC: hh:mm:ss` in 24-hour format, advancing from the
+monotonic clock between GPS updates, including loss of reception. Before a valid
+synchronization it renders `UTC: --:--:--`. The first row independently reports
+`GPS: FIX` or `GPS: NO FIX`, with `GPS` for recent time synchronization, `HOLD`
+for holdover, and `?` for unknown time. A time update without valid coordinates
+can therefore show `GPS: NO FIX GPS`.
+
+Each accepted RMC emits a `time_sync` JSON event with boot ID, monotonic `at_ms`,
+new UTC, previous source and signed `correction_ms` (null on first sync). The event
+reports `gps_sync_age_ms: 0` and unknown UTC uncertainty; it does not change capture
+sequence numbers or monotonic timestamps. Buffered captures use the latest UTC
+mapping, so UTC may jump backwards on correction. Sort captures by boot and
+monotonic capture time, never by UTC. Observation sync age is null when a buffered
+capture predates the current anchor; its absolute distance from a future sync is
+not a synchronization age.
+
+Retained Air530 time is not enabled: [protocol evidence and bench requirements](air530-time.md).

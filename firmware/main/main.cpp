@@ -513,8 +513,15 @@ static void parent_loop() {
                 }
             } else if (page == 2) {
                 bool fresh = gps.nearest(now, c::gps_max_fix_age_ms).valid;
-                std::snprintf(line1, sizeof(line1), "GPS:%s", fresh ? "FIX" : "NO FIX");
-                std::snprintf(line2, sizeof(line2), "UTC:%s", gps.has_time() ? "GPS" : "?");
+                const bool recent_sync = gps.has_time() && now >= gps.last_sync() &&
+                                         now - gps.last_sync() <= c::gps_max_fix_age_ms;
+                std::snprintf(line1, sizeof(line1), "GPS: %s %s", fresh ? "FIX" : "NO FIX",
+                              !gps.has_time() ? "?"
+                              : recent_sync   ? "GPS"
+                                              : "HOLD");
+                char clock[9];
+                gps.utc_text(now, clock);
+                std::snprintf(line2, sizeof(line2), "UTC: %s", clock);
             } else if (page == 3) {
                 std::snprintf(line1, sizeof(line1), "Local:%u", unsigned(platform::dropped.load()));
                 if (worker_losses.total() > 999999999)
