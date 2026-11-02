@@ -235,3 +235,6 @@ pull-down. See [full-capture operation](../docs/capture-switch.md) and
 [wiring](../docs/wiring.md#optional-full-capture-switch-manual-parent--standalone).
 Use `settings.parent-capture.example.json` or
 `settings.standalone-capture.example.json` for the illustrated switch option.
+For standalone scanning on N32R8 with GPIO26 capture control, use
+`settings.n32r8-standalone-capture.example.json`. The ordinary standalone-wiring
+example leaves capture control disabled even with `--board n32r8`.

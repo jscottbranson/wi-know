@@ -552,7 +552,9 @@ static void parent_loop() {
                 std::snprintf(line1, sizeof(line1), "Capture:%s",
                               capture_switch.all() ? "ALL" : "MATCH");
                 std::snprintf(line2, sizeof(line2), "%s SW:%s", platform::storage_name(),
-                              capture_switch.on() ? "ON" : "OFF");
+                              !c::capture_switch_enabled ? "DISABLED"
+                              : capture_switch.on()      ? "ON"
+                                                         : "OFF");
             }
             if (parent_conflict) {
                 std::snprintf(line1, sizeof(line1), "PARENT CONFLICT");

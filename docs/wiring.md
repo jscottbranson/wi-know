@@ -363,10 +363,11 @@ LEDs, including amber, stay connected to their original GPIOs.
 
 | Controller | Input | Configuration |
 | --- | --- | --- |
-| N32R8 distributed or standalone parent | P1.12 / GPIO26 | [Parent capture example](../config/settings.parent-capture.example.json) |
+| N32R8 distributed parent | P1.12 / GPIO26 | [Parent capture example](../config/settings.parent-capture.example.json) |
+| N32R8 standalone | P1.12 / GPIO26 | [N32R8 standalone capture example](../config/settings.n32r8-standalone-capture.example.json) |
 | XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone capture example](../config/settings.standalone-capture.example.json) |
 
-Both examples select the corresponding `board.model` and preserve all three
+These examples select the corresponding `board.model` and preserve all three
 LEDs. No spare D0–D10 header GPIO remains on a fully populated XIAO; its underside
 **MTCK / GPIO4** pad supplies the extra input. Identify the pad using the
 [Seeed underside pinout](https://files.seeedstudio.com/wiki/XIAO_ESP32C5/Getting_started/XIAO_ESP32-C5_back_pinout.png),
