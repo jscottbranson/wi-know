@@ -23,20 +23,37 @@ class ConfigTests(unittest.TestCase):
             with self.subTest(config=name):
                 settings, rules = generate.validate(source, board_override='n32r8')
                 self.assertTrue(settings['gps']['enabled'])
-                self.assertEqual(settings['gps']['tx_pin'], -1)
+                self.assertEqual(settings['gps']['tx_pin'], 8)
+                receive_only = copy.deepcopy(settings)
+                receive_only['board'] = {'model': 'custom'}
+                receive_only['capture_switch']['enabled'] = False
+                receive_only['gps']['tx_pin'] = -1
+                generate.validate(receive_only)
                 self.assertIn('gps_backup_battery_present = false', generate.emit(settings, rules))
+
+    def test_removed_amber_config_and_gps_tx_conflict(self):
+        source = generate.load(ROOT/'config/settings.parent.example.json')
+        source['signal_trend']['steady_pin'] = 8
+        with self.assertRaises(ValueError):
+            generate.validate(source)
+        del source['signal_trend']['steady_pin']
+        source['board'] = {'model': 'custom'}
+        source['capture_switch']['enabled'] = False
+        source['gps']['tx_pin'] = source['signal_trend']['increasing_pin']
+        with self.assertRaisesRegex(ValueError, 'used by'):
+            generate.validate(source)
 
     def test_capture_switch_validation(self):
         source = generate.load(ROOT/'config/settings.standalone.example.json')
         source['board'] = {'model': 'xiao'}
-        source['capture_switch'] = {'enabled': True, 'gpio_pin': 0,
+        source['capture_switch'] = {'enabled': True, 'gpio_pin': 1,
                                     'internal_pulldown': True, 'debounce_ms': 50}
         with self.assertRaisesRegex(ValueError, 'used by'):
             generate.validate(source)
-        source['signal_trend']['steady_pin'] = -1
+        source['signal_trend']['increasing_pin'] = -1
         valid, rules = generate.validate(source)
-        self.assertEqual(valid['signal_trend']['steady_pin'], -1)
-        self.assertIn('capture_switch_gpio_pin = 0', generate.emit(valid, rules))
+        self.assertEqual(valid['signal_trend']['increasing_pin'], -1)
+        self.assertIn('capture_switch_gpio_pin = 1', generate.emit(valid, rules))
         for board, pin in [('xiao', 2), ('xiao', 7), ('xiao', 25), ('xiao', 26),
                            ('xiao', 13), ('xiao', 15), ('xiao', 28), ('n32r8', 6),
                            ('n32r8', 12), ('n32r8', 15), ('n32r8', 27), ('custom', 0)]:
@@ -57,17 +74,17 @@ class ConfigTests(unittest.TestCase):
         self.assertFalse(defaults['capture_switch']['enabled'])
         self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
 
-    def test_capture_examples_keep_all_leds_on_spare_pins(self):
-        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0)]:
+    def test_capture_examples_keep_two_leds_and_gps_tx(self):
+        for variant, pin, gps_tx in [('parent', 26, 8), ('standalone', 4, 0)]:
             source = generate.load(ROOT/f'config/settings.{variant}.example.json')
             settings, _ = generate.validate(source, board_override=source['board']['model'])
             self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
             self.assertTrue(settings['capture_switch']['internal_pulldown'])
-            self.assertEqual(settings['signal_trend']['steady_pin'], amber)
-            for key in ('increasing_pin', 'steady_pin', 'decreasing_pin'):
+            self.assertEqual(settings['gps']['tx_pin'], gps_tx)
+            for key in ('increasing_pin', 'decreasing_pin'):
                 self.assertGreaterEqual(settings['signal_trend'][key], 0)
             # A configurable input must still not overlap a fitted peripheral.
-            source['capture_switch']['gpio_pin'] = amber
+            source['capture_switch']['gpio_pin'] = gps_tx
             with self.assertRaisesRegex(ValueError, 'used by'):
                 generate.validate(source)
 
@@ -208,10 +225,10 @@ class ConfigTests(unittest.TestCase):
         header = generate.emit(settings, rules)
         assignments = {
             'display': {'sda_pin': 23, 'scl_pin': 24},
-            'gps': {'rx_pin': 12},
+            'gps': {'rx_pin': 12, 'tx_pin': 0},
             'sd': {'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11},
             'buzzer': {'pin': 7},
-            'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 25, 'steady_pin': 0},
+            'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 25},
         }
         pins = []
         for section, expected in assignments.items():
@@ -225,7 +242,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(set(pins), {1, 0, 25, 7, 23, 24, 11, 12, 8, 9, 10})
         self.assertEqual(len(pins), len(set(pins)))
         self.assertEqual(settings['gps']['uart'], 0)
-        self.assertEqual(settings['gps']['tx_pin'], -1)
+        self.assertEqual(settings['gps']['tx_pin'], 0)
         self.assertEqual(settings['gps']['baud'], 9600)
         self.assertEqual(settings['sd']['clock_khz'], 4000)
 
@@ -267,8 +284,8 @@ class ConfigTests(unittest.TestCase):
         example = generate.load(ROOT/'config/settings.standalone.example.json')
         example['board'] = {'model': 'custom'}
         example['capture_switch']['enabled'] = False
-        keys = ('increasing_pin', 'decreasing_pin', 'steady_pin')
-        for mask in range(8):
+        keys = ('increasing_pin', 'decreasing_pin')
+        for mask in range(4):
             with self.subTest(mask=mask):
                 settings = copy.deepcopy(example)
                 for index, key in enumerate(keys):
@@ -280,11 +297,11 @@ class ConfigTests(unittest.TestCase):
                     self.assertIn(f'signal_trend_{key} = {settings["signal_trend"][key]}', header)
         # An omitted LED releases its GPIO for another peripheral.
         settings = copy.deepcopy(example)
-        settings['signal_trend']['steady_pin'] = -1
-        settings['gps'].update(enabled=True, rx_pin=0)
+        settings['signal_trend']['increasing_pin'] = -1
+        settings['gps'].update(enabled=True, rx_pin=1)
         generate.validate(settings)
-        settings['signal_trend']['steady_pin'] = 0
-        with self.assertRaisesRegex(ValueError, 'GPIO 0 used'):
+        settings['signal_trend']['increasing_pin'] = 1
+        with self.assertRaisesRegex(ValueError, 'GPIO 1 used'):
             generate.validate(settings)
         for section, key in [('display', 'sda_pin'), ('buzzer', 'pin')]:
             settings = copy.deepcopy(example)

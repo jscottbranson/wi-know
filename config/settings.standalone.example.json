@@ -97,7 +97,7 @@
     "backup_battery_present": true,
     "uart": 0,
     "rx_pin": 12,
-    "tx_pin": -1,
+    "tx_pin": 0,
     "baud": 9600,
     "max_fix_age_ms": 3000,
     "max_timing_uncertainty_ms": 250
@@ -136,7 +136,6 @@
     "enabled": true,
     "increasing_pin": 1,
     "decreasing_pin": 25,
-    "steady_pin": 0,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,

@@ -207,6 +207,16 @@ static void mac_test() {
     CHECK(parse_wifi(frame, sizeof(frame), o));
     CHECK(matches(rule, o));
 }
+static void trend_leds_test() {
+    const auto increasing = trend_leds(Trend::increasing);
+    const auto decreasing = trend_leds(Trend::decreasing);
+    const auto steady = trend_leds(Trend::steady);
+    const auto stale = trend_leds(Trend::unknown);
+    CHECK(increasing.green && !increasing.red);
+    CHECK(!decreasing.green && decreasing.red);
+    CHECK(steady.green && steady.red);
+    CHECK(!stale.green && !stale.red);
+}
 static void gps_test() {
     Gps g;
     int64_t utc{};
@@ -727,6 +737,7 @@ int main() {
     membership_test();
     parser_match_test();
     mac_test();
+    trend_leds_test();
     gps_test();
     gps_optional_startup_test();
     gps_tagging_test();

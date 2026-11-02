@@ -65,7 +65,7 @@ class Diagram:
             pin = 'XIAO MTCK / GPIO4 pad' if name == 'xiao-standalone-wiring' else 'N32R8 P1.12 / GPIO26'
             y = old_height + 25
             self.box(48, y, 1344, 225, fill='#edf3f8')
-            self.text(70, y + 32, 'OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain', size=24, weight=700)
+            self.text(70, y + 32, 'OPTION: full-capture switch on a spare GPIO; both trend LEDs remain', size=24, weight=700)
             self.text(70, y + 72, 'Controller 3V3', size=19, color=RED)
             self.line([(250, y+65), (350, y+65)], RED)
             self.dot(350, y+65, RED)
@@ -228,12 +228,11 @@ def power_wiring(png):
     d.save('power-distribution', png)
 
 
-def led_wiring(d, led_pins=(0, 1, 8), title='1  Three active-high trend LEDs'):
+def led_wiring(d, led_pins=(0, 1), title='1  Two active-high trend LEDs'):
     d.box(48, 350, 650, 405)
     d.text(70, 388, title, size=25, weight=700)
     for y, pin, label, color in [(450, led_pins[0], 'Increasing / green', GREEN),
-                                  (535, led_pins[1], 'Decreasing / red', RED),
-                                  (620, led_pins[2], 'Steady / amber', ORANGE)]:
+                                  (535, led_pins[1], 'Decreasing / red', RED)]:
         d.text(70, y + 6, f'GPIO{pin}', size=19, weight=700)
         d.line([(155, y), (190, y)], BLUE)
         d.box(190, y - 10, 70, 20, stroke=INK)
@@ -249,8 +248,10 @@ def led_wiring(d, led_pins=(0, 1, 8), title='1  Three active-high trend LEDs'):
             d.line([(330 + dx, y - 23), (344 + dx, y - 37)], color, width=2)
             d.parts.append(f'<path d="M{344+dx},{y-37} l-8,3 l5,5 Z" fill="{color}"/>')
         d.text(420, y + 6, label, size=18, color=color)
-    d.line([(395, 450), (395, 683)], GROUND)
-    d.text(395, 711, 'GND', size=18, anchor='middle', color=GROUND)
+    d.line([(395, 450), (395, 575)], GROUND)
+    d.text(395, 603, 'GND', size=18, anchor='middle', color=GROUND)
+    d.text(70, 650, 'Steady / collecting samples: green + red ON', size=19)
+    d.text(70, 680, 'Stale / no match: both OFF', size=19)
     d.text(70, 735, 'One resistor per LED. Cathode K = flat edge / short lead.', size=17, color=MUTED)
 
 
@@ -340,8 +341,8 @@ def standalone_wiring(png):
     d = Diagram('XIAO ESP32-C5 / standalone with GPS + microSD',
                 'Priority: screen > GPS > microSD > buzzer > LEDs. All five fit on the 11 header GPIOs.', 2790)
     d.note(182, 'Manual standalone parent / config/settings.standalone.example.json', [
-        'Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.',
-        'Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.',
+        'LCD D4/23 + D5/24; GPS RX D7/12 + TX D1/0; SD SCK8, MISO9, MOSI10, CS11.',
+        'Buzzer D3/7; LEDs D0/1 green, D2/25 red; both ON = steady. Labels show D-number / GPIO.',
         'Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.',
     ])
     # Reuse the verified circuits, presenting the blocks in build-priority order.
@@ -350,18 +351,19 @@ def standalone_wiring(png):
     d.parts.append('</g>')
 
     d.box(48, 845, 1344, 265)
-    d.text(70, 886, '2  GPS / Grove Air530 / receive-only UART0 at 9600 baud', size=25, weight=700)
+    d.text(70, 886, '2  GPS / Grove Air530Z / UART0 at 9600 baud', size=25, weight=700)
     for y, left, right, color, incoming in [
         (928, 'D7 / GPIO12 / UART0 RX', 'GPS TX (module output)', BLUE, True),
-        (970, 'XIAO 3V3 output', 'GPS VCC (3.3 V supply)', RED, False),
-        (1012, 'XIAO GND', 'GPS GND', GROUND, False),
+        (964, 'D1 / GPIO0 / UART0 TX', 'GPS RX (module input)', BLUE, False),
+        (1000, 'XIAO 3V3 output', 'GPS VCC (3.3 V supply)', RED, False),
+        (1036, 'XIAO GND', 'GPS GND', GROUND, False),
     ]:
         d.text(90, y + 6, left, size=19)
         d.text(920, y + 6, right, size=19)
         points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
         d.line(points, color, arrow=incoming)
-    d.text(70, 1054, 'GPS RX: leave disconnected (tx_pin = -1). Use connector signal labels to establish orientation.', size=18)
-    d.text(70, 1083, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
+    d.text(70, 1070, 'Remove the former amber LED/resistor from D1 before connecting GPS RX. Both LEDs mean steady.', size=18)
+    d.text(70, 1096, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
 
     d.box(48, 1135, 1344, 455)
     d.text(70, 1176, '3  HiLetgo microSD reader / 5 V VCC / 3.3 V SPI at 4 MHz', size=25, weight=700)
@@ -386,7 +388,7 @@ def standalone_wiring(png):
     buzzer_wiring(d, 7, '4  Buzzer / passive + NPN driver')
     d.parts.append('</g>')
     d.parts.append('<g transform="translate(694,1265)">')
-    led_wiring(d, (1, 25, 0), '5  LEDs / three optional trend indicators')
+    led_wiring(d, (1, 25), '5  LEDs / two optional trend indicators')
     d.parts.append('</g>')
 
     d.box(48, 2045, 1344, 400)
@@ -411,9 +413,9 @@ def standalone_wiring(png):
     d.text(70, 2382, 'Budget USB power for board/radio + SD writes; verify module card-side 3.3 V remains stable.', size=18)
     d.text(70, 2411, 'Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.', size=18)
     d.note(2470, 'Build in priority order / remove optional blocks as needed', [
-        'Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.',
+        'LCD: 2 GPIOs; + GPS RX/TX: 4; + microSD: 8; + buzzer: 9; + two LEDs: 11. All header GPIOs used.',
         'All five sections are enabled. Missing peripherals are ignored; absent SD uses flash; absent GPS logs null.',
-        'Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.',
+        'Both LEDs light while fresh-match samples accumulate. Stale matches turn both off. Rebuild after edits.',
         'LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.',
         'Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.',
     ], ORANGE)
@@ -424,25 +426,26 @@ def parent_wiring(png):
     d = Diagram('Parent LEDs, buzzer, LCD, GPS and microSD',
                 'ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.', 2190)
     d.note(182, 'N32R8 parent GPIO map — config/settings.parent.example.json', [
-        'LEDs: GPIO0 increasing / GPIO1 decreasing / GPIO8 steady. Buzzer PWM: GPIO9.',
-        'LCD: GPIO4 SDA / GPIO5 SCL. GPS: GPIO10 RX (UART0). GPS RX is unused; tx_pin = -1.',
+        'LEDs: GPIO0 green / GPIO1 red; both ON = steady. GPIO8 now drives GPS RX. Buzzer: GPIO9.',
+        'LCD: GPIO4 SDA / GPIO5 SCL. GPS UART0: GPIO10 RX / GPIO8 TX; 3.3 V logic for Air530Z.',
         'Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.',
     ])
 
     indicator_wiring(d)
 
     d.box(48, 1275, 1344, 235)
-    d.text(70, 1316, '4  Grove GPS Air530 — receive-only UART0 at 9600 baud', size=25, weight=700)
+    d.text(70, 1316, '4  Grove GPS Air530Z — UART0 RX + TX at 9600 baud', size=25, weight=700)
     for y, left, right, color, reverse in [
-        (1355, 'Parent GPIO10 / UART0 RX', 'GPS TX (module output)', BLUE, True),
-        (1400, 'Parent 3V3 output', 'GPS VCC (use 3.3 V supply)', RED, False),
-        (1445, 'Parent GND', 'GPS GND', GROUND, False),
+        (1350, 'Parent GPIO10 / UART0 RX', 'GPS TX (module output)', BLUE, True),
+        (1385, 'Parent GPIO8 / UART0 TX', 'GPS RX (module input)', BLUE, False),
+        (1420, 'Parent 3V3 output', 'GPS VCC (use 3.3 V supply)', RED, False),
+        (1455, 'Parent GND', 'GPS GND', GROUND, False),
     ]:
         d.text(70, y + 6, left, size=19, weight=700)
         d.text(930, y + 6, right, size=19)
         points = [(470, y), (900, y)]
         d.line(list(reversed(points)) if reverse else points, color, arrow=reverse)
-    d.text(70, 1484, 'GPS RX: leave disconnected. Use connector signal labels; check orientation rather than cable color.', size=18, color=MUTED)
+    d.text(70, 1484, 'Remove the former amber LED/resistor from GPIO8. Connect GPIO8 directly to Air530Z RX.', size=18, color=MUTED)
     d.box(48, 1535, 1344, 345)
     d.text(70, 1576, '5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic', size=25, weight=700)
     for y, left, right, reverse in [
@@ -463,7 +466,7 @@ def parent_wiring(png):
         'Parent via documented USB input. External +5 V feeds LCD, buzzer and SD VCC; join GND to parent GND.',
         'Leave parent P1.14 / 5V unconnected with this external load supply. Keep +5 V off ESP32 GPIOs.',
         'Add 100 nF across VCC/GND at GPS and LCD, plus 10 µF across the local +5 V/GND load rail.',
-        'Use efficient red/green/amber LEDs (~2–3 mA with 470 Ω). Verify parent 3V3 regulator headroom for GPS.',
+        'Use efficient red/green LEDs (~2–3 mA with 470 Ω). Verify parent 3V3 regulator headroom for GPS.',
         'Example config enables all five peripherals and remaps parent bus RX to GPIO3. Default config stays unchanged.',
         'Avoid GPIO6 (battery ADC), GPIO15 (PSRAM), GPIO27 (RGB), GPIO28 (BOOT), GPIO12 (USB-UART TX).',
     ], ORANGE)
@@ -477,7 +480,7 @@ def parent_headers(png):
             ('GPIO2', 'SD MISO / DO'), ('GPIO3', 'Parent RS-485 RO / RX'),
             ('GPIO0', 'Green LED through 470 Ω'), ('GPIO1', 'Red LED through 470 Ω'),
             ('GPIO6', 'Reserved: battery ADC'), ('GPIO7', 'RS-485 DE + /RE'),
-            ('GPIO8', 'Amber LED through 470 Ω'), ('GPIO9', 'Buzzer base through 1 kΩ'),
+            ('GPIO8', 'Parent TX to GPS RX (3.3 V)'), ('GPIO9', 'Buzzer base through 1 kΩ'),
             ('GPIO10', 'GPS TX to parent RX'), ('GPIO26', 'Optional capture switch input'),
             ('GPIO25', 'SD CS'), ('5V', 'Board rail; power plan below'),
             ('GND', 'Common ground'), ('VBAT', 'Battery rail; not a 5 V output')]
@@ -532,10 +535,10 @@ def main():
     if (bus['tx_pin'], bus['rx_pin'], bus['rts_pin'], bus['uart'], bus['baud'], bus['enabled']) != (11, 12, 7, 1, 115200, True):
         parser.error('Bus settings changed; update diagram labels/mappings before regenerating.')
     parent = json.loads((ROOT / 'config/settings.parent.example.json').read_text())
-    expected = {'gps': {'enabled': True, 'uart': 0, 'rx_pin': 10, 'tx_pin': -1, 'baud': 9600},
+    expected = {'gps': {'enabled': True, 'uart': 0, 'rx_pin': 10, 'tx_pin': 8, 'baud': 9600},
                 'display': {'enabled': True, 'sda_pin': 4, 'scl_pin': 5, 'i2c_address': 39},
                 'buzzer': {'enabled': True, 'pin': 9},
-                'signal_trend': {'enabled': True, 'increasing_pin': 0, 'decreasing_pin': 1, 'steady_pin': 8},
+                'signal_trend': {'enabled': True, 'increasing_pin': 0, 'decreasing_pin': 1},
                 'sd': {'enabled': True, 'sck_pin': 23, 'mosi_pin': 24, 'miso_pin': 2, 'cs_pin': 25},
                 'bus': {'enabled': True, 'uart': 1, 'tx_pin': 11, 'rx_pin': 3, 'rts_pin': 7}}
     for section, values in expected.items():
@@ -545,11 +548,11 @@ def main():
     expected_standalone = {
         'node': {'role': 'parent', 'id': 0}, 'standalone': {'enabled': True},
         'bus': {'enabled': False},
-        'gps': {'enabled': True, 'uart': 0, 'rx_pin': 12, 'tx_pin': -1, 'baud': 9600},
+        'gps': {'enabled': True, 'uart': 0, 'rx_pin': 12, 'tx_pin': 0, 'baud': 9600},
         'sd': {'enabled': True, 'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11, 'clock_khz': 4000},
         'display': {'enabled': True, 'sda_pin': 23, 'scl_pin': 24, 'i2c_address': 39},
         'buzzer': {'enabled': True, 'pin': 7},
-        'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 25, 'steady_pin': 0},
+        'signal_trend': {'enabled': True, 'increasing_pin': 1, 'decreasing_pin': 25},
     }
     for section, values in expected_standalone.items():
         if any(standalone[section][key] != value for key, value in values.items()):

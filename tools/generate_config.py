@@ -15,19 +15,19 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 BOARD_PINS = {
     'xiao': {
         'bus': {'tx_pin': 11, 'rx_pin': 12, 'rts_pin': 7},
-        'gps': {'rx_pin': 12, 'tx_pin': -1},
+        'gps': {'rx_pin': 12, 'tx_pin': 0},
         'sd': {'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11},
         'display': {'sda_pin': 23, 'scl_pin': 24},
         'buzzer': {'pin': 7},
-        'signal_trend': {'increasing_pin': 1, 'steady_pin': 0, 'decreasing_pin': 25},
+        'signal_trend': {'increasing_pin': 1, 'decreasing_pin': 25},
     },
     'n32r8': {
         'bus': {'tx_pin': 11, 'rx_pin': 3, 'rts_pin': 7},
-        'gps': {'rx_pin': 10, 'tx_pin': -1},
+        'gps': {'rx_pin': 10, 'tx_pin': 8},
         'sd': {'sck_pin': 23, 'mosi_pin': 24, 'miso_pin': 2, 'cs_pin': 25},
         'display': {'sda_pin': 4, 'scl_pin': 5},
         'buzzer': {'pin': 9},
-        'signal_trend': {'increasing_pin': 0, 'steady_pin': 8, 'decreasing_pin': 1},
+        'signal_trend': {'increasing_pin': 0, 'decreasing_pin': 1},
     },
 }
 BOARDS = ('custom', *BOARD_PINS)
@@ -96,7 +96,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
         'logging': {'mode': str, **dict.fromkeys(('flush_interval_ms', 'rotate_bytes', 'max_files'), int)},
         'display': {'enabled': bool, **dict.fromkeys(('sda_pin', 'scl_pin', 'i2c_address', 'page_interval_ms'), int)},
         'buzzer': {'enabled': bool, **dict.fromkeys(('pin', 'frequency_hz', 'duration_ms', 'cooldown_ms'), int)},
-        'signal_trend': {'enabled': bool, **dict.fromkeys(('increasing_pin', 'decreasing_pin', 'steady_pin', 'window_ms', 'stale_ms', 'minimum_samples', 'deadband_db', 'confirmations'), int)},
+        'signal_trend': {'enabled': bool, **dict.fromkeys(('increasing_pin', 'decreasing_pin', 'window_ms', 'stale_ms', 'minimum_samples', 'deadband_db', 'confirmations'), int)},
     }
     def structure(value, expected, prefix=''):
         if isinstance(expected, dict):

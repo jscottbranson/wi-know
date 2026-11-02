@@ -18,6 +18,13 @@ constexpr bool sequence_newer(uint32_t candidate, uint32_t previous) {
 enum class Role : uint8_t { parent, child, follower };
 enum class Radio : uint8_t { wifi, ble };
 enum class Trend : uint8_t { unknown, increasing, decreasing, steady };
+struct TrendLeds {
+    bool green, red;
+};
+constexpr TrendLeds trend_leds(Trend trend) {
+    return {trend == Trend::increasing || trend == Trend::steady,
+            trend == Trend::decreasing || trend == Trend::steady};
+}
 enum class Field : uint8_t {
     oui,
     ssid_prefix,

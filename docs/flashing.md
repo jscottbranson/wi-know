@@ -44,7 +44,7 @@ python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone.e
 Use `--board xiao` or `--board n32r8` to apply the GPIO assignments from the
 corresponding wiring diagram. This is an explicit build-time selection; the
 firmware does not detect the carrier board or discover connected peripherals.
-For a standalone N32R8 with LCD, GPS, SD, buzzer and all three LEDs enabled:
+For a standalone N32R8 with LCD, GPS, SD, buzzer and all two LEDs enabled:
 
 ```sh
 python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --dry-run
@@ -55,7 +55,7 @@ Use `--board xiao` with the same config for the standalone mini XIAO schematic.
 The helper prints the resolved GPIOs before building and flashing. Board selection
 preserves peripheral enable flags, standalone/bus mode, rules, and timing settings;
 it replaces every mapped pin, including individual LED assignments and GPS TX
-(the documented receive-only GPS connection uses TX `-1`). For omitted individual
+(GPS TX is GPIO8 on N32R8 and GPIO0 on XIAO). For omitted individual
 LEDs or other custom wiring, use `--board custom` and set the GPIOs in your config.
 
 You can persist the choice as `"board": {"model": "n32r8"}` in settings. The CLI

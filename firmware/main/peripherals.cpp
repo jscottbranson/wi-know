@@ -229,14 +229,13 @@ void indicators(wiknow::Trend trend, bool beep) {
     if (role != wiknow::Role::parent)
         return;
     if (c::signal_trend_enabled) {
+        const auto leds = wiknow::trend_leds(trend);
         if (c::signal_trend_increasing_pin >= 0)
             gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
-                           trend == wiknow::Trend::increasing);
+                           leds.green);
         if (c::signal_trend_decreasing_pin >= 0)
             gpio_set_level(gpio_num_t(c::signal_trend_decreasing_pin),
-                           trend == wiknow::Trend::decreasing);
-        if (c::signal_trend_steady_pin >= 0)
-            gpio_set_level(gpio_num_t(c::signal_trend_steady_pin), trend == wiknow::Trend::steady);
+                           leds.red);
     }
     if (c::buzzer_enabled) {
         uint64_t now = now_ms();
@@ -533,8 +532,7 @@ static void boot_indicator_test() {
     ESP_LOGI("peripherals",
              "Boot test: LEDs 200 ms each, then buzzer 100 ms (enabled outputs only)");
     if (c::signal_trend_enabled) {
-        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
-                        c::signal_trend_steady_pin}) {
+        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin}) {
             if (pin < 0)
                 continue;
             ESP_ERROR_CHECK(gpio_set_level(gpio_num_t(pin), 1));
@@ -576,8 +574,7 @@ void start_peripherals() {
             ESP_LOGI("gps", "UART ready; continuing without waiting for RTC data or a fix");
     }
     if (c::signal_trend_enabled) {
-        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
-                        c::signal_trend_steady_pin}) {
+        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin}) {
             if (pin < 0)
                 continue;
             gpio_reset_pin(gpio_num_t(pin));

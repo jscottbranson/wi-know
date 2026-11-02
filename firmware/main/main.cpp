@@ -170,7 +170,7 @@ static Trend target_led_trend(uint64_t now) {
     if (!target_rule || now < target.at_ms ||
         now - target.at_ms > uint64_t(c::signal_trend_stale_ms))
         return Trend::unknown;
-    // A fresh detection lights amber while trend samples accumulate. Keep the
+    // A fresh detection lights both LEDs while trend samples accumulate. Keep the
     // measured trend unchanged so the screen does not claim a steady signal.
     return target_trend == Trend::unknown ? Trend::steady : target_trend;
 }

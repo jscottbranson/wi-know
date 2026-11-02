@@ -32,10 +32,10 @@ universal images. See [board selection](../docs/flashing.md#select-the-board-wir
 | Peripheral | XIAO | N32R8 manual parent |
 | --- | --- | --- |
 | LCD SDA / SCL | 23 / 24 | 4 / 5 |
-| GPS RX (TX disabled) | 12 | 10 |
+| GPS RX / TX | 12 / 0 | 10 / 8 |
 | SD SCK / MOSI / MISO / CS | 8 / 10 / 9 / 11 | 23 / 24 / 2 / 25 |
 | Buzzer | 7 | 9 |
-| LEDs increasing / steady / decreasing | 1 / 0 / 25 | 0 / 8 / 1 |
+| LEDs increasing / decreasing | 1 / 25 | 0 / 1 |
 | Bus TX / RX / RTS | 11 / 12 / 7 | 11 / 3 / 7 |
 
 All values are SoC GPIO numbers. The XIAO full peripheral profile requires the bus
@@ -82,8 +82,8 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `buzzer` | PWM pin, frequency, duration, global alert cooldown |
 | `signal_trend` | Optional active-high LED pins (`-1` omits each LED), median window, samples, deadband and confirmations |
 
-With `signal_trend.enabled: true` and all three LED pins wired, a fresh matching
-signal keeps one LED lit. The steady LED lights while trend samples accumulate;
+With `signal_trend.enabled: true` and both LED pins wired, a fresh matching
+signal lights both LEDs while trend samples accumulate or the trend is steady;
 increasing/decreasing trends select their respective LEDs. All LEDs turn off
 after `signal_trend.stale_ms` without a fresh target observation. Unmatched
 observations logged in `all` mode do not light these LEDs.
@@ -172,13 +172,13 @@ The shared example enables LCD, GPS, storage, LEDs, buzzer, and capture control.
 Select `--board xiao` or `--board n32r8` for the connected board; see the
 [standalone wiring guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
 Unconnected LCD/GPS devices do not stop scanning; an absent or failed SD card
-falls back to internal flash storage. GPS time and location become `null` after
-`gps.max_fix_age_ms` without a valid RMC update, until GPS updates resume. Missing LEDs or buzzer simply produce no output.
+falls back to internal flash storage. GPS location becomes `null` after
+`gps.max_fix_age_ms` without a valid RMC update; established UTC continues in holdover. Missing LEDs or buzzer simply produce no output.
 The capture input has an internal pull-down so an absent switch stays OFF.
-For XIAO, the peripheral pins are: LCD on GPIO23/24, receive-only GPS on GPIO12,
-SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1 (D0, green/increasing), GPIO0 (D1, amber/steady), and
-GPIO25 (D2, red/decreasing).
-All 11 header GPIOs fit without changing the previous indicator wiring. For the
+For XIAO, the peripheral pins are: LCD on GPIO23/24, GPS RX on GPIO12 and TX on GPIO0,
+SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1
+(D0, green/increasing) and GPIO25 (D2, red/decreasing).
+All 11 header GPIOs are used; remove the former amber LED and repurpose its pin for GPS TX. For the
 compact screen/GPS/storage build, disable `buzzer` and `signal_trend`. Disable
 each other omitted peripheral through its `enabled` setting before rebuilding.
 Set individual omitted trend LED pins to `-1`; they are not initialized or driven.
@@ -249,16 +249,20 @@ All shipped manual parent and standalone configurations enable the switch with
 validated against the selected board and other peripherals. Set `enabled: false`
 to disable the switch. Universal configurations explicitly keep it disabled.
 
-Air530 retained-time startup is not enabled. GPS wiring remains receive-only
-(`tx_pin: -1` in board profiles); no query or UART wait is added to scanning.
-The backup-battery configuration is a hardware declaration, not a measured battery
-status. See [RTC interface and validation limitations](../docs/air530-time.md) before adding TX
-wiring or treating startup date/time as authoritative.
+Retained-time startup is not enabled. Board profiles now route GPS TX to the former
+amber LED pin, but boot and scanning never wait for RTC data. The GPS RX wire can
+remain disconnected until needed for commands; reception still works.
+
+The amber LED and `signal_trend.steady_pin` setting are removed. Delete that key
+from existing custom configurations. Both remaining LEDs light for steady or
+accumulating samples; unknown/stale turns both off. Board profiles assign the
+freed pin to `gps.tx_pin` (N32R8: 8; XIAO: 0). Custom profiles can retain `tx_pin: -1`
+for receive-only GPS. Remove the amber LED/resistor before connecting GPS RX.
 
 GPS time is optional at startup: no RTC query, fix wait, or missing-module timeout
 runs before normal operation. Each GPS update reads at most 512 bytes with zero
 wait. Capture and logging continue with unknown UTC and no receiver fix until a
-checksum-valid active RMC arrives; GPS TX can remain disconnected (`tx_pin: -1`).
+checksum-valid active RMC arrives; the GPS RX wire can remain disconnected.
 `gps.backup_battery_present: false` is accepted and does not disable GPS reception.
 If GPS UART initialization fails, firmware reports a warning and continues without
 GPS for that boot. A silent module on a successfully initialized UART can start

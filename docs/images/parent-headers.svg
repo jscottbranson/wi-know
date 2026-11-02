@@ -49,7 +49,7 @@
 <circle cx="560" cy="649" r="5" fill="#176aa5"/>
 <text x="575" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">9  GPIO8</text>
 <polyline points="530,649 560,649" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="515" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Amber LED through 470 Ω</text>
+<text x="515" y="655" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="end">Parent TX to GPS RX (3.3 V)</text>
 <circle cx="560" cy="687" r="5" fill="#176aa5"/>
 <text x="575" y="693" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">10  GPIO9</text>
 <polyline points="530,687 560,687" fill="none" stroke="#176aa5" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
@@ -151,7 +151,7 @@
 <text x="70" y="1142" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO25 pull-up selects an SDIO clock strap; firmware uses SPI boot and SPI2 SD, not the SDIO peripheral.</text>
 <text x="70" y="1170" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPIO0/1 need optional 32 kHz crystal unpopulated. Compare silkscreen before using a different board revision.</text>
 <rect x="48" y="1275" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="1307" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
+<text x="70" y="1307" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; both trend LEDs remain</text>
 <text x="70" y="1347" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
 <polyline points="250,1340 350,1340" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="350" cy="1340" r="5" fill="#b83543"/>

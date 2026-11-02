@@ -25,7 +25,8 @@ No raw startup capture or connected Air530 is available for this change. Therefo
 `PGKC280` replies and `V` RMC sentences deliberately cannot initialize UTC. This
 is a validation limitation, **not** a claim that Air530 has no RTC read command.
 
-The shipped receive-only wiring is unchanged. Firmware sends no speculative
+The manual board profiles now provide GPS TX on the former amber LED pin.
+Firmware sends no speculative
 commands, performs no startup wait, and leaves UTC unknown if the module is absent.
 Only checksum-valid `A` RMC with a valid date/time initializes the software clock;
 position is validated separately. Retained RTC is not reported as a source or fresh
@@ -38,7 +39,7 @@ position expires; software holdover does not survive a parent reboot.
    timestamped UART bytes from power-on through the first valid satellite fix.
 2. On a bench setup, connect a suitable level-compatible MCU TX to Air530 RX;
    preserve the existing Air530 TX to MCU RX. Verify exposed pins and active GPIO
-   conflicts for that board. Current board profiles disable GPS TX.
+   conflicts for that board. Current board profiles use GPIO8 (N32R8) or GPIO0 (XIAO) for GPS TX.
 3. Send the query above using bounded nonblocking TX and capture complete raw
    replies and checksums. Confirm the actual `PGKC280` fields and UTC semantics.
 4. Repeat after a known satellite synchronization and main-power cycle while
@@ -47,9 +48,18 @@ position expires; software holdover does not survive a parent reboot.
 5. Establish a documented, reproducible way to distinguish invalid/uninitialized
    retained time, including plausible defaults. A healthy-battery demonstration
    alone is insufficient. Record source age as unknown before the first GPS sync.
-6. Only after resolving validity, implement bounded query retries, config/TX pin
-   validation, retained source logging, RTC-to-GPS correction tests and hardware
+6. Only after resolving validity, implement bounded query retries, retained source logging, RTC-to-GPS correction tests and hardware
    acceptance results. Keep ordering keyed to boot and monotonic capture time.
 
 Hardware result: **not run**. No startup traces or battery-health results are
 fabricated in this PR. Retained-time initialization remains follow-up work.
+
+## Air530Z hardware clarification
+
+The user's module is Air530Z. Its
+[manual](https://files.seeedstudio.com/wiki/Grove-GPS_Air_530/Air530Z_Positioning_Module_User_Manual.pdf)
+documents an AT6558R chipset, 3.3 V UART and PCAS commands. The Air530 PGKC query
+above must not be assumed to work on Air530Z. The Z manual includes configurable
+UTC/TIM outputs, but trustworthy retained-time interpretation still requires
+protocol investigation and hardware evidence. The new TX wiring prepares for that
+work and adds no startup query or wait.

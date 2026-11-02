@@ -18,7 +18,7 @@ to disabled. To select the switch pin from the board profile, use:
 
 With `board.model: "n32r8"`, the automatic pin is N32R8 P1.12 / GPIO26.
 Use underside MTCK / GPIO4 and `board.model: "xiao"` on standalone XIAO.
-All three trend LEDs, including amber, remain connected. The XIAO pad requires
+Both red and green trend LEDs remain connected. The XIAO pad requires
 soldering and must not also connect to an external JTAG probe; use native USB. Flash the matching capture example. GPIO configuration requires a rebuild;
 switch changes then apply live. Startup samples the physical level immediately;
 later changes require a stable level for `debounce_ms` (10–2000 ms). Sampling
