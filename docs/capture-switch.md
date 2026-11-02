@@ -23,6 +23,24 @@ switch changes then apply live. Startup samples the physical level immediately;
 later changes require a stable level for `debounce_ms` (10–2000 ms). Sampling
 runs in the parent loop, so bus polling/storage latency adds to response time.
 
+### N32R8 standalone build
+
+`settings.standalone-wiring.example.json` leaves the capture switch disabled,
+including when built with `--board n32r8`. Selecting a board maps peripheral pins;
+it does not enable optional features. Use the N32R8 standalone capture example
+to enable GPIO26 while keeping standalone scanning and the bus disabled:
+
+```sh
+python3 tools/flash.py --config config/settings.n32r8-standalone-capture.example.json --board n32r8 --role parent --node-id 0
+```
+
+The older firmware displays `SW:OFF` even when switch support was compiled out.
+Updated firmware displays `SW:DISABLED` in that case. With the capture example
+flashed, a stable 3.3 V on GPIO26 should show `SW:ON` and `Capture:ALL` when the
+capture page next appears; grounding the input restores `SW:OFF` and
+`Capture:MATCH`. The example uses the external 10 kΩ pull-down described in the
+wiring guide.
+
 ON closes any previous WU stream and opens a fresh numbered `WUxxxxxxxx.LOG`
 with a `capture_mode` event. All subsequent supported observations go into this
 session. Matching records continue in `WMxxxxxxxx.LOG` and are also copied to

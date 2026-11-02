@@ -48,7 +48,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
 
     def test_capture_examples_keep_all_leds_on_spare_pins(self):
-        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0)]:
+        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0),
+                                    ('n32r8-standalone', 26, 8)]:
             source = generate.load(ROOT/f'config/settings.{variant}-capture.example.json')
             settings, _ = generate.validate(source, board_override=source['board']['model'])
             self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
@@ -59,6 +60,22 @@ class ConfigTests(unittest.TestCase):
             source['capture_switch']['gpio_pin'] = amber
             with self.assertRaisesRegex(ValueError, 'used by'):
                 generate.validate(source)
+
+    def test_n32r8_standalone_capture_preserves_standalone_wiring(self):
+        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        expected, _ = generate.validate(source, board_override='n32r8')
+        source = generate.load(ROOT/'config/settings.n32r8-standalone-capture.example.json')
+        actual, rules = generate.validate(source)
+        self.assertTrue(actual['standalone']['enabled'])
+        self.assertFalse(actual['bus']['enabled'])
+        self.assertTrue(actual['capture_switch']['enabled'])
+        self.assertEqual(actual['capture_switch']['gpio_pin'], 26)
+        for section in expected:
+            if section != 'capture_switch':
+                self.assertEqual(actual[section], expected[section], section)
+        header = generate.emit(actual, rules)
+        self.assertIn('capture_switch_enabled = true', header)
+        self.assertIn('capture_switch_gpio_pin = 26', header)
 
     def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
         source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
