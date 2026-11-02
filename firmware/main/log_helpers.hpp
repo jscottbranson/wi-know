@@ -7,6 +7,28 @@
 namespace platform {
 enum class LogClass { unmatched, matched };
 
+inline bool capture_transition_json(bool on, bool all, bool startup, uint64_t now, uint32_t boot,
+                                    const wiknow::Gps &gps, char *out, size_t capacity) {
+    char utc_text[32] = "null";
+    int64_t utc{};
+    if (gps.utc(now, utc))
+        std::snprintf(utc_text, sizeof(utc_text), "%lld", static_cast<long long>(utc));
+    const auto fix = gps.nearest(now, 2000);
+    char location[128] = "null";
+    if (fix.valid)
+        std::snprintf(location, sizeof(location), "{\"latitude\":%.7f,\"longitude\":%.7f}",
+                      fix.latitude, fix.longitude);
+    int n = std::snprintf(out, capacity,
+                          "{\"schema_version\":1,\"event\":\"capture_mode\",\"switch_on\":%s,"
+                          "\"effective_mode\":\"%s\",\"reason\":\"%s\",\"boot\":%u,\"at_ms\":%llu,"
+                          "\"utc_ms\":%s,\"time_source\":\"%s\",\"receiver_fix\":%s}\n",
+                          on ? "true" : "false", all ? "all" : "matches",
+                          startup ? "startup" : "switch", unsigned(boot),
+                          static_cast<unsigned long long>(now), utc_text,
+                          gps.has_time() ? "gps_holdover" : "unknown", location);
+    return n >= 0 && size_t(n) < capacity;
+}
+
 // Only files created by this logger belong to its retention policy.
 inline bool log_file_id(const char *name, uint32_t &id) {
     if (std::strlen(name) != 14 || name[0] != 'W' ||

@@ -9,8 +9,11 @@
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
+// These FAT helpers require types declared by esp_vfs_fat.h.
+// clang-format off
 #include "diskio_sdmmc.h"
 #include "diskio_wl.h"
+// clang-format on
 #include "ff.h"
 #include "log_helpers.hpp"
 #include "log_storage.hpp"
@@ -82,7 +85,23 @@ static LogLimits limits{size_t(c::logging_rotate_bytes), size_t(c::logging_max_f
 struct LogLine {
     char data[wiknow::log_line_capacity];
     LogClass classification{LogClass::unmatched};
+    bool mirror{};
+    uint8_t transition{}; // 1 starts a new WU session; 2 ends and syncs it
 };
+static bool capture_active{}; // parent task only; each queued line snapshots this
+void capture_switch_init() {
+    if (!c::capture_switch_enabled || role != wiknow::Role::parent)
+        return;
+    gpio_config_t pin{};
+    pin.pin_bit_mask = 1ULL << (c::capture_switch_gpio_pin < 0 ? 0 : c::capture_switch_gpio_pin);
+    pin.mode = GPIO_MODE_INPUT;
+    pin.pull_down_en =
+        c::capture_switch_internal_pulldown ? GPIO_PULLDOWN_ENABLE : GPIO_PULLDOWN_DISABLE;
+    ESP_ERROR_CHECK(gpio_config(&pin));
+}
+bool capture_switch_high() {
+    return c::capture_switch_enabled && gpio_get_level(gpio_num_t(c::capture_switch_gpio_pin));
+}
 static void uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) {
     uart_config_t cfg{};
     cfg.baud_rate = baud;
@@ -308,9 +327,8 @@ static bool mount_flash() {
     return true;
 }
 static bool storage_free(uint64_t &free) {
-    const BYTE number = std::strcmp(log_root, "/sdcard") == 0
-                            ? ff_diskio_get_pdrv_card(sd_card)
-                            : ff_diskio_get_pdrv_wl(flash_handle);
+    const BYTE number = std::strcmp(log_root, "/sdcard") == 0 ? ff_diskio_get_pdrv_card(sd_card)
+                                                              : ff_diskio_get_pdrv_wl(flash_handle);
     if (number == 0xff)
         return false;
     char drive[8];
@@ -358,7 +376,8 @@ static void logger(void *) {
             esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
             spi_bus_free(SPI2_HOST);
             return false;
-        }, flash_fallback);
+        },
+        flash_fallback);
     active_storage = selected;
     ESP_LOGI("storage", "Logging=%s rotate=%u max_files=%u", storage_label(selected),
              unsigned(limits.rotate_bytes), unsigned(limits.max_files));
@@ -366,33 +385,43 @@ static void logger(void *) {
     for (;;) {
         if (xQueueReceive(log_queue, &line, ticks(100)) == pdTRUE) {
             if (active_storage != Storage::off) {
-                const auto result = append_with_initial_fallback(selected, written, [&] {
-                    const auto appended = writer.append(log_root, limits, line.classification, line.data,
-                        [](size_t reserve) {
-                            uint64_t free{};
-                            if (!storage_free(free))
-                                return -1;
-                            return free >= reserve ? 1 : 0;
-                        });
-                    if (appended == LogResult::stored && !written &&
-                        !writer.flush([](FILE *file) { return fsync(fileno(file)) == 0; }))
-                        return LogResult::error;
-                    return appended;
-                }, [&] {
-                    ESP_LOGW("storage", "Initial SD write failed; trying flash");
-                    writer.close_all();
-                    esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
-                    spi_bus_free(SPI2_HOST);
-                    return flash_fallback();
-                });
+                const auto result = append_with_initial_fallback(
+                    selected, written,
+                    [&] {
+                        const auto appended = writer.record(
+                            log_root, limits, line.classification, line.data, line.mirror,
+                            line.transition,
+                            [](size_t reserve) {
+                                uint64_t free{};
+                                if (!storage_free(free))
+                                    return -1;
+                                return free >= reserve ? 1 : 0;
+                            },
+                            [](FILE *file) { return fsync(fileno(file)) == 0; });
+                        if (appended == LogResult::stored && !written &&
+                            !writer.flush([](FILE *file) { return fsync(fileno(file)) == 0; }))
+                            return LogResult::error;
+                        return appended;
+                    },
+                    [&] {
+                        ESP_LOGW("storage", "Initial SD write failed; trying flash");
+                        writer.close_all();
+                        esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
+                        spi_bus_free(SPI2_HOST);
+                        return flash_fallback();
+                    });
                 active_storage = selected;
                 if (result != LogResult::stored)
                     ++dropped;
                 if (result == LogResult::blocked) {
                     ++retention_drops;
                     if (!last_drop_report || now_ms() - last_drop_report >= 5000) {
-                        ESP_LOGW("storage", "Retention dropped %s record; total=%u (protected logs or no space)",
-                                 line.classification == LogClass::matched ? "matched" : "unmatched",
+                        ESP_LOGW("storage",
+                                 "Retention dropped %s record/copy; total=%u (protected logs or no "
+                                 "space)",
+                                 line.mirror                                ? "capture"
+                                 : line.classification == LogClass::matched ? "matched"
+                                                                            : "unmatched",
                                  unsigned(retention_drops));
                         last_drop_report = now_ms();
                     }
@@ -437,10 +466,27 @@ void write_log(const char *json, LogClass classification) {
     }
     std::memcpy(line.data, json, n + 1);
     line.classification = classification;
+    line.mirror = capture_active && classification == LogClass::matched;
     if (console_queue && xQueueSend(console_queue, &line, 0) != pdTRUE)
         ++dropped;
-    if (log_queue && xQueueSend(log_queue, &line, 0) != pdTRUE)
+    // Reserve one slot for matches/control under full-capture pressure. Single producer.
+    if (!log_queue ||
+        (capture_active && classification == LogClass::unmatched &&
+         uxQueueSpacesAvailable(log_queue) <= 1) ||
+        xQueueSend(log_queue, &line, 0) != pdTRUE)
         ++dropped;
+}
+void capture_transition(const char *json, bool on) {
+    LogLine line{};
+    std::snprintf(line.data, sizeof(line.data), "%s", json);
+    line.transition = on ? 1 : 2;
+    // Ordered barrier: new file before subsequent observations, close after prior ones.
+    // The logger always drains commands even when storage is OFF.
+    if (!log_queue || xQueueSend(log_queue, &line, portMAX_DELAY) != pdTRUE)
+        ++dropped;
+    if (console_queue && xQueueSend(console_queue, &line, 0) != pdTRUE)
+        ++dropped;
+    capture_active = on;
 }
 void storage_tick() {}
 const char *storage_name() {

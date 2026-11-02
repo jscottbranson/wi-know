@@ -6,6 +6,7 @@
 #include "platform.hpp"
 #include "sdkconfig.h"
 #include "wiknow/alert_cooldown.hpp"
+#include "wiknow/capture_switch.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
 #include "wiknow/scan_status.hpp"
@@ -205,6 +206,18 @@ static void log_worker_scan(uint16_t node, uint64_t now) {
                   unsigned(worker->scan.failed_channel), static_cast<unsigned long long>(now));
     platform::write_log(event);
 }
+static wiknow::CaptureSwitch capture_switch(c::capture_switch_enabled,
+                                            std::strcmp(c::logging_mode, "all") == 0,
+                                            c::capture_switch_debounce_ms);
+static void log_capture_transition(bool startup) {
+    const uint64_t now = platform::now_ms();
+    char json[640];
+    if (platform::capture_transition_json(capture_switch.on(), capture_switch.all(), startup, now,
+                                          platform::boot_id, gps, json, sizeof(json)))
+        platform::capture_transition(json, capture_switch.on());
+    else
+        ++platform::dropped;
+}
 static void consume(Observation o) {
     o.receiver_boot = platform::boot_id;
     // Drain GPS again after a bus poll so buffered worker captures use the latest fixes.
@@ -251,7 +264,7 @@ static void consume(Observation o) {
     }
     // Preserve matching target state even when logging is matches-only.
     const auto drone = remote_id_messages(o);
-    if (!match.rule && !drone.count && std::strcmp(c::logging_mode, "all") != 0)
+    if (!capture_switch.retain(match.rule != nullptr, drone.count != 0))
         return;
     Track &track = tracker->observe(o, fix);
     // Indirect receiver matches must never steer tracking to the transmitting AP.
@@ -313,6 +326,11 @@ static void consume(Observation o) {
         ++platform::dropped;
 }
 static void parent_loop() {
+    platform::capture_switch_init();
+    platform::gps_update(gps);
+    capture_switch.start(platform::capture_switch_high(), platform::now_ms());
+    if (c::capture_switch_enabled)
+        log_capture_transition(true);
     if (c::universal_enabled) {
         discovery_token = esp_random() | 1u;
         // Listen before any transmission; stagger simultaneous power-up.
@@ -333,6 +351,8 @@ static void parent_loop() {
     for (;;) {
         platform::gps_update(gps);
         uint64_t now = platform::now_ms();
+        if (capture_switch.update(platform::capture_switch_high(), now))
+            log_capture_transition(false);
         if (members.expire(now, c::bus_membership_lease_ms))
             for (const auto &node : members.nodes())
                 if (!node.online && worker_losses.offline(node.id)) {
@@ -465,7 +485,7 @@ static void parent_loop() {
         platform::indicators(target_led_trend(now), false);
         if (now - last_display >= 250) {
             char line1[32]{}, line2[32]{};
-            size_t page = (now / c::display_page_interval_ms) % 5;
+            size_t page = (now / c::display_page_interval_ms) % 6;
             if (following_visible && now - following_alert_at < 30000) {
                 std::snprintf(line1, sizeof(line1), "%s",
                               persistence_visible ? "Device persists" : "Following alert");
@@ -527,6 +547,12 @@ static void parent_loop() {
                 std::snprintf(line1, sizeof(line1), "Parent %02X%02X%02X", platform::device_id[3],
                               platform::device_id[4], platform::device_id[5]);
                 std::snprintf(line2, sizeof(line2), "Join errors:%u", unsigned(discovery_failures));
+            }
+            if (page == 5) {
+                std::snprintf(line1, sizeof(line1), "Capture:%s",
+                              capture_switch.all() ? "ALL" : "MATCH");
+                std::snprintf(line2, sizeof(line2), "%s SW:%s", platform::storage_name(),
+                              capture_switch.on() ? "ON" : "OFF");
             }
             if (parent_conflict) {
                 std::snprintf(line1, sizeof(line1), "PARENT CONFLICT");

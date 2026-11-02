@@ -16,6 +16,37 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
+    def test_capture_switch_validation(self):
+        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        source['board'] = {'model': 'xiao'}
+        source['capture_switch'] = {'enabled': True, 'gpio_pin': 0,
+                                    'internal_pulldown': True, 'debounce_ms': 50}
+        with self.assertRaisesRegex(ValueError, 'used by'):
+            generate.validate(source)
+        source['signal_trend']['steady_pin'] = -1
+        valid, rules = generate.validate(source)
+        self.assertEqual(valid['signal_trend']['steady_pin'], -1)
+        self.assertIn('capture_switch_gpio_pin = 0', generate.emit(valid, rules))
+        for board, pin in [('xiao', 2), ('xiao', 7), ('xiao', 25), ('xiao', 26),
+                           ('xiao', 13), ('xiao', 15), ('xiao', 28), ('n32r8', 6),
+                           ('n32r8', 12), ('n32r8', 15), ('n32r8', 27), ('custom', 0)]:
+            bad = copy.deepcopy(source)
+            bad['board']['model'] = board
+            bad['capture_switch']['gpio_pin'] = pin
+            with self.subTest(board=board, pin=pin), self.assertRaises(ValueError):
+                generate.validate(bad)
+        for key, value in [('debounce_ms', 0), ('gpio_pin', -1), ('internal_pulldown', 1)]:
+            bad = copy.deepcopy(source)
+            bad['capture_switch'][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                generate.validate(bad)
+        for role in ('child', 'follower', 'universal'):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                generate.validate(source, role_override=role)
+        defaults, _ = generate.validate(self.settings)
+        self.assertFalse(defaults['capture_switch']['enabled'])
+        self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
+
     def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
         source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
         original = copy.deepcopy(source)

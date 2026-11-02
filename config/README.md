@@ -222,3 +222,16 @@ All profiles ship with `gatt.enabled: false`. Active discovery requires an expli
 stable-address target list, enabled GATT-specific rules, and a central/security-disabled
 SDK build. It transmits and connects. See [the configuration, limits, and hardware
 validation checklist](../docs/gatt-discovery.md) before enabling it.
+
+## Capture switch
+
+`capture_switch` defaults to `{ "enabled": false, "gpio_pin": -1,
+"internal_pulldown": false, "debounce_ms": 50 }`. Enabled configurations require
+a manual parent role and explicit `xiao` or `n32r8` board profile. Pins are checked
+against board restrictions and enabled peripherals. Individual LED pins set to
+`-1` stay disabled when applying a board profile. The maintained active-high
+switch requires either the supported internal pull-down or an external 10 kΩ
+pull-down. See [full-capture operation](../docs/capture-switch.md) and
+[wiring](../docs/wiring.md#optional-full-capture-switch-manual-parent--standalone).
+Use `settings.parent-capture.example.json` or
+`settings.standalone-capture.example.json` for the illustrated switch option.

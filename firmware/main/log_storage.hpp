@@ -206,6 +206,9 @@ class LogWriter {
         const bool first = close(0);
         return close(1) && first;
     }
+    bool close_capture() {
+        return close(0);
+    }
     template <class Space>
     LogResult append(const char *root, LogLimits limits, LogClass classification, const char *line,
                      Space space) {
@@ -248,6 +251,23 @@ class LogWriter {
         stream.bytes += size;
         stream.dirty = true;
         return LogResult::stored;
+    }
+    // Session commands share the FIFO with observations. A matched line reaches
+    // WM before its optional WU copy; WU retention can never reclaim that WM file.
+    template <class Space, class Sync>
+    LogResult record(const char *root, LogLimits limits, LogClass classification, const char *line,
+                     bool mirror, uint8_t transition, Space space, Sync sync) {
+        if (transition == 1 && !close_capture())
+            return LogResult::error;
+        auto result = append(root, limits, classification, line, space);
+        if (result == LogResult::stored && mirror && classification == LogClass::matched)
+            result = append(root, limits, LogClass::unmatched, line, space);
+        // Even blocked OFF metadata must synchronize and close earlier data.
+        if (transition && result != LogResult::error && !flush(sync))
+            return LogResult::error;
+        if (transition == 2 && !close_capture())
+            return LogResult::error;
+        return result;
     }
     template <class Sync> bool flush(Sync sync) {
         for (auto &stream : streams_) {

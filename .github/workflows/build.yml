@@ -35,6 +35,12 @@ jobs:
             id: 0
             config: settings.standalone-wiring.example.json
             board: n32r8
+          - role: parent
+            id: 0
+            config: settings.parent-capture.example.json
+          - role: parent
+            id: 0
+            config: settings.standalone-capture.example.json
           - role: child
             id: 1
           - role: follower

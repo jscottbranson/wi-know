@@ -351,3 +351,38 @@ The renderer needs an installed sans-serif font. On systems without fonts, pass
 No image-generation API or secret is needed. Update the diagrams when changing
 pin assignments. These diagrams document the intended wiring; hardware operation
 has not yet been verified on the physical boards.
+
+## Optional full-capture switch (manual parent / standalone)
+
+Use a maintained SPST switch: **controller 3V3 → switch → input GPIO**, with
+**10 kΩ from the input GPIO to common GND**. Never use 5 V. All parent/system
+and standalone diagrams above include this alternative circuit. It replaces the
+amber LED connection; remove that LED/resistor wire before connecting the switch.
+
+| Controller | Input | Configuration |
+| --- | --- | --- |
+| N32R8 distributed or standalone parent | P1.9 / GPIO8 | [Parent capture example](../config/settings.parent-capture.example.json) |
+| XIAO standalone | D1 / GPIO0 | [Standalone capture example](../config/settings.standalone-capture.example.json) |
+
+Both examples set `signal_trend.steady_pin: -1` and select the corresponding
+`board.model`. Board profiles preserve individual LED assignments of `-1`.
+The original wiring examples still describe three LEDs without the switch.
+No spare header GPIO remains with all XIAO peripherals fitted. On N32R8, GPIO26
+is a strap, so it is deliberately excluded. GPIO0 on XIAO assumes no optional
+32 kHz crystal. The pin maps were checked against the
+[Seeed pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/),
+[Waveshare schematic](https://files.waveshare.com/wiki/ESP32-C5-WIFI6-KIT-NXRX/ESP32-C5-WIFI6-KIT-NXRX-Schematic.pdf),
+and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/gpio.html).
+These are intended circuits, not hardware-tested builds.
+
+The examples use the external resistor (`internal_pulldown: false`). Supported
+input pins on these C5 profiles can alternatively use `internal_pulldown: true`;
+the external resistor also defines OFF before firmware configures the GPIO.
+Validation rejects reserved/strapping pins, unexposed pins and enabled-peripheral
+conflicts. Enabling the switch requires an explicit `xiao` or `n32r8` manual
+parent profile; universal auto-identification images and workers reject it.
+For a distributed system, fit the switch only on the logging/display parent.
+
+ON starts a new full-capture file, including a copy of each matching detection;
+OFF closes the session and restores the configured mode. See
+[operation and capture limits](capture-switch.md).

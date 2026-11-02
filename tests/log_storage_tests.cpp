@@ -167,6 +167,47 @@ int main() {
     }
     auto ample = [](size_t) { return 1; };
     auto sync = [](FILE *) { return true; };
+    // Switch sessions get fresh WU files while WM stays open. Matches are mirrored;
+    // ordinary Wi-Fi/BLE records are present only in the everything stream.
+    {
+        Directory d;
+        LogWriter writer;
+        auto record = [&](const char *text, LogClass kind, bool mirror = false, uint8_t edge = 0) {
+            return writer.record(d.name, {4096, 8}, kind, text, mirror, edge, ample, sync);
+        };
+        CHECK(record("before\n", LogClass::matched) == LogResult::stored);
+        CHECK(record("ON\n", LogClass::unmatched, false, 1) == LogResult::stored);
+        CHECK(record("wifi\nble\n", LogClass::unmatched) == LogResult::stored);
+        CHECK(record("match\n", LogClass::matched, true) == LogResult::stored);
+        CHECK(record("OFF\n", LogClass::unmatched, false, 2) == LogResult::stored);
+        CHECK(d.read("WM00000001.LOG") == "before\nmatch\n");
+        CHECK(d.read("WU00000002.LOG") == "ON\nwifi\nble\nmatch\nOFF\n");
+        CHECK(record("after\n", LogClass::matched) == LogResult::stored);
+        CHECK(record("ON2\n", LogClass::unmatched, false, 1) == LogResult::stored);
+        CHECK(record("match2\n", LogClass::matched, true) == LogResult::stored);
+        CHECK(record("OFF2\n", LogClass::unmatched, false, 2) == LogResult::stored);
+        CHECK(d.read("WM00000001.LOG") == "before\nmatch\nafter\nmatch2\n");
+        CHECK(d.read("WU00000003.LOG") == "ON2\nmatch2\nOFF2\n");
+        // Base-all resumes ordinary WU logging in a separate file after OFF.
+        CHECK(record("base all\n", LogClass::unmatched) == LogResult::stored);
+        CHECK(writer.flush(sync));
+        CHECK(d.read("WU00000004.LOG") == "base all\n");
+        CHECK(writer.record(d.name, {4096, 8}, LogClass::unmatched, "OFF\n", false, 2, ample,
+                            [](FILE *) { return false; }) == LogResult::error);
+    }
+    // Capture copies cannot evict matching evidence when the file budget fills.
+    {
+        Directory d;
+        LogWriter writer;
+        CHECK(writer.record(d.name, {8, 2}, LogClass::matched, "match 1\n", true, 0, ample, sync) ==
+              LogResult::stored);
+        CHECK(writer.record(d.name, {8, 2}, LogClass::matched, "match 2\n", true, 0, ample, sync) ==
+              LogResult::blocked);
+        CHECK(writer.flush(sync));
+        CHECK(d.read("WM00000001.LOG") == "match 1\n");
+        CHECK(d.read("WM00000003.LOG") == "match 2\n");
+        CHECK(!d.has("WU00000002.LOG"));
+    }
     // Both streams remain open, share one overall count budget, and retain all
     // classification/drone records passed with the observation's matched class.
     {

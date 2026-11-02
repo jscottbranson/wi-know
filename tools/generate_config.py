@@ -60,6 +60,8 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
     settings.setdefault('board', {'model': 'custom'})
+    settings.setdefault('capture_switch', {'enabled': False, 'gpio_pin': -1,
+                                           'internal_pulldown': False, 'debounce_ms': 50})
     if isinstance(settings.get('sd'), dict):
         settings['sd'].setdefault('format_if_mount_failed', True)
     # Optional section keeps existing schema-v1 configurations compatible.
@@ -77,6 +79,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     template = {
         'schema_version': int,
         'board': {'model': str},
+        'capture_switch': {'enabled': bool, 'gpio_pin': int, 'internal_pulldown': bool, 'debounce_ms': int},
         'node': {'role': str, 'id': int},
         'universal': dict.fromkeys(('strap_pin', 'parent_tx_pin', 'parent_rx_pin', 'parent_rts_pin',
                                    'worker_tx_pin', 'worker_rx_pin', 'worker_rts_pin'), int),
@@ -117,7 +120,9 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
         require(settings['node']['role'] != 'universal',
                 'board profiles require a manual role; universal uses its own identification harness')
         for section, pins in BOARD_PINS[board].items():
-            settings[section].update(pins)
+            for key, pin in pins.items():
+                if section != 'signal_trend' or settings[section][key] != -1:
+                    settings[section][key] = pin
     node = settings['node']
     require(node['role'] in ('universal', 'parent', 'child', 'follower'), 'invalid role')
     universal = node['role'] == 'universal'
@@ -226,6 +231,16 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
         identity = (device['address_type'], address)
         require(identity not in targets, 'duplicate GATT target')
         targets.add(identity)
+    switch = settings['capture_switch']
+    integer(switch['debounce_ms'], 10, 2000, 'capture_switch.debounce_ms')
+    if switch['enabled']:
+        require(node['role'] == 'parent', 'capture switch requires manual parent role')
+        require(board in BOARD_PINS, 'capture switch requires an explicit xiao or n32r8 board profile')
+        # Header-accessible input pins excluding straps, USB, flash/PSRAM and onboard loads.
+        # GPIO0/1 assume the optional 32 kHz crystal is absent (see wiring docs).
+        safe = ({0, 1, 8, 9, 10, 11, 12, 23, 24} if board == 'xiao'
+                else {0, 1, 4, 5, 8, 9, 10, 11, 23, 24})
+        require(switch['gpio_pin'] in safe, 'capture switch GPIO is reserved, strapping, or unavailable on selected board')
     used = {}
     if universal:
         require(bus['enabled'], 'universal mode requires the bus')

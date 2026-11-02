@@ -55,6 +55,35 @@ class Diagram:
             self.text(70, y + 66 + index * 28, line, size=18)
 
     def save(self, name, png, footer='Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md'):
+        if name != 'xiao-rs485-wiring':
+            # Include the controller option in every parent/system/standalone drawing.
+            old_height = self.height
+            self.height += 290
+            self.parts[0] = self.parts[0].replace(f'height="{old_height}"', f'height="{self.height}"').replace(
+                f'1440 {old_height}', f'1440 {self.height}')
+            self.parts[4] = self.parts[4].replace(f'height="{old_height}"', f'height="{self.height}"')
+            pin = 'XIAO D1 / GPIO0' if name == 'xiao-standalone-wiring' else 'N32R8 P1.9 / GPIO8'
+            y = old_height + 25
+            self.box(48, y, 1344, 225, fill='#edf3f8')
+            self.text(70, y + 32, 'OPTION: full-capture switch replaces the amber LED (never connect both)', size=24, weight=700)
+            self.text(70, y + 72, 'Controller 3V3', size=19, color=RED)
+            self.line([(250, y+65), (350, y+65)], RED)
+            self.dot(350, y+65, RED)
+            self.line([(350, y+65), (405, y+43)], RED)
+            self.dot(420, y+65, RED)
+            self.line([(420, y+65), (850, y+65)], BLUE)
+            self.text(480, y+52, 'Maintained switch', size=18)
+            self.text(880, y+72, pin + ' input', size=20, weight=700)
+            self.dot(750, y+65, BLUE)
+            self.line([(750, y+65), (750, y+90)], GROUND)
+            self.box(740, y+90, 20, 35, stroke=GROUND)
+            self.line([(750, y+125), (750, y+145)], GROUND)
+            self.text(780, y+115, '10 kΩ external pull-down', size=18)
+            self.text(750, y+169, 'GND (common with controller)', size=17, anchor='middle')
+            self.text(70, y+128, 'ON: fresh WU everything file + normal WM matches', size=17)
+            self.text(70, y+158, 'OFF: sync/close session; restore logging.mode', size=17)
+            variant = 'standalone' if name == 'xiao-standalone-wiring' else 'parent'
+            self.text(70, y+205, f'Use config/settings.{variant}-capture.example.json; steady_pin=-1. Never use 5 V. Manual parent profiles only.', size=17)
         self.text(48, self.height - 24, footer, size=15, color=MUTED)
         content = '\n'.join(self.parts + ['</svg>'])
         path = OUT / f'{name}.svg'
@@ -446,7 +475,7 @@ def parent_headers(png):
             ('GPIO2', 'SD MISO / DO'), ('GPIO3', 'Parent RS-485 RO / RX'),
             ('GPIO0', 'Green LED through 470 Ω'), ('GPIO1', 'Red LED through 470 Ω'),
             ('GPIO6', 'Reserved: battery ADC'), ('GPIO7', 'RS-485 DE + /RE'),
-            ('GPIO8', 'Amber LED through 470 Ω'), ('GPIO9', 'Buzzer base through 1 kΩ'),
+            ('GPIO8', 'Amber LED OR capture switch'), ('GPIO9', 'Buzzer base through 1 kΩ'),
             ('GPIO10', 'GPS TX to parent RX'), ('GPIO26', 'Leave boot strap free'),
             ('GPIO25', 'SD CS'), ('5V', 'Board rail; power plan below'),
             ('GND', 'Common ground'), ('VBAT', 'Battery rail; not a 5 V output')]
