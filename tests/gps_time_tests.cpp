@@ -80,6 +80,35 @@ int main() {
     CHECK(diagnostics.samples[platform::GpsDiagnostics::gga].checksum_ok);
     CHECK(diagnostics.samples[platform::GpsDiagnostics::other].count == 1);
 
+    Gps approximate(3000, true);
+    const char *pre_fix = "GNRMC,221032.000,V,,,,,,,021126,,,M,V";
+    CHECK(feed(approximate, pre_fix, 1000));
+    CHECK(approximate.source(1000) == TimeSource::rtc);
+    CHECK(!approximate.has_gps_sync());
+    CHECK(!approximate.nearest(1000, 3000).valid);
+    int64_t estimated{};
+    CHECK(approximate.utc(1000, estimated) && estimated == 1793657432000LL);
+    CHECK(!feed(approximate, "PCAS60,221032.000,02112026,,,0,,0", 1001));
+    CHECK(approximate.source(1001) == TimeSource::rtc); // invalid TIM cannot erase RMC fallback
+    auto bad_rmc = nmea(pre_fix);
+    bad_rmc[8] = '9';
+    for (char c : bad_rmc)
+        approximate.feed(c, 4001);
+    CHECK(!approximate.utc(4001, estimated)); // corrupt RMC cannot refresh it
+    CHECK(feed(approximate, pre_fix, 5000));
+    CHECK(!feed(approximate, "GNRMC,,V,,,,,,,,,,N", 5001));
+    CHECK(!approximate.utc(5001, estimated)); // missing date/time revokes estimate
+    CHECK(feed(approximate, pre_fix, 6000));
+    CHECK(feed(approximate, rmc, 6001));
+    CHECK(approximate.source(6001) == TimeSource::gps);
+    CHECK(approximate.last_sync() == 6001);
+    CHECK(feed(approximate, pre_fix, 6002));
+    CHECK(approximate.source(6002) == TimeSource::rtc);
+    CHECK(approximate.last_sync() == 6001); // fallback never counts as GPS synchronization
+    Gps old_air530;
+    CHECK(!feed(old_air530, pre_fix, 0));
+    CHECK(old_air530.source(0) == TimeSource::unknown);
+
     Gps gps(3000, true);
     int64_t utc{};
     char clock[9], json[log_line_capacity];
@@ -109,14 +138,14 @@ int main() {
     CHECK(gps.utc(3100, utc) && utc == 1793102403100LL);
     gps.expire(6000, 3000);
     CHECK(gps.source(6000) == TimeSource::rtc); // inclusive boundary
-    gps.expire(6001, 3000);
-    CHECK(gps.source(6001) == TimeSource::unknown);
-    CHECK(!gps.utc(6001, utc));
+    gps.expire(6101, 3000);
+    CHECK(gps.source(6101) == TimeSource::unknown);
+    CHECK(!gps.utc(6101, utc));
     CHECK(!gps.utc(3000, utc)); // old capture cannot revive an unavailable clock
-    gps.utc_text(6001, clock);
+    gps.utc_text(6101, clock);
     CHECK(!std::strcmp(clock, "--:--:--"));
     Observation observation{};
-    observation.at_ms = 6001;
+    observation.at_ms = 6101;
     Tracker tracker;
     auto &track = tracker.observe(observation, {});
     CHECK(observation_json(observation, track, {}, {}, gps, json, sizeof(json)));
@@ -143,7 +172,7 @@ int main() {
           "PCAS60,120000.000,27101999,2442,216018,1,18,1",
           "PCAS60,120000.000,2710202x,2442,216018,1,18,1",
           "PCAS60,240000.000,27102026,2442,216018,1,18,1",
-          "PCAS60,120000e0,27102026,2442,216018,1,18,1", "GNRMC,120000.000,V,,,,,,,271026,,,N",
+          "PCAS60,120000e0,27102026,2442,216018,1,18,1", "GNRMC,120000.000,V,,,,,,,311126,,,N",
           "PGKC280,2026,10,27,12,0,0"}) {
         Gps empty(3000, true);
         CHECK(!feed(empty, bad, 0));
@@ -194,12 +223,12 @@ int main() {
     CHECK(std::strstr(json, "\"event\":\"time_source\""));
     CHECK(std::strstr(json, "\"previous_source\":\"gps\""));
     CHECK(std::strstr(json, "\"time_source\":\"rtc\""));
-    logged.expire(6001, 3000);
-    CHECK(events.update(6001, 1, logged, false, 0, json, sizeof(json)));
+    logged.expire(6101, 3000);
+    CHECK(events.update(6101, 1, logged, false, 0, json, sizeof(json)));
     CHECK(std::strstr(json, "\"previous_source\":\"rtc\""));
     CHECK(std::strstr(json, "\"time_source\":\"unknown\""));
     CHECK(std::strstr(json, "\"utc_ms\":null"));
-    CHECK(!events.update(6002, 1, logged, false, 0, json, sizeof(json)));
+    CHECK(!events.update(6102, 1, logged, false, 0, json, sizeof(json)));
     CHECK(input(rtc, 7000) == 1);
     CHECK(std::strstr(json, "\"correction_ms\":null"));
     CHECK(input("PCAS60,120001.000,27102026,,,0,,0", 7001) == 1);

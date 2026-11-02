@@ -43,6 +43,10 @@ distance or bearing measurement. RFID requires a separate suitable reader;
 Remote ID and RFID are different technologies. Proprietary drone links and
 non-Wi-Fi RF are outside the initial receiver's capabilities.
 
+Older Air530Z firmware may lack the `PCAS60` RTC interface. Wi-Know accepts its
+pre-fix RMC date/time as approximate `RTC` time, without treating it as a GPS fix.
+See [Air530Z clock fallback and firmware limitations](docs/air530-time.md).
+
 ## Design
 
 See [architecture](docs/architecture.md) for scheduling, protocol, detection,
