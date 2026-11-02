@@ -51,6 +51,24 @@ or treated as a valid clock. Its active RMC reception still works.
 
 ## Wiring and hardware acceptance
 
+The serial console logs the configured GPS model, UART pins, baud rate, and whether
+TIM requests are enabled at startup. Every 30 seconds it reports cumulative RX/TX
+bytes and the number of complete TIM sentences observed. When TIM has been seen,
+it also prints the latest raw `$PCAS60` sentence (including checksum) and its age.
+Capture these lines before the first fix and again after acquiring a fix:
+
+- `TIM_request=disabled`: check the firmware model and TX pin configuration.
+- Increasing `tx_bytes` with `TIM_count=0`: the ESP32 is transmitting requests,
+  but has not received a complete TIM sentence; this does not prove receiver
+  acceptance. Check the receiver firmware's support and serial connection.
+- A recent TIM with zero validity flags: the receiver is reporting time as invalid.
+- A recent TIM with both validity flags set but `source=unknown`: retain the exact
+  raw line to investigate checksum or field validation.
+
+These diagnostics observe raw input, including invalid messages; they do not
+relax the clock's validity checks. No TIM sentence means there is no raw line to
+print. An old retained diagnostic line does not imply that the clock is usable.
+
 Select the Air530Z parent/standalone profile. Connect MCU TX to GPS RX: GPIO8 on
 N32R8 or GPIO0 on XIAO (remove the former amber LED/resistor). Keep GPS TX connected
 to MCU RX (GPIO10 or GPIO12 respectively). `tx_pin: -1` skips output configuration;

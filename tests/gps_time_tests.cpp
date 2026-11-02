@@ -1,3 +1,4 @@
+#include "gps_diagnostics.hpp"
 #include "log_helpers.hpp"
 #include "wiknow/core.hpp"
 #include "wiknow/gps_time_request.hpp"
@@ -32,6 +33,25 @@ static const char *rtc = "PCAS60,120000.000,27102026,2442,216018,1,18,1";
 static const char *rmc = "GNRMC,120002.000,A,4200.000,N,08300.000,W,0,0,271026,,,A";
 static const char *lost = "GNRMC,120003.000,V,,,,,,,271026,,,N";
 int main() {
+    platform::GpsDiagnostics diagnostics;
+    const auto tim = nmea(rtc);
+    for (char c : tim.substr(0, 12))
+        diagnostics.feed(c, 100);
+    CHECK(diagnostics.tim_sentences == 0);
+    for (char c : tim.substr(12))
+        diagnostics.feed(c, 200);
+    CHECK(diagnostics.tim_sentences == 1 && diagnostics.last_tim_at == 200);
+    CHECK(diagnostics.received_bytes == tim.size());
+    CHECK(diagnostics.last_tim == tim.substr(0, tim.size() - 2));
+    for (char c : nmea(rmc) + "$PCAS60," + std::string(200, 'x') + "\r\n")
+        diagnostics.feed(c, 300);
+    CHECK(diagnostics.tim_sentences == 1); // ignore other sentences and overflow
+    const auto invalid_tim = nmea("PCAS60,120001.000,27102026,,,0,,0");
+    for (char c : "$PCAS60,partial" + invalid_tim)
+        diagnostics.feed(c, 400);
+    CHECK(diagnostics.tim_sentences == 2 && diagnostics.last_tim_at == 400);
+    CHECK(diagnostics.last_tim == invalid_tim.substr(0, invalid_tim.size() - 2));
+
     Gps gps(3000, true);
     int64_t utc{};
     char clock[9], json[log_line_capacity];
