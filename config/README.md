@@ -254,8 +254,9 @@ pin. Valid receiver time is used until active GPS time arrives, and again on GPS
 loss. If neither source is available, logs have null UTC and the clock shows dashes.
 Boot and scanning never wait for either source.
 
-The amber LED and `signal_trend.steady_pin` setting are removed. Delete that key
-from existing custom configurations. Both remaining LEDs light for steady or
+The amber LED is removed. Legacy `signal_trend.steady_pin` settings are ignored
+for compatibility and may be deleted from saved configurations. Other unknown
+keys still fail validation. Both remaining LEDs light for steady or
 accumulating samples; unknown/stale turns both off. Board profiles assign the
 freed pin to `gps.tx_pin` (N32R8: 8; XIAO: 0). Custom profiles can retain `tx_pin: -1`
 for receive-only GPS. Remove the amber LED/resistor before connecting GPS RX.

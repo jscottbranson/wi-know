@@ -39,12 +39,35 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'unsupported GPS model'):
             generate.validate(self.settings)
 
-    def test_removed_amber_config_and_gps_tx_conflict(self):
+    def test_all_shipped_configs_use_current_led_schema(self):
+        paths = sorted((ROOT/'config').glob('*.json'))
+        paths += sorted((ROOT/'tests/fixtures').glob('**/settings.json'))
+        for path in paths:
+            with self.subTest(config=str(path.relative_to(ROOT))):
+                source = generate.load(path)
+                self.assertNotIn('steady_pin', source['signal_trend'])
+                generate.validate(source)
+
+    def test_legacy_amber_config(self):
+        for board, pin in [('xiao', 0), ('n32r8', 8), ('custom', -1)]:
+            source = generate.load(ROOT/'config/settings.standalone.example.json')
+            source['signal_trend']['steady_pin'] = pin
+            source['gps']['tx_pin'] = -1
+            source['capture_switch']['enabled'] = False
+            original = copy.deepcopy(source)
+            with self.subTest(board=board):
+                valid, rules = generate.validate(source, board_override=board)
+                self.assertNotIn('steady_pin', valid['signal_trend'])
+                self.assertNotIn('signal_trend_steady_pin', generate.emit(valid, rules))
+                self.assertEqual(source, original)
+                self.assertEqual(valid['gps']['tx_pin'], pin)
+            source['signal_trend']['steady_pni'] = pin
+            with self.assertRaisesRegex(ValueError, 'missing/unknown keys'):
+                generate.validate(source, board_override=board)
+
+    def test_gps_tx_conflict(self):
         source = generate.load(ROOT/'config/settings.parent.example.json')
         source['signal_trend']['steady_pin'] = 8
-        with self.assertRaises(ValueError):
-            generate.validate(source)
-        del source['signal_trend']['steady_pin']
         source['board'] = {'model': 'custom'}
         source['capture_switch']['enabled'] = False
         source['gps']['tx_pin'] = source['signal_trend']['increasing_pin']

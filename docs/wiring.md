@@ -415,5 +415,6 @@ capture switch and all RS-485 pins for later parent/child operation on N32R8.
 
 Rebuild/reflash with the new board profile after rewiring. The boot LED test now
 cycles green, red, then both together and never drives GPS TX as an indicator.
-The removed `signal_trend.steady_pin` setting must be deleted from custom JSON.
-GPS query/retained-time validation is still pending; wiring alone does not establish UTC.
+The removed `signal_trend.steady_pin` setting is ignored in legacy JSON and can be deleted.
+Air530Z firmware requests receiver time over this connection; physical retained-time
+acceptance remains pending. See [time selection and hardware checks](air530-time.md).

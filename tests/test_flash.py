@@ -16,6 +16,33 @@ spec.loader.exec_module(flash)
 
 
 class FlashTests(unittest.TestCase):
+    def test_legacy_example_flashes_without_rewriting_config(self):
+        for variant, board, pin in [('standalone', 'xiao', 0),
+                                    ('standalone', 'n32r8', 8), ('parent', 'n32r8', 8),
+                                    ('child', 'xiao', -1)]:
+            with self.subTest(variant=variant, board=board), tempfile.TemporaryDirectory() as folder:
+                config = pathlib.Path(folder)/'legacy.json'
+                settings = flash.generate_config.load(ROOT/f'config/settings.{variant}.example.json')
+                settings['signal_trend']['steady_pin'] = pin
+                config.write_text(json.dumps(settings))
+                original = config.read_bytes()
+                status, output = self.run_main('--config', str(config), '--board', board,
+                                               '--node-id', '1' if variant == 'child' else '0',
+                                               '--dry-run')
+                self.assertEqual(status, 0, output)
+                self.assertIn(f'Config: {config}', output)
+                self.assertIn('ignoring obsolete signal_trend.steady_pin', output)
+                self.assertIn('DRY RUN', output)
+                self.assertEqual(config.read_bytes(), original)
+
+    def test_invalid_config_reports_loaded_path(self):
+        with tempfile.TemporaryDirectory() as folder:
+            config = pathlib.Path(folder)/'invalid.json'
+            config.write_text('{}')
+            status, output = self.run_main('--config', str(config), '--dry-run')
+            self.assertEqual(status, 1)
+            self.assertIn(f'Config: {config}', output)
+
     def test_supported_installations_infer_roles_and_capture_pins(self):
         for variant, board, role, switch in [
                 ('standalone', 'n32r8', 'parent', 'GPIO26'),

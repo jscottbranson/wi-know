@@ -196,7 +196,10 @@ def main(argv=None):
         if args.baud < 9600 or args.baud > 2000000:
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
+        print(f'Config: {config}')
         raw = generate_config.load(config)
+        if isinstance(raw.get('signal_trend'), dict) and 'steady_pin' in raw['signal_trend']:
+            print('NOTE: ignoring obsolete signal_trend.steady_pin; steady uses red + green LEDs.')
         # The menu/CLI selects role and ID independently of the stored defaults.
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0, board_override=args.board)
@@ -226,7 +229,6 @@ def main(argv=None):
                 print(f'  {section}: {pins}')
         switch = validated['capture_switch']
         print(f"Capture switch: GPIO{switch['gpio_pin']}" if switch['enabled'] else 'Capture switch: disabled')
-        print(f'Config: {config}')
         if role in ('parent', 'universal') and validated['sd']['enabled'] and validated['sd']['format_if_mount_failed']:
             print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')
         print(f'Build:  {build_directory(role, node_id, config, board)}')

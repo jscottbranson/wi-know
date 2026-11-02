@@ -59,6 +59,10 @@ def load(path):
 def validate(settings, role_override=None, node_override=None, base=ROOT, board_override=None):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
+    # Schema-v1 previously had a third (amber) LED. Ignore only that retired key;
+    # do not infer GPS wiring or modify the caller's saved configuration.
+    if isinstance(settings.get('signal_trend'), dict):
+        settings['signal_trend'].pop('steady_pin', None)
     settings.setdefault('board', {'model': 'custom'})
     settings.setdefault('capture_switch', {'enabled': False, 'gpio_pin': -1,
                                            'internal_pulldown': False, 'debounce_ms': 50})
