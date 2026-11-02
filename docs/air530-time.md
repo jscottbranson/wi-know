@@ -7,6 +7,12 @@ startup or a later receiver reset. No commands save configuration to module flas
 set the date, or reset the receiver. Disabling unused output avoids serial backlog
 at 9600 baud.
 
+Each request also sends the read-only firmware query `$PCAS06,0*1B`. The query is
+defined in CASIC section 1.6.7 and returns product information as TXT sentences
+(section 1.5.8). The two commands share one partial-write cursor, so a full UART
+FIFO cannot interleave commands. The existing startup retries and 30-second
+refresh also retry the version query after a delayed startup or receiver restart.
+
 ## Time selection
 
 1. Use fresh checksum-valid active RMC date/time as `gps`.
@@ -68,6 +74,29 @@ Capture these lines before the first fix and again after acquiring a fix:
 These diagnostics observe raw input, including invalid messages; they do not
 relax the clock's validity checks. No TIM sentence means there is no raw line to
 print. An old retained diagnostic line does not imply that the clock is usable.
+
+Diagnostics also retain the latest RMC, GGA, ZDA, TXT, and other sentence, plus a
+separate TXT `SW=` software-version sample that later antenna TXT messages cannot
+overwrite. Every sample includes its cumulative count, age, checksum result, and
+raw text. This is a bounded snapshot, not a complete serial transcript: only the
+latest sentence per group is retained, and GGA/ZDA are observed only if the
+receiver already emits them. RMC contains location when a fix is available.
+
+The summary counts complete sentences, bad/missing checksums, overlength lines,
+resynchronization at a new `$`, and nonprintable bytes within captured sentences.
+Lines are limited to 159 characters; longer lines are discarded and counted.
+Nonprintable bytes are replaced with `?` for console safety and the sample is
+marked checksum-bad. `TIM+version_batches` counts complete request pairs accepted
+by the ESP32 UART FIFO, **not receiver acknowledgements**. `tx_stalls` counts
+zero-byte FIFO writes; `tx_errors`/`rx_errors` count negative UART API returns,
+not hardware parity or overrun events.
+
+When TIM or an `SW=` reply is absent, the console explicitly says so every 30
+seconds. With `TIM_count=0`, capture the RMC/TXT/other lines before and after a fix.
+A checksum-valid software reply is evidence that receiver-to-host communication
+works; it is not proof that TIM is supported or that a query caused that reply
+(TXT may also be emitted at boot). No version reply alone does not prove a broken
+wire. Retained samples are diagnostic only and never establish UTC validity.
 
 Select the Air530Z parent/standalone profile. Connect MCU TX to GPS RX: GPIO8 on
 N32R8 or GPIO0 on XIAO (remove the former amber LED/resistor). Keep GPS TX connected
