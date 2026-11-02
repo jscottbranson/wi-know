@@ -16,6 +16,16 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
+    def test_gps_without_backup_battery_or_tx(self):
+        for name in ('settings.standalone.example.json', 'settings.parent.example.json'):
+            source = generate.load(ROOT/'config'/name)
+            source['gps']['backup_battery_present'] = False
+            with self.subTest(config=name):
+                settings, rules = generate.validate(source, board_override='n32r8')
+                self.assertTrue(settings['gps']['enabled'])
+                self.assertEqual(settings['gps']['tx_pin'], -1)
+                self.assertIn('gps_backup_battery_present = false', generate.emit(settings, rules))
+
     def test_capture_switch_validation(self):
         source = generate.load(ROOT/'config/settings.standalone.example.json')
         source['board'] = {'model': 'xiao'}
