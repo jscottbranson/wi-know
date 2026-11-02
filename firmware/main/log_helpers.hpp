@@ -29,6 +29,26 @@ inline bool capture_transition_json(bool on, bool all, bool startup, uint64_t no
     return n >= 0 && size_t(n) < capacity;
 }
 
+// A null correction denotes first synchronization, not a zero-error RTC read.
+inline bool time_sync_json(uint64_t now, uint32_t boot, bool had_time, int64_t previous_utc,
+                           const wiknow::Gps &gps, char *out, size_t capacity) {
+    int64_t utc{};
+    if (!out || !capacity || !gps.utc(now, utc))
+        return false;
+    char correction[32] = "null";
+    if (had_time)
+        std::snprintf(correction, sizeof(correction), "%lld",
+                      static_cast<long long>(utc - previous_utc));
+    int n = std::snprintf(
+        out, capacity,
+        "{\"schema_version\":1,\"event\":\"time_sync\",\"boot\":%u,\"at_ms\":%llu,"
+        "\"utc_ms\":%lld,\"previous_source\":\"%s\",\"time_source\":\"gps\","
+        "\"correction_ms\":%s,\"gps_sync_age_ms\":0,\"utc_uncertainty_ms\":null}\n",
+        unsigned(boot), static_cast<unsigned long long>(now), static_cast<long long>(utc),
+        had_time ? "gps_holdover" : "unknown", correction);
+    return n >= 0 && size_t(n) < capacity;
+}
+
 // Only files created by this logger belong to its retention policy.
 inline bool log_file_id(const char *name, uint32_t &id) {
     if (std::strlen(name) != 14 || name[0] != 'W' ||

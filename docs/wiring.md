@@ -395,3 +395,9 @@ For a distributed system, fit the switch only on the logging/display parent.
 ON starts a new full-capture file, including a copy of each matching detection;
 OFF closes the session and restores the configured mode. See
 [operation and capture limits](capture-switch.md).
+
+Air530 retained-time startup is not enabled. GPS wiring remains receive-only
+(`tx_pin: -1` in board profiles); no query or UART wait is added to scanning.
+The backup-battery configuration is a hardware declaration, not a measured battery
+status. See [RTC interface and validation limitations](air530-time.md) before adding TX
+wiring or treating startup date/time as authoritative.

@@ -624,6 +624,15 @@ bool utc_value(const char *date, const char *time, int64_t &out) {
     for (int i = 0; i < 6; ++i)
         if (date[i] < '0' || date[i] > '9' || time[i] < '0' || time[i] > '9')
             return false;
+    // NMEA is hhmmss[.fraction], never exponent notation or trailing whitespace.
+    const size_t time_length = std::strlen(time);
+    if (time_length > 6) {
+        if (time[6] != '.' || time_length == 7)
+            return false;
+        for (size_t i = 7; i < time_length; ++i)
+            if (time[i] < '0' || time[i] > '9')
+                return false;
+    }
     auto two = [](const char *p) { return (p[0] - '0') * 10 + p[1] - '0'; };
     int day = two(date), month = two(date + 2), year = 2000 + two(date + 4);
     int hour = two(time), minute = two(time + 2);
@@ -1131,9 +1140,22 @@ bool Gps::utc(uint64_t at, int64_t &out) const {
     out = utc_at_ + (at >= time_at_ ? int64_t(at - time_at_) : -int64_t(time_at_ - at));
     return true;
 }
+void Gps::utc_text(uint64_t at, char (&out)[9]) const {
+    int64_t epoch{};
+    if (!utc(at, epoch)) {
+        std::memcpy(out, "--:--:--", sizeof(out));
+        return;
+    }
+    // Floor, rather than truncate, before extracting the UTC time of day.
+    int64_t seconds = epoch / 1000 - (epoch % 1000 < 0);
+    unsigned day_seconds = unsigned((seconds % 86400 + 86400) % 86400);
+    std::snprintf(out, sizeof(out), "%02u:%02u:%02u", day_seconds / 3600, day_seconds / 60 % 60,
+                  day_seconds % 60);
+}
 void Gps::expire(uint64_t now, uint32_t max_age_ms) {
-    if (has_time_ && now >= time_at_ && now - time_at_ > max_age_ms)
-        *this = Gps{};
+    for (auto &fix : fixes_)
+        if (fix.valid && now >= fix.at_ms && now - fix.at_ms > max_age_ms)
+            fix.valid = false;
 }
 bool same_signal(const Observation &a, const Observation &b) {
     return a.node == b.node && a.boot == b.boot && a.radio == b.radio &&
@@ -1532,8 +1554,8 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         j.add("null");
     j.add(",\"time_source\":\"%s\",\"gps_sync_age_ms\":",
           gps.has_time() ? "gps_holdover" : "unknown");
-    if (gps.has_time())
-        j.add("%llu", (unsigned long long)difference(o.at_ms, gps.last_sync()));
+    if (gps.has_time() && o.at_ms >= gps.last_sync())
+        j.add("%llu", (unsigned long long)(o.at_ms - gps.last_sync()));
     else
         j.add("null");
     j.add(",\"timing_uncertainty_ms\":%u,\"radio\":\"%s\",\"channel\":%u,\"address_type\":%u,"

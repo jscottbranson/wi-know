@@ -211,6 +211,20 @@ static void gps_test() {
     Gps g;
     int64_t utc{};
     CHECK(!g.utc(0, utc));
+    char clock[9];
+    g.utc_text(0, clock);
+    CHECK(std::strcmp(clock, "--:--:--") == 0);
+    // Date-looking invalid navigation and unverified RTC replies never establish UTC.
+    for (const auto &body : {"GNRMC,120000.000,V,,,,,,,271026,,,N", "PGKC280,2026,10,27,12,0,0",
+                             "PGKC280,0,0,0,0,0,0", "PGKC280,2026,2,30,12,0,0"}) {
+        CHECK(!feed(g, nmea(body), 100));
+        CHECK(!g.has_time());
+        CHECK(!g.nearest(100, 1000).valid);
+    }
+    for (const auto &time : {"120000e0", "120000.", "120000 ", "240000", "126000", "120060"}) {
+        CHECK(!feed(g, nmea(std::string("GNRMC,") + time + ",A,,,,,,,271026,,,A"), 200));
+        CHECK(!g.has_time());
+    }
     auto valid = nmea("GNRMC,120000.000,A,4200.000,N,08300.000,W,0.0,0.0,271026,,,A");
     CHECK(feed(g, valid, 1000));
     CHECK(g.utc(1000, utc));
@@ -244,12 +258,43 @@ static void gps_test() {
     boundary.expire(4000, 3000);
     CHECK(boundary.has_time());
     boundary.expire(4001, 3000);
-    CHECK(!boundary.has_time());
-    CHECK(!boundary.utc(4001, utc));
+    CHECK(boundary.has_time());
+    CHECK(boundary.utc(4001, utc));
+    CHECK(utc == 1793102403001LL);
+    CHECK(boundary.last_sync() == 1000);
     CHECK(!boundary.nearest(4001, 10000).valid);
     CHECK(feed(boundary, valid, 5000));
     CHECK(boundary.utc(5000, utc));
     CHECK(boundary.nearest(5000, 0).valid);
+    boundary.utc_text(6000, clock);
+    CHECK(std::strcmp(clock, "12:00:01") == 0);
+    boundary.expire(86405000, 3000);
+    boundary.utc_text(86405000, clock);
+    CHECK(std::strcmp(clock, "12:00:00") == 0);
+    CHECK(!boundary.nearest(86405000, 10000).valid);
+    CHECK(feed(boundary, nmea("GNRMC,235959.500,A,,,,,,,271026,,,A"), 86406000));
+    boundary.utc_text(86406500, clock);
+    CHECK(std::strcmp(clock, "00:00:00") == 0);
+    CHECK(!boundary.nearest(86406000, 1000).valid);
+    // A backwards UTC correction leaves monotonic capture/fix timestamps untouched.
+    CHECK(feed(boundary, valid, 86407000));
+    CHECK(boundary.last_sync() == 86407000);
+    CHECK(boundary.nearest(86407000, 0).at_ms == 86407000);
+    boundary.utc_text(86408000, clock);
+    CHECK(std::strcmp(clock, "12:00:01") == 0);
+    // Buffered capture age must not describe a synchronization in its future.
+    auto capture = obs(-60, 86406500);
+    Tracker tracker;
+    auto &track = tracker.observe(capture, {});
+    char json[log_line_capacity];
+    CHECK(observation_json(capture, track, {}, {}, boundary, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"gps_sync_age_ms\":null"));
+    capture.at_ms = 86408000;
+    CHECK(observation_json(capture, track, {}, {}, boundary, json, sizeof(json)));
+    CHECK(std::strstr(json, "\"gps_sync_age_ms\":1000"));
+    // Invalid input cannot refresh holdover's synchronization anchor.
+    CHECK(!feed(boundary, nmea("GNRMC,120500,V,,,,,,,271026,,,N"), 86409000));
+    CHECK(boundary.last_sync() == 86407000);
 }
 static void gps_tagging_test() {
     Gps gps;

@@ -113,8 +113,10 @@ Every saved ordinary observation, matched or unmatched, includes `capture_ms`,
 `receiver_fix` (latitude, longitude and fix uptime). GPS tagging uses capture time,
 not file-write time or the latest GPS position. Coordinates describe the receiver.
 Without GPS time, UTC is `null`; without a sufficiently fresh fix, location is
-`null`. GPS time and location expire when no valid RMC update arrives within
-`gps.max_fix_age_ms`; subsequent records use `null` until GPS updates resume.
+`null`. Location expires after `gps.max_fix_age_ms`; established UTC continues in
+software holdover until reboot or a valid GPS correction. `gps_sync_age_ms` grows
+during holdover and is null for buffered captures preceding the latest sync.
+It is not a bound on UTC error.
 
 Each observation also has `first_seen_ms`, `last_seen_ms`, `first_seen_utc_ms`
 and `last_seen_utc_ms`. Those are the live track's endpoints: receiver/node boot,

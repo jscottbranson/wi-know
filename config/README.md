@@ -248,3 +248,9 @@ All shipped manual parent and standalone configurations enable the switch with
 `--board n32r8`. Explicit nonnegative switch pins remain user overrides and are
 validated against the selected board and other peripherals. Set `enabled: false`
 to disable the switch. Universal configurations explicitly keep it disabled.
+
+Air530 retained-time startup is not enabled. GPS wiring remains receive-only
+(`tx_pin: -1` in board profiles); no query or UART wait is added to scanning.
+The backup-battery configuration is a hardware declaration, not a measured battery
+status. See [RTC interface and validation limitations](../docs/air530-time.md) before adding TX
+wiring or treating startup date/time as authoritative.
