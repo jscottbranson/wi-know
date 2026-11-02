@@ -361,7 +361,7 @@ def standalone_wiring(png):
         d.text(90, y + 6, left, size=19)
         d.text(920, y + 6, right, size=19)
         points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
-        d.line(points, color, arrow=incoming)
+        d.line(points, color, arrow=color == BLUE)
     d.text(70, 1070, 'Remove the former amber LED/resistor from D1 before connecting GPS RX. Both LEDs mean steady.', size=18)
     d.text(70, 1096, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
 
@@ -444,7 +444,7 @@ def parent_wiring(png):
         d.text(70, y + 6, left, size=19, weight=700)
         d.text(930, y + 6, right, size=19)
         points = [(470, y), (900, y)]
-        d.line(list(reversed(points)) if reverse else points, color, arrow=reverse)
+        d.line(list(reversed(points)) if reverse else points, color, arrow=color == BLUE)
     d.text(70, 1484, 'Remove the former amber LED/resistor from GPIO8. Connect GPIO8 directly to Air530Z RX.', size=18, color=MUTED)
     d.box(48, 1535, 1344, 345)
     d.text(70, 1576, '5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic', size=25, weight=700)

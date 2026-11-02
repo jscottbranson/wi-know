@@ -71,7 +71,7 @@
 <polyline points="880,928 525,928" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="90" y="970" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D1 / GPIO0 / UART0 TX</text>
 <text x="920" y="970" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS RX (module input)</text>
-<polyline points="525,964 880,964" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="525,964 880,964" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
 <text x="90" y="1006" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO 3V3 output</text>
 <text x="920" y="1006" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS VCC (3.3 V supply)</text>
 <polyline points="525,1000 880,1000" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>

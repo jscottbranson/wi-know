@@ -231,11 +231,9 @@ void indicators(wiknow::Trend trend, bool beep) {
     if (c::signal_trend_enabled) {
         const auto leds = wiknow::trend_leds(trend);
         if (c::signal_trend_increasing_pin >= 0)
-            gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin),
-                           leds.green);
+            gpio_set_level(gpio_num_t(c::signal_trend_increasing_pin), leds.green);
         if (c::signal_trend_decreasing_pin >= 0)
-            gpio_set_level(gpio_num_t(c::signal_trend_decreasing_pin),
-                           leds.red);
+            gpio_set_level(gpio_num_t(c::signal_trend_decreasing_pin), leds.red);
     }
     if (c::buzzer_enabled) {
         uint64_t now = now_ms();
@@ -530,14 +528,17 @@ static void boot_indicator_test() {
     if (!c::signal_trend_enabled && !c::buzzer_enabled)
         return;
     ESP_LOGI("peripherals",
-             "Boot test: LEDs 200 ms each, then buzzer 100 ms (enabled outputs only)");
+             "Boot test: green/red/both 200 ms each, then buzzer 100 ms (enabled outputs only)");
     if (c::signal_trend_enabled) {
-        for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin}) {
-            if (pin < 0)
+        for (auto trend : {wiknow::Trend::increasing, wiknow::Trend::decreasing,
+                           wiknow::Trend::steady}) {
+            const auto leds = wiknow::trend_leds(trend);
+            if (!(leds.green && c::signal_trend_increasing_pin >= 0) &&
+                !(leds.red && c::signal_trend_decreasing_pin >= 0))
                 continue;
-            ESP_ERROR_CHECK(gpio_set_level(gpio_num_t(pin), 1));
+            indicators(trend, false);
             vTaskDelay(ticks(200));
-            ESP_ERROR_CHECK(gpio_set_level(gpio_num_t(pin), 0));
+            indicators(wiknow::Trend::unknown, false);
         }
     }
     if (c::buzzer_enabled) {

@@ -31,6 +31,14 @@ class ConfigTests(unittest.TestCase):
                 generate.validate(receive_only)
                 self.assertIn('gps_backup_battery_present = false', generate.emit(settings, rules))
 
+    def test_gps_models(self):
+        for model in ('Grove GPS Air530', 'Grove GPS Air530Z'):
+            self.settings['gps']['model'] = model
+            generate.validate(self.settings)
+        self.settings['gps']['model'] = 'unsupported'
+        with self.assertRaisesRegex(ValueError, 'unsupported GPS model'):
+            generate.validate(self.settings)
+
     def test_removed_amber_config_and_gps_tx_conflict(self):
         source = generate.load(ROOT/'config/settings.parent.example.json')
         source['signal_trend']['steady_pin'] = 8

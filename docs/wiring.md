@@ -101,7 +101,7 @@ connect them directly to the XIAO GPIOs. Buzzer alerts require enabled matching
 rules with a buzzer action or enabled following-device alerts; the default ruleset
 is empty. LED trends describe signal strength, not direction.
 
-Power the **Grove Air530 at 3.3 V**, join GPS GND to XIAO GND, and connect its TX
+Power the **Grove Air530Z at 3.3 V**, join GPS GND to XIAO GND, and connect its TX
 to D7; connect D1 / GPIO0 to Air530Z RX (`gps.tx_pin: 0`). Add 100 nF at GPS VCC/GND.
 Use connector labels to identify signals, not wire colors. GPS supplies receiver
 coordinates and UTC from valid NMEA fixes; it does not locate arbitrary transmitters.
@@ -211,7 +211,7 @@ already on the backpack/shifter before adding more. This follows
 Do not connect the 5 V bus directly to ESP32 GPIOs. Adjust the backpack contrast
 trimmer and verify its address and mapping; a bare parallel LCD needs different wiring.
 
-Power the Grove Air530 from 3.3 V and connect its **TX to parent RX**, using the
+Power the Grove Air530Z from 3.3 V and connect its **TX to parent RX**, using the
 connector signal labels to establish orientation. Seeed lists a 3.3 V/5 V supply
 and up to 60 mA working current for the
 [Grove Air530](https://wiki.seeedstudio.com/Grove-GPS-Air530/); allow sufficient
@@ -414,6 +414,6 @@ The connection is UART TX to the GPS, not a separate RTC bus. It preserves the
 capture switch and all RS-485 pins for later parent/child operation on N32R8.
 
 Rebuild/reflash with the new board profile after rewiring. The boot LED test now
-pulses only red and green and never drives the GPS TX pin as an indicator.
+cycles green, red, then both together and never drives GPS TX as an indicator.
 The removed `signal_trend.steady_pin` setting must be deleted from custom JSON.
 GPS query/retained-time validation is still pending; wiring alone does not establish UTC.

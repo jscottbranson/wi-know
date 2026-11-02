@@ -93,7 +93,7 @@
   },
   "gps": {
     "enabled": true,
-    "model": "Grove GPS Air530",
+    "model": "Grove GPS Air530Z",
     "backup_battery_present": true,
     "uart": 0,
     "rx_pin": 12,

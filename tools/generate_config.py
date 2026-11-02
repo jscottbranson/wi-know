@@ -169,7 +169,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
         integer(settings[name]['uart'], 0, 1, name+'.uart')
         integer(settings[name]['baud'], 9600, 921600, name+'.baud')
     require(not (settings['gps']['enabled'] and bus['enabled'] and settings['gps']['uart'] == bus['uart']), 'GPS and bus require separate UARTs')
-    require(settings['gps']['model'] == 'Grove GPS Air530', 'unsupported GPS model')
+    require(settings['gps']['model'] in ('Grove GPS Air530', 'Grove GPS Air530Z'), 'unsupported GPS model')
     integer(settings['gps']['max_fix_age_ms'], 0, 60000, 'gps.max_fix_age_ms')
     integer(settings['gps']['max_timing_uncertainty_ms'], 0, 5000, 'gps.max_timing_uncertainty_ms')
     integer(settings['sd']['clock_khz'], 400, 20000, 'sd.clock_khz')

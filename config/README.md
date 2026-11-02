@@ -75,7 +75,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | `bus` | RS-485 UART/pins/baud, discoverable node ID range, poll timeout, membership/assignment leases |
 | `detection` | Rules directory and enabled categories |
 | `follower` | Enable target commands; release after no fresh matching observation |
-| `gps` | Air530 UART (9600 baud), maximum fix age, capture-time uncertainty limit |
+| `gps` | Air530/Air530Z UART (9600 baud), maximum fix age, capture-time uncertainty limit |
 | `sd` | SPI pins and conservative 4 MHz initial clock; automatic destructive `format_if_mount_failed` (default true; false opts out) |
 | `logging` | `matches` or `all`; flush period, rotation bytes, retained files; flash fallback caps apply |
 | `display` | I²C pins/address and page period; 16×2 PCF8574 backpack driver |
