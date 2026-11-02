@@ -10,13 +10,9 @@ int main() {
                 s.start(boot_on, 0);
                 assert(s.on() == (enabled && boot_on));
                 assert(s.all() == (base || (enabled && boot_on)));
-                // Both supported radio types obey the same logging policy.
-                for (auto radio : {wiknow::Radio::wifi, wiknow::Radio::ble}) {
-                    wiknow::Observation o{};
-                    o.radio = radio;
-                    assert(s.retain(true));
-                    assert(s.retain(false) == s.all());
-                }
+                // Logging selection is radio-independent; matched records always survive.
+                assert(s.retain(true));
+                assert(s.retain(false) == s.all());
                 assert(!s.update(!boot_on, 10));
                 assert(!s.update(boot_on, 40));
                 assert(!s.update(!boot_on, 50));

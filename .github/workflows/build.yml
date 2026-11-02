@@ -38,9 +38,11 @@ jobs:
           - role: parent
             id: 0
             config: settings.parent-capture.example.json
+            board: n32r8
           - role: parent
             id: 0
             config: settings.standalone-capture.example.json
+            board: xiao
           - role: child
             id: 1
           - role: follower
