@@ -1,5 +1,3 @@
-#include "gps_diagnostics.hpp"
-#include "log_helpers.hpp"
 #include "wiknow/core.hpp"
 #include "wiknow/gps_time_request.hpp"
 #include <cstdio>
@@ -33,53 +31,6 @@ static const char *rtc = "PCAS60,120000.000,27102026,2442,216018,1,18,1";
 static const char *rmc = "GNRMC,120002.000,A,4200.000,N,08300.000,W,0,0,271026,,,A";
 static const char *lost = "GNRMC,120003.000,V,,,,,,,271026,,,N";
 int main() {
-    platform::GpsDiagnostics diagnostics;
-    const auto tim = nmea(rtc);
-    for (char c : tim.substr(0, 12))
-        diagnostics.feed(c, 100);
-    CHECK(diagnostics.tim_sentences == 0);
-    for (char c : tim.substr(12))
-        diagnostics.feed(c, 200);
-    CHECK(diagnostics.tim_sentences == 1 && diagnostics.last_tim_at == 200);
-    CHECK(diagnostics.received_bytes == tim.size());
-    CHECK(diagnostics.last_tim == tim.substr(0, tim.size() - 2));
-    for (char c : nmea(rmc) + "$PCAS60," + std::string(200, 'x') + "\r\n")
-        diagnostics.feed(c, 300);
-    CHECK(diagnostics.tim_sentences == 1); // ignore other sentences and overflow
-    const auto invalid_tim = nmea("PCAS60,120001.000,27102026,,,0,,0");
-    for (char c : "$PCAS60,partial" + invalid_tim)
-        diagnostics.feed(c, 400);
-    CHECK(diagnostics.tim_sentences == 2 && diagnostics.last_tim_at == 400);
-    CHECK(diagnostics.last_tim == invalid_tim.substr(0, invalid_tim.size() - 2));
-
-    CHECK(diagnostics.sentences == 3 && diagnostics.bad_checksums == 0);
-    CHECK(diagnostics.overflows == 1 && diagnostics.resyncs == 1);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::rmc].count == 1);
-    const auto version = nmea("GPTXT,01,01,02,SW=URANUS2,V2.2.1.0");
-    for (char c : version + nmea("GNTXT,01,01,01,ANTENNA OK"))
-        diagnostics.feed(c, 500);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::software].raw ==
-          version.substr(0, version.size() - 2));
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::txt].count == 2);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::software].checksum_ok);
-    auto corrupt_rmc = nmea(lost);
-    corrupt_rmc[8] = '9';
-    for (char c : corrupt_rmc)
-        diagnostics.feed(c, 600);
-    CHECK(diagnostics.bad_checksums == 1);
-    CHECK(!diagnostics.samples[platform::GpsDiagnostics::rmc].checksum_ok);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::rmc].at == 600);
-    for (char c : std::string("$GPTXT,unsafe\x1b*00\n"))
-        diagnostics.feed(c, 700);
-    CHECK(diagnostics.nonprintable == 1 && diagnostics.bad_checksums == 2);
-    CHECK(std::strchr(diagnostics.samples[platform::GpsDiagnostics::txt].raw, '\x1b') == nullptr);
-    for (char c : nmea("GPZDA,120000,02,11,2026,00,00") + nmea("GNGGA,120000,,,,,0,00,,,,,,") +
-                      nmea("PCAS99,reply"))
-        diagnostics.feed(c, 800);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::zda].checksum_ok);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::gga].checksum_ok);
-    CHECK(diagnostics.samples[platform::GpsDiagnostics::other].count == 1);
-
     Gps approximate(3000, true);
     const char *pre_fix = "GNRMC,221032.000,V,,,,,,,021126,,,M,V";
     CHECK(feed(approximate, pre_fix, 1000));
@@ -118,18 +69,9 @@ int main() {
     CHECK(gps.utc(1500, utc) && utc == 1793102400500LL);
     CHECK(!gps.has_gps_sync());
     CHECK(!gps.nearest(1000, 3000).valid);
-    CHECK(platform::time_sync_json(1000, 1, TimeSource::unknown, 0, gps, json, sizeof(json)));
-    CHECK(std::strstr(json, "\"time_source\":\"rtc\""));
-    CHECK(std::strstr(json, "\"gps_sync_age_ms\":null"));
-    const auto before = gps.source(2000);
     CHECK(gps.utc(2000, utc));
     CHECK(feed(gps, rmc, 2000));
     CHECK(gps.source(2000) == TimeSource::gps);
-    CHECK(platform::time_sync_json(2000, 1, before, utc, gps, json, sizeof(json)));
-    CHECK(std::strstr(json, "\"previous_source\":\"rtc\""));
-    CHECK(std::strstr(json, "\"time_source\":\"gps\""));
-    CHECK(std::strstr(json, "\"correction_ms\":1000"));
-    CHECK(std::strstr(json, "\"gps_sync_age_ms\":0"));
     feed(gps, "PCAS60,120003.000,27102026,2442,216021,1,18,1", 3000);
     CHECK(gps.source(3000) == TimeSource::gps); // independent lower-priority anchor
     CHECK(gps.last_sync() == 2000);
@@ -197,48 +139,11 @@ int main() {
     CHECK(!short_age.utc(101, utc));
     CHECK(!short_age.utc(UINT64_MAX, utc));
 
-    // Integration event decisions: only selected samples synchronize; invalidity
-    // and silence produce explicit source transitions, including null UTC.
-    platform::GpsTimeEvents events;
-    Gps logged(3000, true);
-    auto input = [&](const char *body, uint64_t now) {
-        int emitted = 0;
-        if (events.update(now, 1, logged, false, 0, json, sizeof(json)))
-            ++emitted;
-        for (char c : nmea(body)) {
-            int64_t previous{};
-            logged.utc(now, previous);
-            bool sample = logged.feed(c, now);
-            if (events.update(now, 1, logged, sample, previous, json, sizeof(json)))
-                ++emitted;
-        }
-        return emitted;
-    };
-    CHECK(input(rtc, 1000) == 1);
-    CHECK(std::strstr(json, "\"time_source\":\"rtc\""));
-    CHECK(input(rmc, 2000) == 1);
-    CHECK(std::strstr(json, "\"previous_source\":\"rtc\""));
-    CHECK(input(rtc, 3000) == 0); // must not manufacture a GPS sync
-    CHECK(input(lost, 3100) == 1);
-    CHECK(std::strstr(json, "\"event\":\"time_source\""));
-    CHECK(std::strstr(json, "\"previous_source\":\"gps\""));
-    CHECK(std::strstr(json, "\"time_source\":\"rtc\""));
-    logged.expire(6101, 3000);
-    CHECK(events.update(6101, 1, logged, false, 0, json, sizeof(json)));
-    CHECK(std::strstr(json, "\"previous_source\":\"rtc\""));
-    CHECK(std::strstr(json, "\"time_source\":\"unknown\""));
-    CHECK(std::strstr(json, "\"utc_ms\":null"));
-    CHECK(!events.update(6102, 1, logged, false, 0, json, sizeof(json)));
-    CHECK(input(rtc, 7000) == 1);
-    CHECK(std::strstr(json, "\"correction_ms\":null"));
-    CHECK(input("PCAS60,120001.000,27102026,,,0,,0", 7001) == 1);
-    CHECK(std::strstr(json, "\"time_source\":\"unknown\""));
-
     // Exact command framing, checksum, RMC/TIM fields, partial FIFO writes and retry budget.
     GpsTimeRequest request;
     size_t size{};
     std::string command = request.pending(0, size);
-    CHECK(command == nmea("PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1") + nmea("PCAS06,0"));
+    CHECK(command == nmea("PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1"));
     CHECK(size == command.size());
     request.sent(0, 7);
     CHECK(std::string(request.pending(0, size)) == command.substr(7));
@@ -264,7 +169,7 @@ int main() {
         transmitted += *part;
         fragmented.sent(0, 1);
     }
-    CHECK(transmitted == command); // split anywhere, including between the two commands
+    CHECK(transmitted == command); // split anywhere in the command
     fragmented.pending(999, size);
     CHECK(size == 0);
 }

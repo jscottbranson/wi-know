@@ -16,7 +16,6 @@
 #include "diskio_wl.h"
 // clang-format on
 #include "ff.h"
-#include "gps_diagnostics.hpp"
 #include "log_helpers.hpp"
 #include "log_storage.hpp"
 #include "nvs.h"
@@ -213,13 +212,7 @@ void gps_update(wiknow::Gps &gps) {
     if (role != wiknow::Role::parent || !c::gps_enabled || !gps_uart_ready)
         return;
     uint64_t now = now_ms();
-    static GpsDiagnostics diagnostics;
-    static uint64_t next_diagnostic = now + 30000;
     gps.expire(now, c::gps_max_fix_age_ms);
-    static GpsTimeEvents events;
-    char event[384];
-    if (events.update(now, boot_id, gps, false, 0, event, sizeof(event)))
-        write_log(event);
     if (c::gps_tx_pin >= 0 && !std::strcmp(c::gps_model, "Grove GPS Air530Z")) {
         static wiknow::GpsTimeRequest request;
         size_t size{};
@@ -227,70 +220,18 @@ void gps_update(wiknow::Gps &gps) {
         if (size) {
             // TX buffer is disabled: write only available FIFO space, never wait.
             int sent = uart_tx_chars(uart_port_t(c::gps_uart), command, size);
-            if (sent > 0) {
+            if (sent > 0)
                 request.sent(now, size_t(sent));
-                diagnostics.transmitted_bytes += unsigned(sent);
-                if (size_t(sent) == size)
-                    ++diagnostics.tx_batches;
-            } else if (sent == 0)
-                ++diagnostics.tx_stalls;
-            else
-                ++diagnostics.tx_errors;
         }
     }
     // One bounded, zero-wait read: neither a silent GPS nor missing RTC data gates scanning.
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
-    if (n < 0)
-        ++diagnostics.rx_errors;
-    for (int i = 0; i < n; ++i) {
-        diagnostics.feed(char(data[i]), now);
-        int64_t previous_utc{};
-        gps.utc(now, previous_utc);
-        const bool sample = gps.feed(char(data[i]), now);
-        if (events.update(now, boot_id, gps, sample, previous_utc, event, sizeof(event)))
-            write_log(event);
-    }
+    for (int i = 0; i < n; ++i)
+        gps.feed(char(data[i]), now);
     gps.expire(now, c::gps_max_fix_age_ms);
-    if (now >= next_diagnostic) {
-        next_diagnostic = now + 30000;
-        ESP_LOGI("gps", "source=%s rx_bytes=%llu tx_bytes=%llu TIM_count=%llu",
-                 wiknow::time_source_name(gps.source(now)),
-                 static_cast<unsigned long long>(diagnostics.received_bytes),
-                 static_cast<unsigned long long>(diagnostics.transmitted_bytes),
-                 static_cast<unsigned long long>(diagnostics.tim_sentences));
-        if (diagnostics.tim_sentences)
-            ESP_LOGI("gps", "last TIM age_ms=%llu checksum=%s raw=%s",
-                     static_cast<unsigned long long>(now - diagnostics.last_tim_at),
-                     diagnostics.last_tim_checksum_ok ? "ok" : "bad", diagnostics.last_tim);
-        else
-            ESP_LOGI("gps",
-                     "No complete PCAS60 received; approximate RMC fallback may supply RTC time");
-        ESP_LOGI("gps",
-                 "sentences=%llu bad_checksums=%llu overflow=%llu resync=%llu "
-                 "nonprintable=%llu",
-                 static_cast<unsigned long long>(diagnostics.sentences),
-                 static_cast<unsigned long long>(diagnostics.bad_checksums),
-                 static_cast<unsigned long long>(diagnostics.overflows),
-                 static_cast<unsigned long long>(diagnostics.resyncs),
-                 static_cast<unsigned long long>(diagnostics.nonprintable));
-        ESP_LOGI("gps", "TIM+version_batches=%llu tx_stalls=%llu tx_errors=%llu rx_errors=%llu",
-                 static_cast<unsigned long long>(diagnostics.tx_batches),
-                 static_cast<unsigned long long>(diagnostics.tx_stalls),
-                 static_cast<unsigned long long>(diagnostics.tx_errors),
-                 static_cast<unsigned long long>(diagnostics.rx_errors));
-        for (size_t i = 0; i < diagnostics.samples.size(); ++i) {
-            const auto &sample = diagnostics.samples[i];
-            if (sample.count)
-                ESP_LOGI("gps", "%s count=%llu age_ms=%llu checksum=%s raw=%s",
-                         GpsDiagnostics::names[i], static_cast<unsigned long long>(sample.count),
-                         static_cast<unsigned long long>(now - sample.at),
-                         sample.checksum_ok ? "ok" : "bad", sample.raw);
-        }
-        if (!diagnostics.samples[GpsDiagnostics::software].count)
-            ESP_LOGI("gps", "No SW firmware-version TXT observed; inspect TXT/other samples");
-    }
 }
+
 void indicators(wiknow::Trend trend, bool beep) {
     if (role != wiknow::Role::parent)
         return;
@@ -638,15 +579,6 @@ void start_peripherals() {
         if (!gps_uart_ready)
             ESP_LOGW("gps", "UART unavailable (%s); continuing without GPS until reboot",
                      esp_err_to_name(error));
-        else
-            ESP_LOGI("gps", "UART ready model=%s uart=%d rx=%d tx=%d baud=%d TIM_request=%s",
-                     c::gps_model, c::gps_uart, c::gps_rx_pin, c::gps_tx_pin, c::gps_baud,
-                     c::gps_tx_pin >= 0 && !std::strcmp(c::gps_model, "Grove GPS Air530Z")
-                         ? "enabled"
-                         : "disabled");
-        if (gps_uart_ready && c::gps_tx_pin >= 0 && !std::strcmp(c::gps_model, "Grove GPS Air530Z"))
-            ESP_LOGI("gps", "TX requests: PCAS03 RMC+TIM; PCAS06,0 firmware version; "
-                            "TX counts do not confirm receiver acceptance");
     }
     if (c::signal_trend_enabled) {
         for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin}) {
