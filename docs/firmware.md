@@ -105,7 +105,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Matching MAC/protocol follower selection. Wi-Fi follower dwells on the last channel
   then searches configured channels after 3 seconds without a target sample; parent
   releases stale targets. BLE follower filters broadcasts for the requested address.
-- Checksum-validated Air530 RMC parsing, receiver-fix history, GPS UTC holdover,
+- Checksum-validated Air530 RMC parsing, receiver-fix history, GPS/receiver RTC time selection,
   null UTC before validated synchronization, independent fix expiry, and capture-age-based association for
   buffered child observations. Full bus round-trip time is a conservative timing
   uncertainty; uncertain associations get null location. All nodes must be co-located.
@@ -178,35 +178,29 @@ Wi-Fi coverage. These confirmations describe successful driver tuning, not
 uninterrupted RF reception or capture of every packet.
 
 Timestamps mapped from worker packet age are approximate; driver buffering and bus
-latency remain. Only active RMC sentences establish UTC initially; backup time before
-GPS fix must be validated on the Air530. Satellite quality/HDOP and GGA parsing are
+latency remain. Air530Z receiver time can supply UTC before a fix when the module reports valid
+time; active RMC takes priority. Satellite quality/HDOP and GGA parsing are
 not yet implemented. A peak receiver location is not a transmitter location.
 
 ## UTC display and clock evidence
 
-The GPS page renders `UTC: hh:mm:ss` in 24-hour format, advancing from the
-monotonic clock between GPS updates, including loss of reception. Before a valid
-synchronization it renders `UTC: --:--:--`. The first row independently reports
-`GPS: FIX` or `GPS: NO FIX`, with `GPS` for recent time synchronization, `HOLD`
-for holdover, and `?` for unknown time. A time update without valid coordinates
-can therefore show `GPS: NO FIX GPS`.
+The GPS page renders `UTC: hh:mm:ss` with `GPS`, `RTC`, or `?` for the selected
+source. Fresh active RMC takes priority over valid Air530Z receiver time. Both
+sources expire after `gps.max_fix_age_ms`; when neither is available, UTC is null
+in logs and the display shows `--:--:--`. RMC `V` revokes GPS time immediately.
+Receiver position is independent and still expires using the configured fix age.
 
-Each accepted RMC emits a `time_sync` JSON event with boot ID, monotonic `at_ms`,
-new UTC, previous source and signed `correction_ms` (null on first sync). The event
-reports `gps_sync_age_ms: 0` and unknown UTC uncertainty; it does not change capture
-sequence numbers or monotonic timestamps. Buffered captures use the latest UTC
-mapping, so UTC may jump backwards on correction. Sort captures by boot and
-monotonic capture time, never by UTC. Observation sync age is null when a buffered
-capture predates the current anchor; its absolute distance from a future sync is
-not a synchronization age.
+Time updates emit `time_sync` events with the previous source and signed correction
+(null for first sync), and observations identify `gps`, `rtc`, or `unknown`.
+Only selected clock updates emit synchronization events. Separate `time_source`
+events record invalidation and timeout transitions, including unknown UTC.
+RTC updates never count as satellite synchronization. UTC can jump on correction;
+sort records by boot and monotonic capture time. Buffered captures outside the
+available clock sample's freshness window also have null UTC.
 
-Retained Air530 time is not enabled: [protocol evidence and bench requirements](air530-time.md).
-
-GPS time is optional at startup: no RTC query, fix wait, or missing-module timeout
-runs before normal operation. Each GPS update reads at most 512 bytes with zero
-wait. Capture and logging continue with unknown UTC and no receiver fix until a
-checksum-valid active RMC arrives; GPS TX can remain disconnected (`tx_pin: -1`).
-`gps.backup_battery_present: false` is accepted and does not disable GPS reception.
-If GPS UART initialization fails, firmware reports a warning and continues without
-GPS for that boot. A silent module on a successfully initialized UART can start
-reporting later without a reboot. Other peripheral startup procedures are unchanged.
+Air530Z boot requests use nonblocking UART writes and bounded periodic retries.
+Scanning never waits for time. A missing module or invalid receiver time does not
+stop capture or logging. See [protocol, wiring, and hardware acceptance](air530-time.md)
+for the validity checks and firmware-dependent retained-time availability. Older
+Air530 modules remain active-RMC-only; neither model uses indefinite software
+holdover when the receiver stops supplying valid time.

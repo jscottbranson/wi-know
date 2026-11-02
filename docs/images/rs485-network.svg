@@ -107,7 +107,7 @@
 <text x="70" y="886" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent uses the separate peripheral example config</text>
 <text x="70" y="919" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">*Parent GPIO11 / 3 / 7; workers GPIO11 / 12 / 7. Parent GPIO12 is tied to USB-UART TX.</text>
 <rect x="48" y="1025" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="1057" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
+<text x="70" y="1057" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; both trend LEDs remain</text>
 <text x="70" y="1097" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
 <polyline points="250,1090 350,1090" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="350" cy="1090" r="5" fill="#b83543"/>

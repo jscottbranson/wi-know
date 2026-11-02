@@ -112,7 +112,6 @@
     "enabled": false,
     "increasing_pin": -1,
     "decreasing_pin": -1,
-    "steady_pin": -1,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,

@@ -9,8 +9,8 @@
 <polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="48" y="182" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Manual standalone parent / config/settings.standalone.example.json</text>
-<text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen D4/23 + D5/24; GPS RX D7/12; microSD SCK D8/8, MISO D9/9, MOSI D10/10, CS D6/11.</text>
-<text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Buzzer D3/7; LEDs D0/1 increasing, D1/0 steady, D2/25 decreasing. Labels show D-number / GPIO.</text>
+<text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD D4/23 + D5/24; GPS RX D7/12 + TX D1/0; SD SCK8, MISO9, MOSI10, CS11.</text>
+<text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Buzzer D3/7; LEDs D0/1 green, D2/25 red; both ON = steady. Labels show D-number / GPIO.</text>
 <text x="70" y="304" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use native USB for flash / console. Bus disabled; no RS-485 module or universal identification harness.</text>
 <g transform="translate(0,-430)">
 <rect x="48" y="780" width="1344" height="470" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
@@ -65,18 +65,21 @@
 <text x="70" y="1220" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Pull-ups shown are TOTAL per line/side: reuse fitted resistors, do not blindly add parallel sets.</text>
 </g>
 <rect x="48" y="845" width="1344" height="265" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="886" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">2  GPS / Grove Air530 / receive-only UART0 at 9600 baud</text>
+<text x="70" y="886" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">2  GPS / Grove Air530Z / UART0 at 9600 baud</text>
 <text x="90" y="934" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D7 / GPIO12 / UART0 RX</text>
 <text x="920" y="934" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS TX (module output)</text>
 <polyline points="880,928 525,928" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
-<text x="90" y="976" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO 3V3 output</text>
-<text x="920" y="976" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS VCC (3.3 V supply)</text>
-<polyline points="525,970 880,970" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="90" y="1018" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO GND</text>
-<text x="920" y="1018" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS GND</text>
-<polyline points="525,1012 880,1012" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="70" y="1054" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">GPS RX: leave disconnected (tx_pin = -1). Use connector signal labels to establish orientation.</text>
-<text x="70" y="1083" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.</text>
+<text x="90" y="970" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D1 / GPIO0 / UART0 TX</text>
+<text x="920" y="970" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS RX (module input)</text>
+<polyline points="525,964 880,964" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow-blue)"/>
+<text x="90" y="1006" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO 3V3 output</text>
+<text x="920" y="1006" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS VCC (3.3 V supply)</text>
+<polyline points="525,1000 880,1000" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="90" y="1042" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO GND</text>
+<text x="920" y="1042" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS GND</text>
+<polyline points="525,1036 880,1036" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="70" y="1070" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Remove the former amber LED/resistor from D1 before connecting GPS RX. Both LEDs mean steady.</text>
+<text x="70" y="1096" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.</text>
 <rect x="48" y="1135" width="1344" height="455" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1176" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  HiLetgo microSD reader / 5 V VCC / 3.3 V SPI at 4 MHz</text>
 <text x="90" y="1226" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">D8 / GPIO8</text>
@@ -144,7 +147,7 @@
 </g>
 <g transform="translate(694,1265)">
 <rect x="48" y="350" width="650" height="405" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="388" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">5  LEDs / three optional trend indicators</text>
+<text x="70" y="388" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">5  LEDs / two optional trend indicators</text>
 <text x="70" y="456" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO1</text>
 <polyline points="155,450 190,450" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="190" y="440" width="70" height="20" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
@@ -177,24 +180,10 @@
 <polyline points="344,512 358,498" fill="none" stroke="#b83543" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <path d="M358,498 l-8,3 l5,5 Z" fill="#b83543"/>
 <text x="420" y="541" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Decreasing / red</text>
-<text x="70" y="626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO0</text>
-<polyline points="155,620 190,620" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<rect x="190" y="610" width="70" height="20" rx="14" fill="white" stroke="#183044" stroke-width="2"/>
-<text x="225" y="600" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">470 Ω</text>
-<polyline points="260,620 320,620" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M320,605 L320,635 L346,620 Z" fill="none" stroke="#a85e08" stroke-width="2"/>
-<polyline points="346,605 346,635" fill="none" stroke="#a85e08" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<polyline points="346,620 395,620" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<circle cx="395" cy="620" r="5" fill="#405165"/>
-<text x="300" y="650" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">A</text>
-<text x="350" y="650" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">K</text>
-<polyline points="330,597 344,583" fill="none" stroke="#a85e08" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M344,583 l-8,3 l5,5 Z" fill="#a85e08"/>
-<polyline points="344,597 358,583" fill="none" stroke="#a85e08" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
-<path d="M358,583 l-8,3 l5,5 Z" fill="#a85e08"/>
-<text x="420" y="626" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Steady / amber</text>
-<polyline points="395,450 395,683" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="395" y="711" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">GND</text>
+<polyline points="395,450 395,575" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="395" y="603" fill="#405165" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">GND</text>
+<text x="70" y="650" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Steady / collecting samples: green + red ON</text>
+<text x="70" y="680" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Stale / no match: both OFF</text>
 <text x="70" y="735" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">One resistor per LED. Cathode K = flat edge / short lead.</text>
 </g>
 <rect x="48" y="2045" width="1344" height="400" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
@@ -220,13 +209,13 @@
 <text x="70" y="2411" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not feed external power into 3V3_OUT. Use a separate suitable 3.3 V supply if the load exceeds its budget.</text>
 <rect x="48" y="2470" width="1344" height="196" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="2503" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Build in priority order / remove optional blocks as needed</text>
-<text x="70" y="2536" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Screen: 2 GPIOs; + GPS: 3 total; + microSD: 7; + buzzer: 8; + three LEDs: 11. No free header GPIOs.</text>
+<text x="70" y="2536" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD: 2 GPIOs; + GPS RX/TX: 4; + microSD: 8; + buzzer: 9; + two LEDs: 11. All header GPIOs used.</text>
 <text x="70" y="2564" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">All five sections are enabled. Missing peripherals are ignored; absent SD uses flash; absent GPS logs null.</text>
-<text x="70" y="2592" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Amber also lights while fresh-match samples accumulate. Stale matches turn LEDs off. Rebuild after edits.</text>
+<text x="70" y="2592" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Both LEDs light while fresh-match samples accumulate. Stale matches turn both off. Rebuild after edits.</text>
 <text x="70" y="2620" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD remains a 1602A / PCF8574 at 0x27; small OLED displays need a different driver.</text>
 <text x="70" y="2648" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Hardware unverified. Check Q1 pin order, module supply voltages and board silkscreen before powering.</text>
 <rect x="48" y="2815" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="2847" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
+<text x="70" y="2847" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; both trend LEDs remain</text>
 <text x="70" y="2887" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
 <polyline points="250,2880 350,2880" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
 <circle cx="350" cy="2880" r="5" fill="#b83543"/>

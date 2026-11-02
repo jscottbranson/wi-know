@@ -154,7 +154,7 @@ static void init_tracker() {
              external ? "PSRAM" : "internal RAM",
              unsigned(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)));
 }
-static Gps gps;
+static Gps gps(c::gps_max_fix_age_ms, std::strcmp(c::gps_model, "Grove GPS Air530Z") == 0);
 static FollowingDetector following(c::following_config, c::following_ignore.data(),
                                    c::following_ignore.size());
 static bool following_visible{}, persistence_visible{};
@@ -170,7 +170,7 @@ static Trend target_led_trend(uint64_t now) {
     if (!target_rule || now < target.at_ms ||
         now - target.at_ms > uint64_t(c::signal_trend_stale_ms))
         return Trend::unknown;
-    // A fresh detection lights amber while trend samples accumulate. Keep the
+    // A fresh detection lights both LEDs while trend samples accumulate. Keep the
     // measured trend unchanged so the screen does not claim a steady signal.
     return target_trend == Trend::unknown ? Trend::steady : target_trend;
 }
@@ -513,12 +513,11 @@ static void parent_loop() {
                 }
             } else if (page == 2) {
                 bool fresh = gps.nearest(now, c::gps_max_fix_age_ms).valid;
-                const bool recent_sync = gps.has_time() && now >= gps.last_sync() &&
-                                         now - gps.last_sync() <= c::gps_max_fix_age_ms;
+                const auto source = gps.source(now);
                 std::snprintf(line1, sizeof(line1), "GPS: %s %s", fresh ? "FIX" : "NO FIX",
-                              !gps.has_time() ? "?"
-                              : recent_sync   ? "GPS"
-                                              : "HOLD");
+                              source == TimeSource::gps   ? "GPS"
+                              : source == TimeSource::rtc ? "RTC"
+                                                          : "?");
                 char clock[9];
                 gps.utc_text(now, clock);
                 std::snprintf(line2, sizeof(line2), "UTC: %s", clock);

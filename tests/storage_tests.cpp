@@ -19,9 +19,10 @@ int main() {
     CHECK(platform::log_file_id("WM00000003.LOG", id) && id == 3);
     CHECK(platform::log_file_id("WU00000004.LOG", id) && id == 4);
     // Stray files must not join retention or prevent logging from opening a new file.
-    for (const char *name : {"WK1.LOG", "WK0000001.LOG", "WK000000001.LOG", "WK+000001.LOG",
-                             "WK 0000001.LOG", "WK-0000001.LOG", "WK00000001.LOG.bak",
-                             "WX00000001.LOG", "WM0000000x.LOG", "WU00000001.LOG.bak", "WK00000001.log", "WK0000000a.LOG", "WK00000001.TXT", ""})
+    for (const char *name :
+         {"WK1.LOG", "WK0000001.LOG", "WK000000001.LOG", "WK+000001.LOG", "WK 0000001.LOG",
+          "WK-0000001.LOG", "WK00000001.LOG.bak", "WX00000001.LOG", "WM0000000x.LOG",
+          "WU00000001.LOG.bak", "WK00000001.log", "WK0000000a.LOG", "WK00000001.TXT", ""})
         CHECK(!platform::log_file_id(name, id));
 
     wiknow::Observation observation{};
@@ -70,9 +71,11 @@ int main() {
         gps.feed(*p, 1000);
     CHECK(platform::following_alert_json(observation, {}, gps, 200, 1, line, sizeof(line)));
     CHECK(std::strstr(line, "\"utc_ms\":1793102401000"));
-    CHECK(std::strstr(line, "\"time_source\":\"gps_holdover\""));
-    wiknow::FollowingEvidence evidence{"device_persistence", "duration_hits_score", 3, 3, 300000, 0};
-    CHECK(platform::following_alert_json(observation, {}, gps, 0, 1000, line, sizeof(line), &evidence, 20));
+    CHECK(std::strstr(line, "\"time_source\":\"gps\""));
+    wiknow::FollowingEvidence evidence{
+        "device_persistence", "duration_hits_score", 3, 3, 300000, 0};
+    CHECK(platform::following_alert_json(observation, {}, gps, 0, 1000, line, sizeof(line),
+                                         &evidence, 20));
     CHECK(std::strstr(line, "\"event\":\"device_persistence\""));
     CHECK(std::strstr(line, "\"hits\":3,\"score\":3,\"duration_ms\":300000"));
     CHECK(std::strstr(line, "\"identity_basis\":\"radio_address_type_address\""));

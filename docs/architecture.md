@@ -122,7 +122,7 @@ approximate. Peak state is scoped to a tracking session; persisted logs retain h
 For one selected matching target, compare consecutive smoothed-RSSI windows from
 the same node/protocol/channel. Use a median per window initially, a configurable
 deadband (initially 3 dB) and confirmation windows before changing LED state.
-Increasing: green; decreasing: red; steady: amber. Reset history on target or source
+Increasing: green; decreasing: red; steady: green and red together. Reset history on target or source
 change. Insufficient samples, stale data and signal lost turn all trend LEDs off.
 Never show a missing observation as steady. State is strength trend, not proof of
 movement toward/away from the transmitter. Colors and thresholds are configurable.
@@ -155,7 +155,7 @@ signals within 3.3 V limits. Check that MISO releases when CS is inactive before
 sharing the SPI bus. Leave supply voltage and GPIO assignments unset until checked.
 
 Budget parent pins for I²C (LCD and optional RTC), GPS UART RX (TX optional), SD SPI,
-buzzer PWM, three LEDs and node transport. Consider an I²C GPIO expander for LEDs
+buzzer PWM, two LEDs and node transport. Consider an I²C GPIO expander for LEDs
 if needed. A small parent board may not expose enough pins. Set every GPIO explicitly
 after selecting the parent. Verify LCD backpack voltage/pull-ups, logic levels,
 SD adapter compatibility and buzzer drive current before wiring; ESP32 GPIO is 3.3 V.

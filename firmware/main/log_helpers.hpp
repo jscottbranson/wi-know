@@ -25,29 +25,67 @@ inline bool capture_transition_json(bool on, bool all, bool startup, uint64_t no
                           on ? "true" : "false", all ? "all" : "matches",
                           startup ? "startup" : "switch", unsigned(boot),
                           static_cast<unsigned long long>(now), utc_text,
-                          gps.has_time() ? "gps_holdover" : "unknown", location);
+                          wiknow::time_source_name(gps.source(now)), location);
     return n >= 0 && size_t(n) < capacity;
 }
 
 // A null correction denotes first synchronization, not a zero-error RTC read.
-inline bool time_sync_json(uint64_t now, uint32_t boot, bool had_time, int64_t previous_utc,
-                           const wiknow::Gps &gps, char *out, size_t capacity) {
+inline bool time_sync_json(uint64_t now, uint32_t boot, wiknow::TimeSource previous_source,
+                           int64_t previous_utc, const wiknow::Gps &gps, char *out,
+                           size_t capacity) {
     int64_t utc{};
     if (!out || !capacity || !gps.utc(now, utc))
         return false;
     char correction[32] = "null";
-    if (had_time)
+    if (previous_source != wiknow::TimeSource::unknown)
         std::snprintf(correction, sizeof(correction), "%lld",
                       static_cast<long long>(utc - previous_utc));
-    int n = std::snprintf(
-        out, capacity,
-        "{\"schema_version\":1,\"event\":\"time_sync\",\"boot\":%u,\"at_ms\":%llu,"
-        "\"utc_ms\":%lld,\"previous_source\":\"%s\",\"time_source\":\"gps\","
-        "\"correction_ms\":%s,\"gps_sync_age_ms\":0,\"utc_uncertainty_ms\":null}\n",
-        unsigned(boot), static_cast<unsigned long long>(now), static_cast<long long>(utc),
-        had_time ? "gps_holdover" : "unknown", correction);
+    char sync_age[32] = "null";
+    if (gps.has_gps_sync() && now >= gps.last_sync())
+        std::snprintf(sync_age, sizeof(sync_age), "%llu",
+                      static_cast<unsigned long long>(now - gps.last_sync()));
+    int n =
+        std::snprintf(out, capacity,
+                      "{\"schema_version\":1,\"event\":\"time_sync\",\"boot\":%u,\"at_ms\":%llu,"
+                      "\"utc_ms\":%lld,\"previous_source\":\"%s\",\"time_source\":\"%s\","
+                      "\"correction_ms\":%s,\"gps_sync_age_ms\":%s,\"utc_uncertainty_ms\":null}\n",
+                      unsigned(boot), static_cast<unsigned long long>(now),
+                      static_cast<long long>(utc), wiknow::time_source_name(previous_source),
+                      wiknow::time_source_name(gps.source(now)), correction, sync_age);
     return n >= 0 && size_t(n) < capacity;
 }
+
+// Poll before input and after each parsed byte: source loss must be logged even
+// when there is no accepted sentence. Unselected TIM updates emit no GPS sync.
+class GpsTimeEvents {
+  public:
+    bool update(uint64_t now, uint32_t boot, const wiknow::Gps &gps, bool sample,
+                int64_t previous_utc, char *out, size_t capacity) {
+        const auto source = gps.source(now);
+        bool written = false;
+        if (sample) {
+            written = time_sync_json(now, boot, last_source_, previous_utc, gps, out, capacity);
+        } else if (source != last_source_ && out && capacity) {
+            int64_t utc{};
+            char value[32] = "null";
+            if (gps.utc(now, utc))
+                std::snprintf(value, sizeof(value), "%lld", static_cast<long long>(utc));
+            int n = std::snprintf(
+                out, capacity,
+                "{\"schema_version\":1,\"event\":\"time_source\",\"boot\":%u,\"at_ms\":%llu,"
+                "\"utc_ms\":%s,\"previous_source\":\"%s\",\"time_source\":\"%s\"}\n",
+                unsigned(boot), static_cast<unsigned long long>(now), value,
+                wiknow::time_source_name(last_source_), wiknow::time_source_name(source));
+            written = n >= 0 && size_t(n) < capacity;
+        }
+        if (written)
+            last_source_ = source;
+        return written;
+    }
+
+  private:
+    wiknow::TimeSource last_source_{wiknow::TimeSource::unknown};
+};
 
 // Only files created by this logger belong to its retention policy.
 inline bool log_file_id(const char *name, uint32_t &id) {
@@ -108,7 +146,7 @@ inline bool following_alert_json(const wiknow::Observation &o, wiknow::Fix fix,
         unsigned(o.address[4]), unsigned(o.address[5]), unsigned(o.address_type),
         unsigned(o.channel), int(o.rssi), static_cast<unsigned long long>(o.at_ms),
         static_cast<unsigned long long>(o.at_ms), utc_text,
-        gps.has_time() ? "gps_holdover" : "unknown", unsigned(o.timing_uncertainty_ms), location,
+        wiknow::time_source_name(gps.source(o.at_ms)), unsigned(o.timing_uncertainty_ms), location,
         displacement_m, unsigned(delay_ms), scoring);
     return size >= 0 && size_t(size) < capacity;
 }

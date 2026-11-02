@@ -93,11 +93,11 @@
   },
   "gps": {
     "enabled": true,
-    "model": "Grove GPS Air530",
+    "model": "Grove GPS Air530Z",
     "backup_battery_present": true,
     "uart": 0,
     "rx_pin": 10,
-    "tx_pin": -1,
+    "tx_pin": 8,
     "baud": 9600,
     "max_fix_age_ms": 3000,
     "max_timing_uncertainty_ms": 250
@@ -136,7 +136,6 @@
     "enabled": true,
     "increasing_pin": 0,
     "decreasing_pin": 1,
-    "steady_pin": 8,
     "window_ms": 2000,
     "stale_ms": 6000,
     "minimum_samples": 3,

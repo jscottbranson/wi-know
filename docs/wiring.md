@@ -27,7 +27,7 @@ left **USB** connector for native USB Serial/JTAG console/flashing, not the righ
 Use one **Seeed Studio XIAO ESP32-C5** as a manual standalone parent, with
 its supplied antenna attached to U.FL. Fit peripherals in this priority order:
 **screen, GPS, microSD, buzzer, then LEDs**. All five fit together, including
-three trend LEDs, without changing the previous display/buzzer/LED wiring. A bare
+two trend LEDs and GPS TX on the former amber pin. A bare
 board needs only antenna and USB power. This setup has **no RS-485 wiring and no identification
 harness**; flash the explicit standalone profile rather than the universal image.
 
@@ -45,17 +45,15 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | Optional part | XIAO label / GPIO | Connection | GPIO cost |
 | --- | --- | --- | --- |
 | Display | D4 / GPIO23; D5 / GPIO24 | SDA; SCL through bidirectional BSS138 level shifter to LCD | 2 |
-| Grove Air530 GPS | D7 / GPIO12 | GPS TX → UART0 RX; GPS RX left disconnected | 1 |
+| Grove Air530Z GPS | D7 / GPIO12; D1 / GPIO0 | GPS TX → UART0 RX; UART0 TX → GPS RX | 2 |
 | HiLetgo SPI microSD reader (5 V VCC) | D8 / GPIO8; D9 / GPIO9; D10 / GPIO10; D6 / GPIO11 | SCK; MISO/DO; MOSI/DI; CS respectively | 4 |
 | Buzzer | D3 / GPIO7 | 1 kΩ to 2N3904 base; driver circuit as drawn | 1 |
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
 | Decreasing LED (red) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
-| Steady LED (amber) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
 | Capture switch (optional) | Underside MTCK / GPIO4 | 3V3 → maintained switch → pad; 10 kΩ pad-to-GND | 1 underside pad |
 
-Screen + GPS + microSD use **7 GPIOs**; adding the buzzer uses 8; adding all
-three LEDs uses **all 11 D0–D10 header GPIOs**. GPS is receive-only, so it needs
-no TX pin on the XIAO. The example uses UART0 at 9600 baud and SPI2 at 4 MHz.
+Screen + GPS RX/TX + microSD use **8 GPIOs**; adding the buzzer uses 9;
+adding both LEDs uses **all 11 D0–D10 header GPIOs**. The example uses UART0 at 9600 baud and SPI2 at 4 MHz.
 USB Serial/JTAG remains available for flashing and console. D6/D7 are repurposed
 from the inactive bus, and D10 is microSD MOSI: **do not attach an RS-485 module
 or the universal identification harness to this setup**.
@@ -75,10 +73,9 @@ Choose the parts before building:
 - **Screen + GPS:** also set `sd.enabled: false`. For **screen only**, disable
   `gps` as well. Keep the same pin assignments as you add each higher-priority part.
 - **One or two LEDs:** keep `signal_trend.enabled: true`, and set each omitted
-  LED's `increasing_pin`, `decreasing_pin` or `steady_pin` to `-1`. That GPIO is
-  released. Each fitted LED still shows only its named trend; one LED does not
-  encode all three states. The steady LED also lights for a fresh matching signal
-  while trend samples accumulate. No fresh match turns all fitted LEDs off.
+  LED's `increasing_pin` or `decreasing_pin` to `-1`. That GPIO is released.
+  Steady and accumulating-sample indications light both fitted LEDs; one LED alone
+  cannot distinguish steady from its named trend. No fresh match turns both off.
 - **No LEDs:** set `signal_trend.enabled: false` and leave those branches unwired.
 - **No display, GPS, microSD or buzzer:** set that section's `enabled` to `false` and omit
   its entire circuit. The freed pins can be reassigned in a custom configuration.
@@ -104,8 +101,8 @@ connect them directly to the XIAO GPIOs. Buzzer alerts require enabled matching
 rules with a buzzer action or enabled following-device alerts; the default ruleset
 is empty. LED trends describe signal strength, not direction.
 
-Power the **Grove Air530 at 3.3 V**, join GPS GND to XIAO GND, and connect its TX
-to D7; leave GPS RX disconnected (`gps.tx_pin: -1`). Add 100 nF at GPS VCC/GND.
+Power the **Grove Air530Z at 3.3 V**, join GPS GND to XIAO GND, and connect its TX
+to D7; connect D1 / GPIO0 to Air530Z RX (`gps.tx_pin: 0`). Add 100 nF at GPS VCC/GND.
 Use connector labels to identify signals, not wire colors. GPS supplies receiver
 coordinates and UTC from valid NMEA fixes; it does not locate arbitrary transmitters.
 
@@ -169,11 +166,11 @@ used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
 | --- | --- |
 | GPIO0 | 470 Ω resistor → green LED anode; cathode → GND (increasing) |
 | GPIO1 | 470 Ω resistor → red LED anode; cathode → GND (decreasing) |
-| GPIO8 | 470 Ω resistor → amber LED anode; cathode → GND (steady) |
+| GPIO8 / P1.9, UART0 TX | GPS RX (module input, 3.3 V Air530Z) |
 | GPIO9 / P1.10 | 1 kΩ → Q1 base; 10 kΩ base-to-GND; Q1 emitter → GND |
 | Q1 collector | Buzzer negative; buzzer positive → regulated +5 V |
 | GPIO4 / GPIO5 | SDA / SCL → level shifter LV side → HV side → LCD SDA / SCL |
-| GPIO10, UART0 RX | GPS TX; GPS RX left disconnected |
+| GPIO10, UART0 RX | GPS TX (module output) |
 | GPIO26 / P1.12 (optional) | 3V3 → maintained capture switch → GPIO26; 10 kΩ GPIO26-to-GND |
 | GPIO23 / P2.5 | microSD SCK / CLK |
 | GPIO24 / P2.4 | microSD MOSI / DI / CMD |
@@ -186,10 +183,11 @@ used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
 For the parent transceiver: P2.2 / GPIO11 → DI, P1.4 / GPIO3 ← RO,
 P1.8 / GPIO7 → tied DE and `/RE`. The XIAO workers retain GPIO12 as RX.
 
-Use one 470 Ω resistor per efficient red/green/amber LED (approximately 2–3 mA;
+Use one 470 Ω resistor per efficient red/green LED (approximately 2–3 mA;
 actual current depends on forward voltage). Anode is usually the long lead;
 cathode is usually the short lead/flat edge. A fresh matching signal lights the
-amber LED while trend samples accumulate, then the LED for the measured trend.
+red and green LEDs together while samples accumulate or the trend is steady.
+Increasing lights green only; decreasing lights red only.
 All LEDs turn off when the match becomes stale (`signal_trend.stale_ms`, 6 seconds
 by default). These indicate changes in strength, not transmitter direction.
 
@@ -213,11 +211,11 @@ already on the backpack/shifter before adding more. This follows
 Do not connect the 5 V bus directly to ESP32 GPIOs. Adjust the backpack contrast
 trimmer and verify its address and mapping; a bare parallel LCD needs different wiring.
 
-Power the Grove Air530 from 3.3 V and connect its **TX to parent RX**, using the
+Power the Grove Air530Z from 3.3 V and connect its **TX to parent RX**, using the
 connector signal labels to establish orientation. Seeed lists a 3.3 V/5 V supply
 and up to 60 mA working current for the
 [Grove Air530](https://wiki.seeedstudio.com/Grove-GPS-Air530/); allow sufficient
-headroom on the parent's 3V3 regulator. No parent TX connection is needed for NMEA
+headroom on the parent's 3V3 regulator. The GPIO8 TX connection supports commands; it is not needed for NMEA
 reception. Coordinates identify the receiver's location.
 
 The diagrams use the **[HiLetgo B07BJ2P6X6 reader](https://www.amazon.com/dp/B07BJ2P6X6)**
@@ -359,7 +357,7 @@ has not yet been verified on the physical boards.
 Use a maintained SPST switch: **controller 3V3 → switch → input GPIO**, with
 **10 kΩ from the input GPIO to common GND**. Never use 5 V. All parent/system
 and standalone diagrams above include this additional circuit. All three trend
-LEDs, including amber, stay connected to their original GPIOs.
+Red and green LEDs stay connected; the former amber pin is now GPS TX.
 
 | Controller | Input | Configuration |
 | --- | --- | --- |
@@ -396,8 +394,26 @@ ON starts a new full-capture file, including a copy of each matching detection;
 OFF closes the session and restores the configured mode. See
 [operation and capture limits](capture-switch.md).
 
-Air530 retained-time startup is not enabled. GPS wiring remains receive-only
-(`tx_pin: -1` in board profiles); no query or UART wait is added to scanning.
-The backup-battery configuration is a hardware declaration, not a measured battery
-status. See [RTC interface and validation limitations](air530-time.md) before adding TX
-wiring or treating startup date/time as authoritative.
+Retained-time startup is not enabled. Board profiles now route GPS TX to the former
+amber LED pin, but boot and scanning never wait for RTC data. The GPS RX wire can
+remain disconnected until needed for commands; reception still works.
+
+## Migrating the amber LED pin to GPS TX
+
+Power off before rewiring. Remove the amber LED and its resistor branch completely.
+On N32R8 connect **P1.9 / GPIO8 → GPS RX**; keep **GPS TX → GPIO10**.
+On XIAO connect **D1 / GPIO0 → GPS RX**; keep **GPS TX → D7 / GPIO12**.
+Use the module's signal labels, not cable colors. Keep 3.3 V power and common ground.
+The remaining red and green LED branches each retain their own 470 Ω resistor.
+
+These direct TX connections target **Air530Z**, whose RX/TX use 3.3 V logic.
+The older Air530 has different electrical/protocol specifications: verify its input
+levels before connecting. See the
+[Air530Z manual, pp. 6–7](https://files.seeedstudio.com/wiki/Grove-GPS_Air_530/Air530Z_Positioning_Module_User_Manual.pdf).
+The connection is UART TX to the GPS, not a separate RTC bus. It preserves the
+capture switch and all RS-485 pins for later parent/child operation on N32R8.
+
+Rebuild/reflash with the new board profile after rewiring. The boot LED test now
+cycles green, red, then both together and never drives GPS TX as an indicator.
+The removed `signal_trend.steady_pin` setting must be deleted from custom JSON.
+GPS query/retained-time validation is still pending; wiring alone does not establish UTC.
