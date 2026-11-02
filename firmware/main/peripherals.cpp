@@ -207,6 +207,7 @@ void gps_update(wiknow::Gps &gps) {
     uint64_t now = now_ms();
     for (int i = 0; i < n; ++i)
         gps.feed(char(data[i]), now);
+    gps.expire(now, c::gps_max_fix_age_ms);
 }
 void indicators(wiknow::Trend trend, bool beep) {
     if (role != wiknow::Role::parent)
@@ -238,17 +239,29 @@ static void init_lcd() {
     bus.scl_io_num = gpio_num_t(c::display_scl_pin);
     bus.clk_source = I2C_CLK_SRC_DEFAULT;
     bus.glitch_ignore_cnt = 7;
+    bus.flags.enable_internal_pullup = true;
     i2c_master_bus_handle_t handle{};
-    ESP_ERROR_CHECK(i2c_new_master_bus(&bus, &handle));
+    esp_err_t error = i2c_new_master_bus(&bus, &handle);
+    if (error != ESP_OK) {
+        ESP_LOGW("lcd", "Display unavailable: %s", esp_err_to_name(error));
+        return;
+    }
     i2c_device_config_t dev{};
     dev.dev_addr_length = I2C_ADDR_BIT_LEN_7;
     dev.device_address = c::display_i2c_address;
     dev.scl_speed_hz = 100000;
-    ESP_ERROR_CHECK(i2c_master_bus_add_device(handle, &dev, &lcd));
+    error = i2c_master_bus_add_device(handle, &dev, &lcd);
+    if (error != ESP_OK) {
+        ESP_LOGW("lcd", "Display unavailable: %s", esp_err_to_name(error));
+        i2c_del_master_bus(handle);
+        return;
+    }
     vTaskDelay(ticks(50));
     if (!lcd_nibble(3, false)) {
         ESP_LOGE("lcd", "No response at configured I2C address");
+        i2c_master_bus_rm_device(lcd);
         lcd = nullptr;
+        i2c_del_master_bus(handle);
         return;
     }
     vTaskDelay(ticks(5));
@@ -365,6 +378,13 @@ static void logger(void *) {
         esp_vfs_fat_spiflash_unmount_rw_wl("/flashlog", flash_handle);
         return false;
     };
+    auto sd_to_flash = [&] {
+        ESP_LOGW("storage", "SD unavailable; trying flash");
+        writer.close_all();
+        esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
+        spi_bus_free(SPI2_HOST);
+        return flash_fallback();
+    };
     Storage selected = select_storage(
         c::sd_enabled,
         [&] {
@@ -385,7 +405,7 @@ static void logger(void *) {
     for (;;) {
         if (xQueueReceive(log_queue, &line, ticks(100)) == pdTRUE) {
             if (active_storage != Storage::off) {
-                const auto result = append_with_initial_fallback(
+                const auto result = append_with_fallback(
                     selected, written,
                     [&] {
                         const auto appended = writer.record(
@@ -403,13 +423,7 @@ static void logger(void *) {
                             return LogResult::error;
                         return appended;
                     },
-                    [&] {
-                        ESP_LOGW("storage", "Initial SD write failed; trying flash");
-                        writer.close_all();
-                        esp_vfs_fat_sdcard_unmount("/sdcard", sd_card);
-                        spi_bus_free(SPI2_HOST);
-                        return flash_fallback();
-                    });
+                    sd_to_flash);
                 active_storage = selected;
                 if (result != LogResult::stored)
                     ++dropped;
@@ -440,11 +454,16 @@ static void logger(void *) {
                 : uint64_t(c::logging_flush_interval_ms);
         if (active_storage != Storage::off && now_ms() - last_flush >= flush_ms) {
             if (!writer.flush([](FILE *file) { return fsync(fileno(file)) == 0; })) {
-                ESP_LOGE("storage", "%s flush failed; logging disabled until reboot",
-                         storage_label(selected));
-                writer.close_all();
-                active_storage = Storage::off;
-                ++dropped;
+                ++dropped; // Buffered records on the failed medium cannot be recovered.
+                if (selected == Storage::sd && sd_to_flash()) {
+                    selected = Storage::flash;
+                    written = false;
+                    active_storage = selected;
+                } else {
+                    ESP_LOGE("storage", "Flush failed and no fallback; logging disabled until reboot");
+                    writer.close_all();
+                    active_storage = Storage::off;
+                }
             }
             last_flush = now_ms();
         }

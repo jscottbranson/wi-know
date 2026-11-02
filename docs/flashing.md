@@ -1,20 +1,20 @@
 # Easy firmware flashing
 
-Use the local helper from the repository root:
+Use the local helper from the repository root. Choose one of four installations:
 
 ```sh
-python3 tools/flash.py
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8
+python3 tools/flash.py --config config/settings.standalone.example.json --board xiao
+python3 tools/flash.py --config config/settings.parent.example.json --board n32r8
+python3 tools/flash.py --config config/settings.child.example.json --board xiao --node-id 1
 ```
 
-The helper asks only for the USB port. It builds the **same universal image** for
-all boards: hardware identification selects the parent profile, and the parent
-assigns worker IDs and child/follower roles over RS-485. Fit the identification
-harness described in [universal wiring](universal.md) before first boot.
-
-It validates settings/rules and builds successfully before flashing. Connect each
-board in turn and run the same command with the same configuration. For wired
-parent peripherals use `--config config/settings.universal.example.json` on **every**
-board. Do not pass role or node-ID arguments. The default leaves peripherals off.
+The helper asks for the USB port, validates settings, builds, and then flashes.
+Each child needs a unique node ID. Parent and standalone configurations assume
+LCD, GPS, microSD, buzzer, LEDs, and capture-switch wiring; there are no separate
+wiring or capture variants. Missing LCD/GPS/indicators do not stop scanning. An
+absent SD card falls back to internal flash, and an absent switch stays OFF via
+its internal pull-down. The helper prints the resolved capture GPIO before flashing.
 
 ## One-time prerequisites
 
@@ -36,7 +36,7 @@ It does not download/install the SDK, change your shell environment, or run a fu
 Standalone configs automatically select the parent role when `--role` is omitted:
 
 ```sh
-python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone-wiring.example.json
+python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone.example.json
 ```
 
 ### Select the board wiring
@@ -47,8 +47,8 @@ firmware does not detect the carrier board or discover connected peripherals.
 For a standalone N32R8 with LCD, GPS, SD, buzzer and all three LEDs enabled:
 
 ```sh
-python3 tools/flash.py --config config/settings.standalone-wiring.example.json --board n32r8 --dry-run
-python3 tools/flash.py --config config/settings.standalone-wiring.example.json --board n32r8
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --dry-run
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8
 ```
 
 Use `--board xiao` with the same config for the standalone mini XIAO schematic.
@@ -60,7 +60,8 @@ LEDs or other custom wiring, use `--board custom` and set the GPIOs in your conf
 
 You can persist the choice as `"board": {"model": "n32r8"}` in settings. The CLI
 option takes precedence. Without either, `custom` preserves existing pin settings.
-An explicit board profile defaults the flash helper to the parent role; pass
+The helper uses the role stored in the config. A board profile applied to a
+universal config selects the parent role; pass
 `--role child --node-id 1` or `--role follower --node-id 2` for manual workers.
 Board profiles cannot be combined with `--role universal`: keep the existing
 universal configuration and identification harness for that workflow.
@@ -71,14 +72,14 @@ gets an isolated flash-helper build directory, and firmware logs its selected
 board at startup. This selects wiring only; flash size and PSRAM settings remain
 controlled by the existing SDK configuration.
 
-Configs without a board profile or standalone mode default to the universal role. Explicit `--role` choices are still
-validated; standalone mode requires `parent`.
+Explicit `--role` choices override the config and are validated; standalone mode
+requires `parent`. The default `settings.json` retains universal mode for compatibility.
 
 Universal image (repeat for every board, changing only the USB port):
 
 ```sh
-python3 tools/flash.py --port /dev/ttyACM0 --config config/settings.universal.example.json
-python3 tools/flash.py --build-only --config config/settings.universal.example.json
+python3 tools/flash.py --port /dev/ttyACM0 --config config/settings.json
+python3 tools/flash.py --build-only --config config/settings.json
 python3 tools/flash.py --dry-run
 ```
 

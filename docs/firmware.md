@@ -106,7 +106,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   then searches configured channels after 3 seconds without a target sample; parent
   releases stale targets. BLE follower filters broadcasts for the requested address.
 - Checksum-validated Air530 RMC parsing, receiver-fix history, GPS UTC holdover,
-  null UTC before validated synchronization, and capture-age-based association for
+  null UTC before validated synchronization or after GPS freshness expires, and capture-age-based association for
   buffered child observations. Full bus round-trip time is a conservative timing
   uncertainty; uncertain associations get null location. All nodes must be co-located.
   Tagging includes timing uncertainty in the fix-age limit, and the parent drains

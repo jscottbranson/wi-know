@@ -26,7 +26,7 @@ def parser():
         'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
     result.add_argument('--role', choices=ROLES,
-                        help='Defaults to parent for standalone configs or board profiles, otherwise universal')
+                        help='Use the config role; a board profile selects parent for universal configs')
     result.add_argument('--board', choices=generate_config.BOARDS,
                         help='Apply documented board pin mapping; custom keeps configured pins')
     result.add_argument('--node-id', type=int, help='Parent: 0; children/follower: unique bus ID')
@@ -201,7 +201,8 @@ def main(argv=None):
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0, board_override=args.board)
         board = args.board or raw.get('board', {}).get('model', 'custom')
-        role = args.role or ('parent' if raw.get('standalone', {}).get('enabled', False) or board != 'custom' else 'universal')
+        role = args.role or (raw['node']['role'] if raw['node']['role'] != 'universal'
+                             else 'parent' if board != 'custom' else 'universal')
         first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
         if node_id is None:
@@ -223,6 +224,8 @@ def main(argv=None):
                 pins = ', '.join(f'{key}={value}' for key, value in validated[section].items()
                                  if key.endswith('_pin') or key == 'pin')
                 print(f'  {section}: {pins}')
+        switch = validated['capture_switch']
+        print(f"Capture switch: GPIO{switch['gpio_pin']}" if switch['enabled'] else 'Capture switch: disabled')
         print(f'Config: {config}')
         if role in ('parent', 'universal') and validated['sd']['enabled'] and validated['sd']['format_if_mount_failed']:
             print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')

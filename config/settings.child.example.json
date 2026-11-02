@@ -1,16 +1,41 @@
 {
   "schema_version": 1,
-  "node": { "role": "universal", "id": 0 },
+  "node": {
+    "role": "child",
+    "id": 1
+  },
   "wifi": {
     "country": "US",
-    "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 36, 40, 44, 48, 149, 153, 157, 161],
+    "channels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      36,
+      40,
+      44,
+      48,
+      149,
+      153,
+      157,
+      161
+    ],
     "dwell_ms": 500
   },
   "standalone": {
     "enabled": false,
     "ble_dwell_ms": 120
   },
-  "ble": { "enabled": true },
+  "ble": {
+    "enabled": true
+  },
   "bus": {
     "enabled": true,
     "uart": 1,
@@ -62,7 +87,10 @@
     "max_speed_mps": 100,
     "max_fix_age_ms": 2000
   },
-  "follower": { "enabled": true, "release_after_ms": 30000 },
+  "follower": {
+    "enabled": true,
+    "release_after_ms": 30000
+  },
   "gps": {
     "enabled": false,
     "model": "Grove GPS Air530",
@@ -84,9 +112,26 @@
     "cs_pin": -1,
     "clock_khz": 4000
   },
-  "logging": { "mode": "matches", "flush_interval_ms": 1000, "rotate_bytes": 10485760, "max_files": 100 },
-  "display": { "enabled": false, "sda_pin": -1, "scl_pin": -1, "i2c_address": 39, "page_interval_ms": 3000 },
-  "buzzer": { "enabled": false, "pin": -1, "frequency_hz": 2000, "duration_ms": 150, "cooldown_ms": 10000 },
+  "logging": {
+    "mode": "matches",
+    "flush_interval_ms": 1000,
+    "rotate_bytes": 10485760,
+    "max_files": 100
+  },
+  "display": {
+    "enabled": false,
+    "sda_pin": -1,
+    "scl_pin": -1,
+    "i2c_address": 39,
+    "page_interval_ms": 3000
+  },
+  "buzzer": {
+    "enabled": false,
+    "pin": -1,
+    "frequency_hz": 2000,
+    "duration_ms": 150,
+    "cooldown_ms": 10000
+  },
   "signal_trend": {
     "enabled": false,
     "increasing_pin": -1,
@@ -98,5 +143,19 @@
     "deadband_db": 3,
     "confirmations": 2
   },
-  "gatt": { "enabled": false, "timeout_ms": 3000, "cooldown_ms": 60000, "targets": [] }
+  "gatt": {
+    "enabled": false,
+    "timeout_ms": 3000,
+    "cooldown_ms": 60000,
+    "targets": []
+  },
+  "capture_switch": {
+    "enabled": false,
+    "gpio_pin": -1,
+    "internal_pulldown": false,
+    "debounce_ms": 50
+  },
+  "board": {
+    "model": "xiao"
+  }
 }

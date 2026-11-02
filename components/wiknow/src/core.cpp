@@ -1131,6 +1131,10 @@ bool Gps::utc(uint64_t at, int64_t &out) const {
     out = utc_at_ + (at >= time_at_ ? int64_t(at - time_at_) : -int64_t(time_at_ - at));
     return true;
 }
+void Gps::expire(uint64_t now, uint32_t max_age_ms) {
+    if (has_time_ && now >= time_at_ && now - time_at_ > max_age_ms)
+        *this = Gps{};
+}
 bool same_signal(const Observation &a, const Observation &b) {
     return a.node == b.node && a.boot == b.boot && a.radio == b.radio &&
            a.ble_evidence == b.ble_evidence && a.address_type == b.address_type &&

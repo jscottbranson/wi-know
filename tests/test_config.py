@@ -17,7 +17,7 @@ class ConfigTests(unittest.TestCase):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
     def test_capture_switch_validation(self):
-        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        source = generate.load(ROOT/'config/settings.standalone.example.json')
         source['board'] = {'model': 'xiao'}
         source['capture_switch'] = {'enabled': True, 'gpio_pin': 0,
                                     'internal_pulldown': True, 'debounce_ms': 50}
@@ -35,7 +35,7 @@ class ConfigTests(unittest.TestCase):
             bad['capture_switch']['gpio_pin'] = pin
             with self.subTest(board=board, pin=pin), self.assertRaises(ValueError):
                 generate.validate(bad)
-        for key, value in [('debounce_ms', 0), ('gpio_pin', -1), ('internal_pulldown', 1)]:
+        for key, value in [('debounce_ms', 0), ('gpio_pin', -2), ('internal_pulldown', 1)]:
             bad = copy.deepcopy(source)
             bad['capture_switch'][key] = value
             with self.subTest(key=key), self.assertRaises(ValueError):
@@ -48,11 +48,11 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
 
     def test_capture_examples_keep_all_leds_on_spare_pins(self):
-        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0),
-                                    ('n32r8-standalone', 26, 8)]:
-            source = generate.load(ROOT/f'config/settings.{variant}-capture.example.json')
+        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0)]:
+            source = generate.load(ROOT/f'config/settings.{variant}.example.json')
             settings, _ = generate.validate(source, board_override=source['board']['model'])
             self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
+            self.assertTrue(settings['capture_switch']['internal_pulldown'])
             self.assertEqual(settings['signal_trend']['steady_pin'], amber)
             for key in ('increasing_pin', 'steady_pin', 'decreasing_pin'):
                 self.assertGreaterEqual(settings['signal_trend'][key], 0)
@@ -61,27 +61,27 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'used by'):
                 generate.validate(source)
 
-    def test_n32r8_standalone_capture_preserves_standalone_wiring(self):
-        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
-        expected, _ = generate.validate(source, board_override='n32r8')
-        source = generate.load(ROOT/'config/settings.n32r8-standalone-capture.example.json')
-        actual, rules = generate.validate(source)
-        self.assertTrue(actual['standalone']['enabled'])
-        self.assertFalse(actual['bus']['enabled'])
-        self.assertTrue(actual['capture_switch']['enabled'])
-        self.assertEqual(actual['capture_switch']['gpio_pin'], 26)
-        for section in expected:
-            if section != 'capture_switch':
-                self.assertEqual(actual[section], expected[section], section)
-        header = generate.emit(actual, rules)
-        self.assertIn('capture_switch_enabled = true', header)
-        self.assertIn('capture_switch_gpio_pin = 26', header)
+    def test_all_standalone_configs_select_capture_pin_by_board(self):
+        for variant in ('standalone',):
+            source = generate.load(ROOT/f'config/settings.{variant}.example.json')
+            for board, pin in [('xiao', 4), ('n32r8', 26)]:
+                with self.subTest(variant=variant, board=board):
+                    settings, rules = generate.validate(source, board_override=board)
+                    self.assertTrue(settings['standalone']['enabled'])
+                    self.assertFalse(settings['bus']['enabled'])
+                    self.assertTrue(settings['capture_switch']['enabled'])
+                    self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
+                    self.assertIn(f'capture_switch_gpio_pin = {pin}', generate.emit(settings, rules))
+            self.assertEqual(source['capture_switch']['gpio_pin'], -1)
+            source['capture_switch']['enabled'] = False
+            settings, _ = generate.validate(source, board_override='n32r8')
+            self.assertFalse(settings['capture_switch']['enabled'])
 
     def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
-        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        source = generate.load(ROOT/'config/settings.standalone.example.json')
         original = copy.deepcopy(source)
         for board, reference in [('xiao', 'standalone'), ('n32r8', 'parent')]:
-            expected = generate.load(ROOT/f'config/settings.{reference}-wiring.example.json')
+            expected = generate.load(ROOT/f'config/settings.{reference}.example.json')
             settings, rules = generate.validate(source, board_override=board)
             self.assertEqual(settings['board']['model'], board)
             for section in ('display', 'buzzer', 'signal_trend', 'gps', 'sd'):
@@ -105,7 +105,7 @@ class ConfigTests(unittest.TestCase):
             generate.validate(self.settings, 'universal')
 
     def test_board_mapping_is_checked_for_conflicts_after_resolution(self):
-        settings = generate.load(ROOT/'config/settings.parent-wiring.example.json')
+        settings = generate.load(ROOT/'config/settings.parent.example.json')
         with self.assertRaisesRegex(ValueError, 'GPIO .* used'):
             generate.validate(settings, board_override='xiao')
         settings, _ = generate.validate(self.settings, 'child', 1, board_override='xiao')
@@ -126,7 +126,7 @@ class ConfigTests(unittest.TestCase):
                 generate.validate(self.settings)
 
     def test_universal_profiles_and_strap_conflicts(self):
-        for name in ('settings.json', 'settings.universal.example.json'):
+        for name in ('settings.json',):
             settings, rules = generate.validate(generate.load(ROOT/'config'/name))
             self.assertEqual(settings['node']['role'], 'universal')
             header = generate.emit(settings, rules)
@@ -134,7 +134,8 @@ class ConfigTests(unittest.TestCase):
             self.assertIn('universal_parent_rx_pin = 3', header)
             self.assertIn('universal_worker_rx_pin = 12', header)
             self.assertIn('universal_strap_pin = 10', header)
-        settings = generate.load(ROOT/'config/settings.universal.example.json')
+        settings = generate.load(ROOT/'config/settings.json')
+        settings['gps']['enabled'] = True
         settings['gps']['rx_pin'] = 10
         with self.assertRaisesRegex(ValueError, 'GPIO 10 used'):
             generate.validate(settings)
@@ -190,7 +191,7 @@ class ConfigTests(unittest.TestCase):
             self.assertFalse(generate.load(path)['following_alert']['scoring_enabled'])
 
     def test_standalone_wiring_uses_all_header_pins(self):
-        settings, rules = generate.validate(generate.load(ROOT/'config/settings.standalone-wiring.example.json'))
+        settings, rules = generate.validate(generate.load(ROOT/'config/settings.standalone.example.json'))
         self.assertEqual(settings['node'], {'role': 'parent', 'id': 0})
         self.assertTrue(settings['standalone']['enabled'])
         self.assertFalse(settings['bus']['enabled'])
@@ -219,7 +220,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(settings['sd']['clock_khz'], 4000)
 
     def test_standalone_priority_peripheral_combinations(self):
-        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        example = generate.load(ROOT/'config/settings.standalone.example.json')
         priority = ('display', 'gps', 'sd', 'buzzer', 'signal_trend')
         for count in range(len(priority) + 1):
             with self.subTest(peripherals=priority[:count]):
@@ -233,7 +234,9 @@ class ConfigTests(unittest.TestCase):
                     self.assertIn(f'{section}_enabled = {enabled};', header)
 
     def test_standalone_gps_sd_require_assigned_unique_pins(self):
-        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        example = generate.load(ROOT/'config/settings.standalone.example.json')
+        example['board'] = {'model': 'custom'}
+        example['capture_switch']['enabled'] = False
         for section, keys in [('gps', ('rx_pin',)),
                               ('sd', ('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin'))]:
             for key in keys:
@@ -251,7 +254,9 @@ class ConfigTests(unittest.TestCase):
                     generate.validate(settings)
 
     def test_standalone_optional_indicators(self):
-        example = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        example = generate.load(ROOT/'config/settings.standalone.example.json')
+        example['board'] = {'model': 'custom'}
+        example['capture_switch']['enabled'] = False
         keys = ('increasing_pin', 'decreasing_pin', 'steady_pin')
         for mask in range(8):
             with self.subTest(mask=mask):

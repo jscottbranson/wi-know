@@ -34,7 +34,7 @@ harness**; flash the explicit standalone profile rather than the universal image
 ![Standalone XIAO ESP32-C5 with screen, GPS, microSD, buzzer and LEDs](images/xiao-standalone-wiring.png)
 
 [Editable SVG](images/xiao-standalone-wiring.svg) ·
-[Matching example configuration](../config/settings.standalone-wiring.example.json)
+[Matching example configuration](../config/settings.standalone.example.json)
 
 The diagram uses the existing supported **1602A LCD with a 5 V PCF8574 backpack**
 and the same LED resistors, level shifter and buzzer driver described in
@@ -135,8 +135,8 @@ verify cold boots, sustained writes and GPS reception with every fitted peripher
 After activating ESP-IDF, validate and flash from the repository root:
 
 ```sh
-python3 tools/generate_config.py --config config/settings.standalone-wiring.example.json
-python3 tools/flash.py --config config/settings.standalone-wiring.example.json --role parent --node-id 0
+python3 tools/generate_config.py --config config/settings.standalone.example.json
+python3 tools/flash.py --config config/settings.standalone.example.json --role parent --node-id 0
 ```
 
 Settings are compiled in: rebuild and flash after changing your choices. This
@@ -150,7 +150,7 @@ been verified on physical hardware.
 ![Parent peripheral wiring with resistors, transistor and level shifting](images/parent-peripherals.png)
 
 [Editable SVG](images/parent-peripherals.svg) ·
-[Matching example configuration](../config/settings.parent-wiring.example.json)
+[Matching example configuration](../config/settings.parent.example.json)
 
 ![Parent header positions and peripheral assignments](images/parent-headers.png)
 
@@ -255,8 +255,8 @@ from the repository root with this example, or copy its peripheral settings into
 your chosen config:
 
 ```sh
-python3 tools/generate_config.py --config config/settings.parent-wiring.example.json
-idf.py -C firmware -B build-parent-wiring -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 -DWIKNOW_CONFIG="$PWD/config/settings.parent-wiring.example.json" build
+python3 tools/generate_config.py --config config/settings.parent.example.json
+idf.py -C firmware -B build-parent-wiring -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 -DWIKNOW_CONFIG="$PWD/config/settings.parent.example.json" build
 ```
 
 N32R8 identifies memory capacity; this example retains the existing conservative
@@ -363,9 +363,9 @@ LEDs, including amber, stay connected to their original GPIOs.
 
 | Controller | Input | Configuration |
 | --- | --- | --- |
-| N32R8 distributed parent | P1.12 / GPIO26 | [Parent capture example](../config/settings.parent-capture.example.json) |
-| N32R8 standalone | P1.12 / GPIO26 | [N32R8 standalone capture example](../config/settings.n32r8-standalone-capture.example.json) |
-| XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone capture example](../config/settings.standalone-capture.example.json) |
+| N32R8 distributed parent | P1.12 / GPIO26 | [Parent configuration](../config/settings.parent.example.json) |
+| N32R8 standalone | P1.12 / GPIO26 | [Standalone configuration with `--board n32r8`](../config/settings.standalone.example.json) |
+| XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone configuration with `--board xiao`](../config/settings.standalone.example.json) |
 
 These examples select the corresponding `board.model` and preserve all three
 LEDs. No spare D0–D10 header GPIO remains on a fully populated XIAO; its underside
@@ -384,9 +384,9 @@ The pin maps were checked against the
 and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/gpio.html).
 These are intended circuits, not hardware-tested builds.
 
-The examples use the external resistor (`internal_pulldown: false`). Supported
-input pins on these C5 profiles can alternatively use `internal_pulldown: true`;
-the external resistor also defines OFF before firmware configures the GPIO.
+The examples enable `internal_pulldown: true`, keeping an absent switch OFF.
+The illustrated external resistor can remain fitted and also defines OFF before
+firmware configures the GPIO.
 Validation rejects reserved/strapping pins, unexposed pins and enabled-peripheral
 conflicts. Enabling the switch requires an explicit `xiao` or `n32r8` manual
 parent profile; universal auto-identification images and workers reject it.

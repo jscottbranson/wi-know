@@ -364,8 +364,7 @@ int main() {
         CHECK(writer.append(d.name, {65, 8, 0}, LogClass::unmatched, "drop\n", ample) ==
               LogResult::error);
     }
-    // Lazy initial SD failures retain boot fallback; later errors and policy
-    // drops must not switch media or retry already committed observations.
+    // Both initial and later SD errors fall back to flash. Policy drops stay on SD.
     {
         Directory flash;
         LogWriter writer;
@@ -385,31 +384,34 @@ int main() {
                 return LogResult::error;
             return result;
         };
-        CHECK(append_with_initial_fallback(selected, written, append, fallback) ==
+        CHECK(append_with_fallback(selected, written, append, fallback) ==
               LogResult::stored);
         CHECK(selected == Storage::flash && written && fallbacks == 1);
         CHECK(flash.read("WM00000001.LOG") == "first\n");
         selected = Storage::sd;
-        CHECK(append_with_initial_fallback(
-                  selected, written, [] { return LogResult::error; }, fallback) ==
-              LogResult::error);
-        CHECK(selected == Storage::sd && fallbacks == 1);
+        int attempts = 0;
+        CHECK(append_with_fallback(
+                  selected, written,
+                  [&] { return ++attempts == 1 ? LogResult::error : LogResult::stored; },
+                  fallback) == LogResult::stored);
+        CHECK(selected == Storage::flash && written && fallbacks == 2 && attempts == 2);
+        selected = Storage::sd;
         written = false;
-        CHECK(append_with_initial_fallback(
+        CHECK(append_with_fallback(
                   selected, written, [] { return LogResult::blocked; }, fallback) ==
               LogResult::blocked);
-        CHECK(selected == Storage::sd && !written && fallbacks == 1);
+        CHECK(selected == Storage::sd && !written && fallbacks == 2);
         int writes = 0;
-        CHECK(append_with_initial_fallback(
+        CHECK(append_with_fallback(
                   selected, written,
                   [&] {
                       ++writes;
                       return LogResult::error;
                   },
                   fallback) == LogResult::error);
-        CHECK(selected == Storage::flash && !written && writes == 2 && fallbacks == 2);
+        CHECK(selected == Storage::flash && !written && writes == 2 && fallbacks == 3);
         selected = Storage::sd;
-        CHECK(append_with_initial_fallback(
+        CHECK(append_with_fallback(
                   selected, written, [] { return LogResult::error; }, [] { return false; }) ==
               LogResult::error);
         CHECK(!written);

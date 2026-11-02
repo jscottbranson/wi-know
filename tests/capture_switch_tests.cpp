@@ -31,6 +31,7 @@ int main() {
     assert(platform::capture_transition_json(true, true, true, 42, 7, gps, json, sizeof(json)));
     assert(std::strstr(json, "\"at_ms\":42"));
     assert(std::strstr(json, "\"utc_ms\":null"));
+    assert(std::strstr(json, "\"receiver_fix\":null"));
     assert(std::strstr(json, "\"reason\":\"startup\""));
     assert(platform::capture_transition_json(false, false, false, 100, 7, gps, json, sizeof(json)));
     assert(std::strstr(json, "\"effective_mode\":\"matches\""));
@@ -47,4 +48,9 @@ int main() {
     assert(std::strstr(json, "\"utc_ms\":1793102401000"));
     assert(std::strstr(json, "\"time_source\":\"gps_holdover\""));
     assert(std::strstr(json, "\"latitude\":42.0000000"));
+    gps.expire(4001, 3000);
+    assert(platform::capture_transition_json(false, false, false, 4001, 7, gps, json, sizeof(json)));
+    assert(std::strstr(json, "\"utc_ms\":null"));
+    assert(std::strstr(json, "\"receiver_fix\":null"));
+    assert(std::strstr(json, "\"time_source\":\"unknown\""));
 }

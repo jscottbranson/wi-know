@@ -4,12 +4,15 @@ Build and flash the same universal image and configuration on the N32R8 parent
 and every XIAO ESP32-C5. Do not pass per-board role or ID arguments:
 
 ```sh
-python3 tools/flash.py --config config/settings.universal.example.json --port /dev/ttyACM0
+python3 tools/flash.py --config config/settings.json --port /dev/ttyACM0
 ```
 
-Repeat with each USB port. `settings.json` also builds a universal image, with
-parent peripherals disabled. The universal example enables the documented LCD,
-GPS, LEDs, buzzer and microSD. Keep the generated rules manifest with the image.
+Repeat with each USB port. `settings.json` keeps parent peripherals and capture
+control disabled. This compatibility workflow uses a separate identification
+harness; for the four supported manual installations, use the configurations in
+[flashing instructions](flashing.md). The former universal-peripherals example
+has been removed; existing custom universal configurations remain supported.
+Keep the generated rules manifest with the image.
 For repeatable deployment, build once and flash that build directory to each
 board; record the SHA-256 of `wi_know.bin` and read back/verify each flash.
 

@@ -16,8 +16,24 @@ spec.loader.exec_module(flash)
 
 
 class FlashTests(unittest.TestCase):
+    def test_supported_installations_infer_roles_and_capture_pins(self):
+        for variant, board, role, switch in [
+                ('standalone', 'n32r8', 'parent', 'GPIO26'),
+                ('standalone', 'xiao', 'parent', 'GPIO4'),
+                ('parent', 'n32r8', 'parent', 'GPIO26'),
+                ('child', 'xiao', 'child', 'disabled')]:
+            with self.subTest(variant=variant, board=board):
+                status, output = self.run_main(
+                    '--config', str(ROOT/f'config/settings.{variant}.example.json'),
+                    '--board', board, '--node-id', '1' if role == 'child' else '0', '--dry-run')
+                self.assertEqual(status, 0, output)
+                self.assertIn(f'Device: {role}', output)
+                self.assertIn(f'Capture switch: {switch}', output)
+                self.assertIn(f'-DWIKNOW_BOARD={board}', output)
+                self.assertIn(f'-DWIKNOW_ROLE={role}', output)
+
     def test_board_selection_remaps_standalone_and_reaches_every_stage(self):
-        config = ROOT/'config/settings.standalone-wiring.example.json'
+        config = ROOT/'config/settings.standalone.example.json'
         status, output = self.run_main('--config', str(config), '--board', 'n32r8', '--dry-run')
         self.assertEqual(status, 0, output)
         self.assertIn('Device: parent', output)
@@ -37,7 +53,7 @@ class FlashTests(unittest.TestCase):
     def test_board_from_config_reaches_build(self):
         with tempfile.TemporaryDirectory() as folder:
             config = pathlib.Path(folder)/'settings.json'
-            settings = flash.generate_config.load(ROOT/'config/settings.standalone-wiring.example.json')
+            settings = flash.generate_config.load(ROOT/'config/settings.standalone.example.json')
             settings['board'] = {'model': 'n32r8'}
             config.write_text(json.dumps(settings))
             status, output = self.run_main('--config', str(config), '--dry-run')
@@ -62,7 +78,7 @@ class FlashTests(unittest.TestCase):
     def test_sd_formatting_warning_in_dry_run(self):
         with tempfile.TemporaryDirectory() as folder:
             config = pathlib.Path(folder)/'settings.json'
-            settings = flash.generate_config.load(ROOT/'config/settings.standalone-wiring.example.json')
+            settings = flash.generate_config.load(ROOT/'config/settings.standalone.example.json')
             settings['sd']['format_if_mount_failed'] = True
             config.write_text(json.dumps(settings))
             status, output = self.run_main('--config', str(config), '--role', 'parent', '--dry-run')
@@ -107,7 +123,7 @@ class FlashTests(unittest.TestCase):
             flash.build_directory('child', 1, config),
             flash.build_directory('child', 2, config),
             flash.build_directory('follower', 2, config),
-            flash.build_directory('child', 1, ROOT/'config/settings.example.json'),
+            flash.build_directory('child', 1, ROOT/'config/settings.child.example.json'),
         }
         self.assertEqual(len(directories), 5)
         self.assertTrue(all(ROOT/'build' in path.parents for path in directories))
@@ -197,7 +213,7 @@ class FlashTests(unittest.TestCase):
         self.assertEqual(first[1][:-5], second[1][:-5])
 
     def test_standalone_configs_infer_parent_without_prompting(self):
-        for name in ('settings.standalone.example.json', 'settings.standalone-wiring.example.json'):
+        for name in ('settings.standalone.example.json',):
             with self.subTest(config=name), \
                  patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
                  patch.object(flash, 'prompt', side_effect=AssertionError('Unexpected prompt')):
@@ -212,10 +228,11 @@ class FlashTests(unittest.TestCase):
         for role in ('universal', 'child', 'follower'):
             with self.subTest(role=role), patch.object(flash.subprocess, 'run') as execute:
                 status, output = self.run_main(
-                    '--config', str(ROOT/'config/settings.standalone-wiring.example.json'),
+                    '--config', str(ROOT/'config/settings.standalone.example.json'),
                     '--role', role, '--node-id', '0' if role == 'universal' else '1', '--dry-run')
                 self.assertEqual(status, 1, output)
-                self.assertIn('standalone mode requires the parent role', output)
+                self.assertIn('board profiles require a manual role' if role == 'universal'
+                              else 'standalone mode requires the parent role', output)
                 execute.assert_not_called()
 
     def test_port_selection_and_rescan(self):

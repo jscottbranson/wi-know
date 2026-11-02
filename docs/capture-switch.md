@@ -3,19 +3,20 @@
 The optional maintained switch enables full structured observation logging live,
 without rebooting or changing scan assignments, detection rules or alert actions.
 Follow the [wiring and example configurations](wiring.md#optional-full-capture-switch-manual-parent--standalone).
-The feature is disabled and unassigned by default. Existing configurations remain
-valid; add this section to enable it with a supported board and available pin:
+The shipped manual parent and standalone configurations enable the switch; universal
+configurations keep it disabled. Configurations that omit the section still default
+to disabled. To select the switch pin from the board profile, use:
 
 ```json
 "capture_switch": {
   "enabled": true,
-  "gpio_pin": 26,
-  "internal_pulldown": false,
+  "gpio_pin": -1,
+  "internal_pulldown": true,
   "debounce_ms": 50
 }
 ```
 
-This example is N32R8 P1.12 / GPIO26, with `board.model: "n32r8"`.
+With `board.model: "n32r8"`, the automatic pin is N32R8 P1.12 / GPIO26.
 Use underside MTCK / GPIO4 and `board.model: "xiao"` on standalone XIAO.
 All three trend LEDs, including amber, remain connected. The XIAO pad requires
 soldering and must not also connect to an external JTAG probe; use native USB. Flash the matching capture example. GPIO configuration requires a rebuild;
@@ -25,21 +26,21 @@ runs in the parent loop, so bus polling/storage latency adds to response time.
 
 ### N32R8 standalone build
 
-`settings.standalone-wiring.example.json` leaves the capture switch disabled,
-including when built with `--board n32r8`. Selecting a board maps peripheral pins;
-it does not enable optional features. Use the N32R8 standalone capture example
-to enable GPIO26 while keeping standalone scanning and the bus disabled:
+`settings.standalone.example.json` enables capture control on either board. Select the hardware with `--board n32r8` or
+`--board xiao`; `capture_switch.gpio_pin: -1` resolves to GPIO26 or GPIO4,
+respectively. The standalone and bus settings are preserved.
 
 ```sh
-python3 tools/flash.py --config config/settings.n32r8-standalone-capture.example.json --board n32r8 --role parent --node-id 0
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --role parent --node-id 0
+python3 tools/flash.py --config config/settings.standalone.example.json --board xiao --role parent --node-id 0
 ```
 
 The older firmware displays `SW:OFF` even when switch support was compiled out.
 Updated firmware displays `SW:DISABLED` in that case. With the capture example
 flashed, a stable 3.3 V on GPIO26 should show `SW:ON` and `Capture:ALL` when the
 capture page next appears; grounding the input restores `SW:OFF` and
-`Capture:MATCH`. The example uses the external 10 kΩ pull-down described in the
-wiring guide.
+`Capture:MATCH`. The example enables an internal pull-down so an unconnected switch stays OFF;
+the external 10 kΩ pull-down in the wiring guide can remain fitted.
 
 ON closes any previous WU stream and opens a fresh numbered `WUxxxxxxxx.LOG`
 with a `capture_mode` event. All subsequent supported observations go into this
@@ -112,7 +113,8 @@ Every saved ordinary observation, matched or unmatched, includes `capture_ms`,
 `receiver_fix` (latitude, longitude and fix uptime). GPS tagging uses capture time,
 not file-write time or the latest GPS position. Coordinates describe the receiver.
 Without GPS time, UTC is `null`; without a sufficiently fresh fix, location is
-`null`. GPS time can continue in holdover even when a current location is unavailable.
+`null`. GPS time and location expire when no valid RMC update arrives within
+`gps.max_fix_age_ms`; subsequent records use `null` until GPS updates resume.
 
 Each observation also has `first_seen_ms`, `last_seen_ms`, `first_seen_utc_ms`
 and `last_seen_utc_ms`. Those are the live track's endpoints: receiver/node boot,

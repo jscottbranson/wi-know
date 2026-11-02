@@ -1,20 +1,26 @@
 # Firmware configuration
 
-**Edit `settings.json`.** It is the configuration consumed by the build.
-`settings.example.json` is a reference copy of the initial defaults. All paths in
-settings are relative to the repository root unless absolute. Detection rules
-live separately in `../rules/`.
+Choose a configuration for the installation and select the hardware with `--board`:
 
-The default role is `universal` with ID 0 as an unassigned build placeholder.
-`settings.universal.example.json` enables all parent peripherals with GPS RX on
-GPIO26, reserving GPIO10 for the passive identification harness. Flash the same
-configuration onto all boards. See [universal provisioning](../docs/universal.md).
+| Installation | Configuration | Board flag |
+| --- | --- | --- |
+| Standalone N32R8 | `settings.standalone.example.json` | `--board n32r8` |
+| Standalone XIAO | `settings.standalone.example.json` | `--board xiao` |
+| Parent N32R8 | `settings.parent.example.json` | `--board n32r8` |
+| Child XIAO | `settings.child.example.json` | `--board xiao` |
 
-`settings.parent-wiring.example.json` is a separate **manual legacy** N32R8 parent peripheral
-profile matching the [LED/buzzer/LCD/GPS/microSD wiring diagram](../docs/wiring.md#parent-leds-buzzer-screen-and-gps).
-It enables those peripherals and changes parent bus RX to GPIO3, avoiding the
-onboard USB-UART TX connected to GPIO12. Check the board revision before using it with
-`-DWIKNOW_CONFIG=/absolute/path/settings.parent-wiring.example.json`.
+Standalone and parent configurations enable LCD, GPS, microSD, buzzer, trend LEDs,
+and the capture switch. The standalone configuration disables RS-485; the parent
+and child configurations enable it. Child nodes have no parent peripherals or
+capture switch; give each child a unique `--node-id`.
+
+The duplicate wiring/capture examples have been consolidated into these three
+role configurations. `settings.json` remains the default for existing universal
+builds, with parent peripherals and capture control disabled. Universal firmware
+requires its separate [identification harness](../docs/universal.md).
+
+All paths in settings are relative to the repository root unless absolute.
+Detection rules live separately in `../rules/`.
 
 Optional `"board": {"model": "xiao"}` or `"board": {"model": "n32r8"}` selects
 the corresponding documented GPIO mapping for manual roles. `custom` (the default)
@@ -162,12 +168,14 @@ is the optional **manual**, bus-disabled standalone mode.
 For a single board, set `standalone.enabled` to `true` and `bus.enabled` to
 `false`, keeping role `parent` and ID `0`. Or build with
 `-DWIKNOW_CONFIG=/absolute/path/config/settings.standalone.example.json`.
-The example leaves peripherals disabled; copy your board's verified peripheral
-settings to retain GPS, storage, screen, LEDs and buzzer. For a mini XIAO with
-**screen → GPS → microSD → buzzer → LEDs** in priority order, use
-[`settings.standalone-wiring.example.json`](settings.standalone-wiring.example.json)
-and the [standalone wiring and selection guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
-This profile enables all five: LCD on GPIO23/24, receive-only GPS on GPIO12,
+The shared example enables LCD, GPS, storage, LEDs, buzzer, and capture control.
+Select `--board xiao` or `--board n32r8` for the connected board; see the
+[standalone wiring guide](../docs/wiring.md#standalone-mini-xiao-esp32-c5).
+Unconnected LCD/GPS devices do not stop scanning; an absent or failed SD card
+falls back to internal flash storage. GPS time and location become `null` after
+`gps.max_fix_age_ms` without a valid RMC update, until GPS updates resume. Missing LEDs or buzzer simply produce no output.
+The capture input has an internal pull-down so an absent switch stays OFF.
+For XIAO, the peripheral pins are: LCD on GPIO23/24, receive-only GPS on GPIO12,
 SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1 (D0, green/increasing), GPIO0 (D1, amber/steady), and
 GPIO25 (D2, red/decreasing).
 All 11 header GPIOs fit without changing the previous indicator wiring. For the
@@ -230,11 +238,13 @@ validation checklist](../docs/gatt-discovery.md) before enabling it.
 a manual parent role and explicit `xiao` or `n32r8` board profile. Pins are checked
 against board restrictions and enabled peripherals. Individual LED pins set to
 `-1` stay disabled when applying a board profile. The maintained active-high
-switch requires either the supported internal pull-down or an external 10 kΩ
-pull-down. See [full-capture operation](../docs/capture-switch.md) and
+switch uses the internal pull-down in the shipped configs; an external 10 kΩ
+pull-down is also supported. See [full-capture operation](../docs/capture-switch.md) and
 [wiring](../docs/wiring.md#optional-full-capture-switch-manual-parent--standalone).
-Use `settings.parent-capture.example.json` or
-`settings.standalone-capture.example.json` for the illustrated switch option.
-For standalone scanning on N32R8 with GPIO26 capture control, use
-`settings.n32r8-standalone-capture.example.json`. The ordinary standalone-wiring
-example leaves capture control disabled even with `--board n32r8`.
+Use `settings.parent.example.json` or
+`settings.standalone.example.json` for the illustrated switch option.
+All shipped manual parent and standalone configurations enable the switch with
+`gpio_pin: -1`, which selects GPIO4 for `--board xiao` and GPIO26 for
+`--board n32r8`. Explicit nonnegative switch pins remain user overrides and are
+validated against the selected board and other peripherals. Set `enabled: false`
+to disable the switch. Universal configurations explicitly keep it disabled.
