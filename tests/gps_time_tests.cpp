@@ -52,6 +52,34 @@ int main() {
     CHECK(diagnostics.tim_sentences == 2 && diagnostics.last_tim_at == 400);
     CHECK(diagnostics.last_tim == invalid_tim.substr(0, invalid_tim.size() - 2));
 
+    CHECK(diagnostics.sentences == 3 && diagnostics.bad_checksums == 0);
+    CHECK(diagnostics.overflows == 1 && diagnostics.resyncs == 1);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::rmc].count == 1);
+    const auto version = nmea("GPTXT,01,01,02,SW=URANUS2,V2.2.1.0");
+    for (char c : version + nmea("GNTXT,01,01,01,ANTENNA OK"))
+        diagnostics.feed(c, 500);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::software].raw ==
+          version.substr(0, version.size() - 2));
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::txt].count == 2);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::software].checksum_ok);
+    auto corrupt_rmc = nmea(lost);
+    corrupt_rmc[8] = '9';
+    for (char c : corrupt_rmc)
+        diagnostics.feed(c, 600);
+    CHECK(diagnostics.bad_checksums == 1);
+    CHECK(!diagnostics.samples[platform::GpsDiagnostics::rmc].checksum_ok);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::rmc].at == 600);
+    for (char c : std::string("$GPTXT,unsafe\x1b*00\n"))
+        diagnostics.feed(c, 700);
+    CHECK(diagnostics.nonprintable == 1 && diagnostics.bad_checksums == 2);
+    CHECK(std::strchr(diagnostics.samples[platform::GpsDiagnostics::txt].raw, '\x1b') == nullptr);
+    for (char c : nmea("GPZDA,120000,02,11,2026,00,00") + nmea("GNGGA,120000,,,,,0,00,,,,,,") +
+                      nmea("PCAS99,reply"))
+        diagnostics.feed(c, 800);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::zda].checksum_ok);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::gga].checksum_ok);
+    CHECK(diagnostics.samples[platform::GpsDiagnostics::other].count == 1);
+
     Gps gps(3000, true);
     int64_t utc{};
     char clock[9], json[log_line_capacity];
@@ -181,7 +209,7 @@ int main() {
     GpsTimeRequest request;
     size_t size{};
     std::string command = request.pending(0, size);
-    CHECK(command == nmea("PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1"));
+    CHECK(command == nmea("PCAS03,0,0,0,0,1,0,0,0,0,0,,,0,0,,,,1") + nmea("PCAS06,0"));
     CHECK(size == command.size());
     request.sent(0, 7);
     CHECK(std::string(request.pending(0, size)) == command.substr(7));
@@ -199,4 +227,15 @@ int main() {
     CHECK(size == 0);
     request.pending(35000, size);
     CHECK(size == command.size()); // recovers a later module reset
+    GpsTimeRequest fragmented;
+    std::string transmitted;
+    for (size_t i = 0; i < command.size(); ++i) {
+        const char *part = fragmented.pending(0, size);
+        CHECK(size == command.size() - i);
+        transmitted += *part;
+        fragmented.sent(0, 1);
+    }
+    CHECK(transmitted == command); // split anywhere, including between the two commands
+    fragmented.pending(999, size);
+    CHECK(size == 0);
 }
