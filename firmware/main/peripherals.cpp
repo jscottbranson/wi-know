@@ -102,7 +102,8 @@ void capture_switch_init() {
 bool capture_switch_high() {
     return c::capture_switch_enabled && gpio_get_level(gpio_num_t(c::capture_switch_gpio_pin));
 }
-static void uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) {
+static bool gps_uart_ready{};
+static esp_err_t uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) {
     uart_config_t cfg{};
     cfg.baud_rate = baud;
     cfg.data_bits = UART_DATA_8_BITS;
@@ -110,15 +111,22 @@ static void uart_setup(int port, int tx, int rx, int rts, int baud, bool rs485) 
     cfg.stop_bits = UART_STOP_BITS_1;
     cfg.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
     cfg.source_clk = UART_SCLK_DEFAULT;
-    ESP_ERROR_CHECK(uart_driver_install(uart_port_t(port), 4096, 0, 0, nullptr, 0));
-    ESP_ERROR_CHECK(uart_param_config(uart_port_t(port), &cfg));
-    ESP_ERROR_CHECK(uart_set_pin(uart_port_t(port), tx, rx, rts, UART_PIN_NO_CHANGE));
-    if (rs485)
-        ESP_ERROR_CHECK(uart_set_mode(uart_port_t(port), UART_MODE_RS485_HALF_DUPLEX));
+    const auto uart = uart_port_t(port);
+    esp_err_t error = uart_driver_install(uart, 4096, 0, 0, nullptr, 0);
+    if (error != ESP_OK)
+        return error; // Do not delete a driver this call did not install.
+    error = uart_param_config(uart, &cfg);
+    if (error == ESP_OK)
+        error = uart_set_pin(uart, tx, rx, rts, UART_PIN_NO_CHANGE);
+    if (error == ESP_OK && rs485)
+        error = uart_set_mode(uart, UART_MODE_RS485_HALF_DUPLEX);
+    if (error != ESP_OK)
+        uart_driver_delete(uart);
+    return error;
 }
 void bus_start() {
     if (c::bus_enabled)
-        uart_setup(
+        ESP_ERROR_CHECK(uart_setup(
             c::bus_uart,
             c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_tx_pin
                                                                  : c::universal_worker_tx_pin)
@@ -129,7 +137,7 @@ void bus_start() {
             c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_rts_pin
                                                                  : c::universal_worker_rts_pin)
                                  : c::bus_rts_pin,
-            c::bus_baud, true);
+            c::bus_baud, true));
 }
 void bus_send(const wiknow::Packet &p) {
     uint8_t frame[wiknow::max_frame];
@@ -200,8 +208,9 @@ void screen(const char *a, const char *b) {
     }
 }
 void gps_update(wiknow::Gps &gps) {
-    if (role != wiknow::Role::parent || !c::gps_enabled)
+    if (role != wiknow::Role::parent || !c::gps_enabled || !gps_uart_ready)
         return;
+    // One bounded, zero-wait read: neither a silent GPS nor missing RTC data gates scanning.
     uint8_t data[512];
     int n = uart_read_bytes(uart_port_t(c::gps_uart), data, sizeof(data), 0);
     uint64_t now = now_ms();
@@ -556,8 +565,16 @@ void start_peripherals() {
     configASSERT(console_queue);
     configASSERT(xTaskCreate(console_writer, "console_writer", 4608, nullptr, 1, nullptr) ==
                  pdPASS);
-    if (c::gps_enabled)
-        uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
+    if (c::gps_enabled) {
+        const esp_err_t error =
+            uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);
+        gps_uart_ready = error == ESP_OK;
+        if (!gps_uart_ready)
+            ESP_LOGW("gps", "UART unavailable (%s); continuing without GPS until reboot",
+                     esp_err_to_name(error));
+        else
+            ESP_LOGI("gps", "UART ready; continuing without waiting for RTC data or a fix");
+    }
     if (c::signal_trend_enabled) {
         for (int pin : {c::signal_trend_increasing_pin, c::signal_trend_decreasing_pin,
                         c::signal_trend_steady_pin}) {

@@ -254,3 +254,12 @@ Air530 retained-time startup is not enabled. GPS wiring remains receive-only
 The backup-battery configuration is a hardware declaration, not a measured battery
 status. See [RTC interface and validation limitations](../docs/air530-time.md) before adding TX
 wiring or treating startup date/time as authoritative.
+
+GPS time is optional at startup: no RTC query, fix wait, or missing-module timeout
+runs before normal operation. Each GPS update reads at most 512 bytes with zero
+wait. Capture and logging continue with unknown UTC and no receiver fix until a
+checksum-valid active RMC arrives; GPS TX can remain disconnected (`tx_pin: -1`).
+`gps.backup_battery_present: false` is accepted and does not disable GPS reception.
+If GPS UART initialization fails, firmware reports a warning and continues without
+GPS for that boot. A silent module on a successfully initialized UART can start
+reporting later without a reboot. Other peripheral startup procedures are unchanged.

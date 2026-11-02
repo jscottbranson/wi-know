@@ -296,6 +296,29 @@ static void gps_test() {
     CHECK(!feed(boundary, nmea("GNRMC,120500,V,,,,,,,271026,,,N"), 86409000));
     CHECK(boundary.last_sync() == 86407000);
 }
+static void gps_optional_startup_test() {
+    Gps gps;
+    Tracker tracker;
+    char json[log_line_capacity], clock[9];
+    // Normal observation serialization remains available throughout an hour without time.
+    for (uint64_t now : {0ULL, 1000ULL, 60000ULL, 3600000ULL}) {
+        gps.expire(now, 3000);
+        auto capture = obs(-60, now);
+        auto &track = tracker.observe(capture, {});
+        CHECK(observation_json(capture, track, {}, {}, gps, json, sizeof(json)));
+        CHECK(std::strstr(json, "\"utc_ms\":null"));
+        CHECK(std::strstr(json, "\"time_source\":\"unknown\""));
+        CHECK(std::strstr(json, "\"receiver_fix\":null"));
+        gps.utc_text(now, clock);
+        CHECK(std::strcmp(clock, "--:--:--") == 0);
+        CHECK(!feed(gps, nmea("GNRMC,120000,V,,,,,,,271026,,,N"), now));
+        CHECK(!gps.has_time());
+    }
+    CHECK(feed(gps, nmea("GNRMC,120000,A,4200.000,N,08300.000,W,0,0,271026,,,A"), 3601000));
+    gps.utc_text(3602000, clock);
+    CHECK(std::strcmp(clock, "12:00:01") == 0);
+    CHECK(gps.nearest(3602000, 3000).valid);
+}
 static void gps_tagging_test() {
     Gps gps;
     auto o = obs(-60, 1100);
@@ -705,6 +728,7 @@ int main() {
     parser_match_test();
     mac_test();
     gps_test();
+    gps_optional_startup_test();
     gps_tagging_test();
     tracking_test();
     trend_confirmation_test();
