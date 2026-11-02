@@ -126,3 +126,7 @@ The [expanded detection pack](rules/EXPANDED.md) adds cameras, acoustic sensors,
 
 Review source licenses and exact revisions before incorporating signatures or code.
 Third-party signature adaptations retain their licenses and attribution in [NOTICE](NOTICE) and [rules/sources/](rules/sources/README.md).
+
+Use the optional [full-capture switch](docs/capture-switch.md) to start a separate
+everything-log session while retaining normal matching logs. Parent and standalone
+[wiring diagrams](docs/wiring.md) include the switch option.

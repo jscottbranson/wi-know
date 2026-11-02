@@ -17,6 +17,8 @@ COLUMNS = (
     'radio', 'address', 'address_type', 'channel', 'ssid', 'ssid_hex', 'name', 'rule_id', 'category',
     'confidence', 'rule_priority', 'capture_ms', 'utc_ms', 'utc', 'time_source',
     'timing_uncertainty_ms', 'gps_sync_age_ms', 'first_seen_ms', 'last_seen_ms',
+    'first_seen_utc_ms', 'last_seen_utc_ms', 'first_seen_utc', 'last_seen_utc',
+    'sightings_scope', 'first_seen_receiver_fix', 'last_seen_receiver_fix',
     'rssi_dbm', 'receiver_latitude', 'receiver_longitude',
     'receiver_fix_at_ms', 'peak_dbm', 'peak_capture_ms', 'peak_utc_ms', 'peak_sequence',
     'peak_timing_uncertainty_ms', 'peak_receiver_latitude', 'peak_receiver_longitude', 'peak_receiver_fix_at_ms',
@@ -82,6 +84,8 @@ def records(paths, skip_invalid=False, matches_only=False, location=None):
                     coordinate(record.get('peak_receiver_fix'))
                     utc_text(record.get('utc_ms'))
                     utc_text(record.get('peak_utc_ms'))
+                    utc_text(record.get('first_seen_utc_ms'))
+                    utc_text(record.get('last_seen_utc_ms'))
                     record = dict(record, source_file=str(path), source_line=number,
                                   event=event, location_role='receiver')
                     if location is not None:
@@ -116,7 +120,9 @@ def write_csv(rows, output, delimiter=','):
     writer = csv.DictWriter(output, fieldnames=COLUMNS, extrasaction='ignore', delimiter=delimiter)
     writer.writeheader()
     for record in rows:
-        row = dict(record, utc=utc_text(record.get('utc_ms')))
+        row = dict(record, utc=utc_text(record.get('utc_ms')),
+                   first_seen_utc=utc_text(record.get('first_seen_utc_ms')),
+                   last_seen_utc=utc_text(record.get('last_seen_utc_ms')))
         for prefix, key in (('receiver', 'receiver_fix'), ('peak_receiver', 'peak_receiver_fix')):
             fix = record.get(key)
             if fix is not None:
@@ -179,6 +185,40 @@ def write_geojson(rows, output, location):
     output.write(']}\n')
 
 
+def sightings(rows):
+    """Summarize recorded observation endpoints, independent of the bounded live tracker."""
+    groups = {}
+    for record in rows:
+        if record['event'] != 'observation':
+            continue
+        boot, capture = record.get('receiver_boot'), record.get('capture_ms')
+        if type(boot) is not int or type(capture) is not int or capture < 0:
+            raise ValueError('sightings require integer receiver_boot and nonnegative capture_ms')
+        # Receiver uptime is comparable only within one logging-controller boot.
+        address_type = record.get('address_type', 0)
+        if type(address_type) is not int or not 0 <= address_type <= 255:
+            raise ValueError('sightings require an integer address_type in 0..255')
+        key = (boot, record['radio'], address_type, record['address'].lower())
+        if key not in groups:
+            groups[key] = [record, record]
+        else:
+            if capture < groups[key][0]['capture_ms']:
+                groups[key][0] = record
+            if capture > groups[key][1]['capture_ms']:
+                groups[key][1] = record
+    for key in sorted(groups):
+        first, last = groups[key]
+        yield dict(event='sighting_summary', receiver_boot=key[0], radio=key[1],
+                   address_type=key[2], address=key[3],
+                   sightings_scope='input_logs_receiver_boot',
+                   first_seen_ms=first['capture_ms'], last_seen_ms=last['capture_ms'],
+                   first_seen_utc_ms=first.get('utc_ms'), last_seen_utc_ms=last.get('utc_ms'),
+                   first_seen_utc=utc_text(first.get('utc_ms')),
+                   last_seen_utc=utc_text(last.get('utc_ms')),
+                   first_seen_receiver_fix=first.get('receiver_fix'),
+                   last_seen_receiver_fix=last.get('receiver_fix'))
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description=__doc__, epilog='Example: %(prog)s WK00000001.LOG -o detections.json')
@@ -189,6 +229,8 @@ def main(argv=None):
     parser.add_argument('--location', choices=('capture', 'peak', 'aircraft', 'operator'), default='capture',
                         help='position to map in GeoJSON (default: capture receiver position)')
     parser.add_argument('--matches-only', action='store_true', help='only rule matches, drone detections and following alerts')
+    parser.add_argument('--sightings', action='store_true',
+                        help='first/last recorded sighting per radio/address type/address/controller boot')
     parser.add_argument('--skip-invalid', action='store_true', help='warn and skip invalid JSONL lines, including a truncated final line')
     args = parser.parse_args(argv)
     destination = Path(args.output) if args.output != '-' else None
@@ -197,6 +239,8 @@ def main(argv=None):
         kind = destination.suffix.lower().lstrip('.') if destination else 'json'
         if kind not in ('json', 'jsonl', 'csv', 'tsv', 'geojson'):
             parser.error('cannot infer output format; specify --format or use a supported extension')
+    if args.sightings and kind == 'geojson':
+        parser.error('--sightings supports JSON, JSONL, CSV or TSV')
     if destination and any(destination.resolve() == path.resolve() for path in args.inputs):
         parser.error('output must not replace an input log')
     temporary = None
@@ -208,6 +252,8 @@ def main(argv=None):
             temporary = Path(output.name)
             rows = records(args.inputs, args.skip_invalid, args.matches_only,
                            args.location if kind == 'geojson' else None)
+            if args.sightings:
+                rows = sightings(rows)
             if kind in ('csv', 'tsv'):
                 write_csv(rows, output, delimiter='\t' if kind == 'tsv' else ',')
             elif kind in ('json', 'jsonl'):

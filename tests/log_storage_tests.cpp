@@ -167,6 +167,111 @@ int main() {
     }
     auto ample = [](size_t) { return 1; };
     auto sync = [](FILE *) { return true; };
+    // Unmatched Wi-Fi/BLE capture records retain GPS location and UTC on disk,
+    // using capture time even when a newer GPS fix arrived before serialization.
+    {
+        Directory d;
+        LogWriter writer;
+        wiknow::Gps gps;
+        auto feed = [&](const char *rmc, uint64_t at) {
+            unsigned checksum = 0;
+            for (const char *p = rmc; *p; ++p)
+                checksum ^= static_cast<unsigned char>(*p);
+            char sentence[128];
+            std::snprintf(sentence, sizeof(sentence), "$%s*%02X\r\n", rmc, checksum);
+            for (const char *p = sentence; *p; ++p)
+                gps.feed(*p, at);
+        };
+        feed("GNRMC,120000.000,A,4200.000,N,08300.000,W,0,0,271026,,,A", 1000);
+        feed("GNRMC,120001.000,A,4300.000,N,08400.000,W,0,0,271026,,,A", 2000);
+        wiknow::Tracker tracker;
+        char json[wiknow::log_line_capacity];
+        for (auto radio : {wiknow::Radio::wifi, wiknow::Radio::ble}) {
+            wiknow::Observation o{};
+            o.radio = radio;
+            o.at_ms = 1100;
+            o.timing_uncertainty_ms = 20;
+            auto fix = gps.tag(o, 350, 250);
+            auto &track = tracker.observe(o, fix);
+            CHECK(wiknow::observation_json(o, track, {}, fix, gps, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"rule_id\":null"));
+            CHECK(std::strstr(json, "\"utc_ms\":1793102400100"));
+            CHECK(std::strstr(
+                json, "\"receiver_fix\":{\"latitude\":42.0000000,\"longitude\":-83.0000000"));
+            CHECK(std::strstr(json, "\"timing_uncertainty_ms\":20"));
+            CHECK(writer.record(d.name, {32768, 8}, LogClass::unmatched, json, false, 0, ample,
+                                sync) == LogResult::stored);
+            o.at_ms = 2100;
+            fix = gps.tag(o, 350, 250);
+            tracker.observe(o, fix);
+            // An out-of-order older capture extends first seen, never rewinds last seen.
+            o.at_ms = 1050;
+            fix = gps.tag(o, 350, 250);
+            tracker.observe(o, fix);
+            CHECK(wiknow::observation_json(o, track, {}, fix, gps, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"first_seen_ms\":1050,\"last_seen_ms\":2100"));
+            CHECK(std::strstr(json, "\"first_seen_utc_ms\":1793102400050"));
+            CHECK(std::strstr(json, "\"last_seen_utc_ms\":1793102401100"));
+            o.at_ms = 10000;
+            fix = gps.tag(o, 350, 250);
+            CHECK(!fix.valid);
+            CHECK(wiknow::observation_json(o, tracker.observe(o, fix), {}, fix, gps, json,
+                                           sizeof(json)));
+            CHECK(std::strstr(json, "\"receiver_fix\":null"));
+            wiknow::Gps unknown;
+            CHECK(wiknow::observation_json(o, track, {}, {}, unknown, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"utc_ms\":null"));
+            CHECK(std::strstr(json, "\"first_seen_utc_ms\":null"));
+            CHECK(std::strstr(json, "\"last_seen_utc_ms\":null"));
+        }
+        CHECK(writer.flush(sync));
+        const auto saved = d.read("WU00000001.LOG");
+        CHECK(saved.find("\"radio\":\"wifi\"") != std::string::npos);
+        CHECK(saved.find("\"radio\":\"ble\"") != std::string::npos);
+        CHECK(saved.find("\"utc_ms\":1793102400100") != std::string::npos);
+        CHECK(saved.find("\"latitude\":42.0000000") != std::string::npos);
+    }
+    // Switch sessions get fresh WU files while WM stays open. Matches are mirrored;
+    // ordinary Wi-Fi/BLE records are present only in the everything stream.
+    {
+        Directory d;
+        LogWriter writer;
+        auto record = [&](const char *text, LogClass kind, bool mirror = false, uint8_t edge = 0) {
+            return writer.record(d.name, {4096, 8}, kind, text, mirror, edge, ample, sync);
+        };
+        CHECK(record("before\n", LogClass::matched) == LogResult::stored);
+        CHECK(record("ON\n", LogClass::unmatched, false, 1) == LogResult::stored);
+        CHECK(record("wifi\nble\n", LogClass::unmatched) == LogResult::stored);
+        CHECK(record("match\n", LogClass::matched, true) == LogResult::stored);
+        CHECK(record("OFF\n", LogClass::unmatched, false, 2) == LogResult::stored);
+        CHECK(d.read("WM00000001.LOG") == "before\nmatch\n");
+        CHECK(d.read("WU00000002.LOG") == "ON\nwifi\nble\nmatch\nOFF\n");
+        CHECK(record("after\n", LogClass::matched) == LogResult::stored);
+        CHECK(record("ON2\n", LogClass::unmatched, false, 1) == LogResult::stored);
+        CHECK(record("match2\n", LogClass::matched, true) == LogResult::stored);
+        CHECK(record("OFF2\n", LogClass::unmatched, false, 2) == LogResult::stored);
+        CHECK(d.read("WM00000001.LOG") == "before\nmatch\nafter\nmatch2\n");
+        CHECK(d.read("WU00000003.LOG") == "ON2\nmatch2\nOFF2\n");
+        // Base-all resumes ordinary WU logging in a separate file after OFF.
+        CHECK(record("base all\n", LogClass::unmatched) == LogResult::stored);
+        CHECK(writer.flush(sync));
+        CHECK(d.read("WU00000004.LOG") == "base all\n");
+        CHECK(writer.record(d.name, {4096, 8}, LogClass::unmatched, "OFF\n", false, 2, ample,
+                            [](FILE *) { return false; }) == LogResult::error);
+    }
+    // Capture copies cannot evict matching evidence when the file budget fills.
+    {
+        Directory d;
+        LogWriter writer;
+        CHECK(writer.record(d.name, {8, 2}, LogClass::matched, "match 1\n", true, 0, ample, sync) ==
+              LogResult::stored);
+        CHECK(writer.record(d.name, {8, 2}, LogClass::matched, "match 2\n", true, 0, ample, sync) ==
+              LogResult::blocked);
+        CHECK(writer.flush(sync));
+        CHECK(d.read("WM00000001.LOG") == "match 1\n");
+        CHECK(d.read("WM00000003.LOG") == "match 2\n");
+        CHECK(!d.has("WU00000002.LOG"));
+    }
     // Both streams remain open, share one overall count budget, and retain all
     // classification/drone records passed with the observation's matched class.
     {

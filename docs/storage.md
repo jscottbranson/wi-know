@@ -186,3 +186,8 @@ lose records that were still buffered in RAM.
    large card, and persistent log writes. Reboot and confirm prior logs survive.
 6. Repeat with `sd.format_if_mount_failed: false` and an unrecognized filesystem;
    verify flash fallback and that the card contents remain unchanged.
+
+The optional [physical capture switch](capture-switch.md) starts a fresh WU
+session on ON and flushes/closes it on OFF. While ON, WM matching records are
+also copied into WU so the session includes both matching and unmatched data.
+WU keeps its lower retention priority, protecting the original WM evidence.

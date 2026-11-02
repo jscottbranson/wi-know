@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1040" viewBox="0 0 1440 1040" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1330" viewBox="0 0 1440 1330" role="img" aria-labelledby="title description">
 <title id="title">Power distribution</title>
 <desc id="description">XIAO boards receive regulated 5 V in parallel. N32R8 parent uses its native USB power input.</desc>
 <defs><marker id="arrow-blue" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto-start-reverse"><path d="M0,0 L0,6 L6,3 z" fill="#176aa5"/></marker></defs>
-<rect width="1440" height="1040" fill="#f6f8fb"/>
+<rect width="1440" height="1330" fill="#f6f8fb"/>
 <text x="48" y="50" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="700" text-anchor="start">wi-know / wiring</text>
 <text x="48" y="99" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="34" font-weight="700" text-anchor="start">Power distribution</text>
 <text x="48" y="133" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO boards receive regulated 5 V in parallel. N32R8 parent uses its native USB power input.</text>
@@ -76,5 +76,24 @@
 <text x="70" y="901" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Keep the voltage rails separate</text>
 <text x="70" y="934" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not feed external power into XIAO 3V3_OUT. Do not connect different boards’ 3V3 outputs together.</text>
 <text x="70" y="962" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">HiLetgo SD module VCC needs 5 V; SPI signals remain 3.3 V. See the module-specific wiring diagrams.</text>
-<text x="48" y="1016" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
+<rect x="48" y="1065" width="1344" height="225" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
+<text x="70" y="1097" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="24" font-weight="700" text-anchor="start">OPTION: full-capture switch on a spare GPIO; all three trend LEDs remain</text>
+<text x="70" y="1137" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">Controller 3V3</text>
+<polyline points="250,1130 350,1130" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="350" cy="1130" r="5" fill="#b83543"/>
+<polyline points="350,1130 405,1108" fill="none" stroke="#b83543" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="420" cy="1130" r="5" fill="#b83543"/>
+<polyline points="420,1130 850,1130" fill="none" stroke="#176aa5" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="480" y="1117" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Maintained switch</text>
+<text x="880" y="1137" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="20" font-weight="700" text-anchor="start">N32R8 P1.12 / GPIO26 input</text>
+<circle cx="750" cy="1130" r="5" fill="#176aa5"/>
+<polyline points="750,1130 750,1155" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="740" y="1155" width="20" height="35" rx="14" fill="white" stroke="#405165" stroke-width="2"/>
+<polyline points="750,1190 750,1210" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="780" y="1180" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">10 kΩ external pull-down</text>
+<text x="750" y="1234" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="middle">GND (common with controller)</text>
+<text x="70" y="1193" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">ON: fresh WU everything file + normal WM matches</text>
+<text x="70" y="1223" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">OFF: sync/close session; restore logging.mode</text>
+<text x="70" y="1270" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="17" font-weight="400" text-anchor="start">Use config/settings.parent-capture.example.json. Never use 5 V. Manual parent profiles only.</text>
+<text x="48" y="1306" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

@@ -1617,6 +1617,16 @@ bool observation_json(const Observation &o, const Track &t, Match match, Fix fix
         j.add("%lld", (long long)utc);
     else
         j.add("null");
+    j.add(",\"first_seen_utc_ms\":");
+    if (gps.utc(t.first_seen, utc))
+        j.add("%lld", (long long)utc);
+    else
+        j.add("null");
+    j.add(",\"last_seen_utc_ms\":");
+    if (gps.utc(t.latest.at_ms, utc))
+        j.add("%lld", (long long)utc);
+    else
+        j.add("null");
     j.add(",\"first_seen_ms\":%llu,\"last_seen_ms\":%llu,\"peak_changed\":%s,\"observations\":%llu}"
           "\n",
           (unsigned long long)t.first_seen, (unsigned long long)t.latest.at_ms,

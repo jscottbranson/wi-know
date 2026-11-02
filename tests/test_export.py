@@ -36,6 +36,40 @@ class ExportTests(unittest.TestCase):
         self.log.write_text(''.join(json.dumps(row) + '\n' for row in rows), encoding='utf-8')
         return export.main([str(self.log), '--format', kind, '-o', str(self.output), *extra])
 
+    def test_sightings_endpoints_across_nodes_channels_and_duplicate_logs(self):
+        first = observation(capture_ms=100, utc_ms=1000, rule_id=None, node=1, channel=1)
+        last = observation(capture_ms=500, utc_ms=1400, rule_id=None, node=2, channel=6,
+                           receiver_fix={'latitude': 43, 'longitude': -84, 'fix_at_ms': 500})
+        rows = [last, first, dict(first, rule_id='match-copy'), last,
+                observation(receiver_boot=9, capture_ms=50, utc_ms=None),
+                observation(radio='ble', address_type=1, capture_ms=200)]
+        for kind in ('json', 'jsonl', 'csv', 'tsv'):
+            self.assertEqual(self.run_export(rows, kind, ['--sightings']), 0)
+            text = self.output.read_text()
+            if kind == 'json':
+                results = json.loads(text)
+            elif kind == 'jsonl':
+                results = [json.loads(line) for line in text.splitlines()]
+            else:
+                results = list(csv.DictReader(io.StringIO(text), delimiter=',' if kind == 'csv' else '\t'))
+            self.assertEqual(len(results), 3)
+            result = next(r for r in results if str(r['receiver_boot']) == '8' and r['radio'] == 'wifi')
+            self.assertEqual(str(result['first_seen_ms']), '100')
+            self.assertEqual(str(result['last_seen_ms']), '500')
+            self.assertEqual(result['first_seen_utc'], '1970-01-01T00:00:01.000Z')
+            self.assertEqual(result['last_seen_utc'], '1970-01-01T00:00:01.400Z')
+            if kind in ('json', 'jsonl'):
+                self.assertEqual(result['first_seen_receiver_fix'], first['receiver_fix'])
+                self.assertEqual(result['last_seen_receiver_fix'], last['receiver_fix'])
+
+    def test_observation_first_last_utc_csv_and_legacy_logs(self):
+        row = observation(first_seen_utc_ms=1000, last_seen_utc_ms=2000)
+        self.assertEqual(self.run_export([row, observation()], 'csv'), 0)
+        results = list(csv.DictReader(io.StringIO(self.output.read_text())))
+        self.assertEqual(results[0]['first_seen_utc'], '1970-01-01T00:00:01.000Z')
+        self.assertEqual(results[0]['last_seen_utc'], '1970-01-01T00:00:02.000Z')
+        self.assertEqual(results[1]['first_seen_utc'], '')
+
     def test_json_formats_preserve_complete_detections(self):
         drone = observation(event='drone_detection', message_type=1,
                             data={'latitude': 42, 'longitude': -83},

@@ -51,6 +51,7 @@ XIAO assignments here, not the N32R8 parent's GPIO numbers.
 | Increasing LED (green) | D0 / GPIO1 | 470 Ω → LED anode; cathode → GND | 1 |
 | Decreasing LED (red) | D2 / GPIO25 | 470 Ω → LED anode; cathode → GND | 1 |
 | Steady LED (amber) | D1 / GPIO0 | 470 Ω → LED anode; cathode → GND | 1 |
+| Capture switch (optional) | Underside MTCK / GPIO4 | 3V3 → maintained switch → pad; 10 kΩ pad-to-GND | 1 underside pad |
 
 Screen + GPS + microSD use **7 GPIOs**; adding the buzzer uses 8; adding all
 three LEDs uses **all 11 D0–D10 header GPIOs**. GPS is receive-only, so it needs
@@ -173,6 +174,7 @@ used for LCD rather than external JTAG. Native USB stays on GPIO13/14. See the
 | Q1 collector | Buzzer negative; buzzer positive → regulated +5 V |
 | GPIO4 / GPIO5 | SDA / SCL → level shifter LV side → HV side → LCD SDA / SCL |
 | GPIO10, UART0 RX | GPS TX; GPS RX left disconnected |
+| GPIO26 / P1.12 (optional) | 3V3 → maintained capture switch → GPIO26; 10 kΩ GPIO26-to-GND |
 | GPIO23 / P2.5 | microSD SCK / CLK |
 | GPIO24 / P2.4 | microSD MOSI / DI / CMD |
 | GPIO2 / P1.3 | microSD MISO / DO / DAT0 |
@@ -351,3 +353,44 @@ The renderer needs an installed sans-serif font. On systems without fonts, pass
 No image-generation API or secret is needed. Update the diagrams when changing
 pin assignments. These diagrams document the intended wiring; hardware operation
 has not yet been verified on the physical boards.
+
+## Optional full-capture switch (manual parent / standalone)
+
+Use a maintained SPST switch: **controller 3V3 → switch → input GPIO**, with
+**10 kΩ from the input GPIO to common GND**. Never use 5 V. All parent/system
+and standalone diagrams above include this additional circuit. All three trend
+LEDs, including amber, stay connected to their original GPIOs.
+
+| Controller | Input | Configuration |
+| --- | --- | --- |
+| N32R8 distributed or standalone parent | P1.12 / GPIO26 | [Parent capture example](../config/settings.parent-capture.example.json) |
+| XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone capture example](../config/settings.standalone-capture.example.json) |
+
+Both examples select the corresponding `board.model` and preserve all three
+LEDs. No spare D0–D10 header GPIO remains on a fully populated XIAO; its underside
+**MTCK / GPIO4** pad supplies the extra input. Identify the pad using the
+[Seeed underside pinout](https://files.seeedstudio.com/wiki/XIAO_ESP32C5/Getting_started/XIAO_ESP32-C5_back_pinout.png),
+solder and secure a fine wire, and leave external pad JTAG probes disconnected.
+Native USB Serial/JTAG remains usable. Other exposed non-strapping JTAG pads
+GPIO3/5 are also allowed if unused; MTMS/GPIO2 is a strap and is rejected.
+
+N32R8 **P1.12 / GPIO26** is unused by the manual parent peripherals and is not a
+C5 strapping pin (the old header diagram mislabeled it). Do not use this wire
+with universal firmware: that profile already uses GPIO26 for GPS RX.
+The pin maps were checked against the
+[Seeed pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/),
+[Waveshare schematic](https://files.waveshare.com/wiki/ESP32-C5-WIFI6-KIT-NXRX/ESP32-C5-WIFI6-KIT-NXRX-Schematic.pdf),
+and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/api-reference/peripherals/gpio.html).
+These are intended circuits, not hardware-tested builds.
+
+The examples use the external resistor (`internal_pulldown: false`). Supported
+input pins on these C5 profiles can alternatively use `internal_pulldown: true`;
+the external resistor also defines OFF before firmware configures the GPIO.
+Validation rejects reserved/strapping pins, unexposed pins and enabled-peripheral
+conflicts. Enabling the switch requires an explicit `xiao` or `n32r8` manual
+parent profile; universal auto-identification images and workers reject it.
+For a distributed system, fit the switch only on the logging/display parent.
+
+ON starts a new full-capture file, including a copy of each matching detection;
+OFF closes the session and restores the configured mode. See
+[operation and capture limits](capture-switch.md).

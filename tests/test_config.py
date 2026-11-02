@@ -16,6 +16,50 @@ class ConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
         self.settings['node']['role'] = 'parent'
+    def test_capture_switch_validation(self):
+        source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
+        source['board'] = {'model': 'xiao'}
+        source['capture_switch'] = {'enabled': True, 'gpio_pin': 0,
+                                    'internal_pulldown': True, 'debounce_ms': 50}
+        with self.assertRaisesRegex(ValueError, 'used by'):
+            generate.validate(source)
+        source['signal_trend']['steady_pin'] = -1
+        valid, rules = generate.validate(source)
+        self.assertEqual(valid['signal_trend']['steady_pin'], -1)
+        self.assertIn('capture_switch_gpio_pin = 0', generate.emit(valid, rules))
+        for board, pin in [('xiao', 2), ('xiao', 7), ('xiao', 25), ('xiao', 26),
+                           ('xiao', 13), ('xiao', 15), ('xiao', 28), ('n32r8', 6),
+                           ('n32r8', 12), ('n32r8', 15), ('n32r8', 27), ('custom', 0)]:
+            bad = copy.deepcopy(source)
+            bad['board']['model'] = board
+            bad['capture_switch']['gpio_pin'] = pin
+            with self.subTest(board=board, pin=pin), self.assertRaises(ValueError):
+                generate.validate(bad)
+        for key, value in [('debounce_ms', 0), ('gpio_pin', -1), ('internal_pulldown', 1)]:
+            bad = copy.deepcopy(source)
+            bad['capture_switch'][key] = value
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                generate.validate(bad)
+        for role in ('child', 'follower', 'universal'):
+            with self.subTest(role=role), self.assertRaises(ValueError):
+                generate.validate(source, role_override=role)
+        defaults, _ = generate.validate(self.settings)
+        self.assertFalse(defaults['capture_switch']['enabled'])
+        self.assertEqual(defaults['capture_switch']['gpio_pin'], -1)
+
+    def test_capture_examples_keep_all_leds_on_spare_pins(self):
+        for variant, pin, amber in [('parent', 26, 8), ('standalone', 4, 0)]:
+            source = generate.load(ROOT/f'config/settings.{variant}-capture.example.json')
+            settings, _ = generate.validate(source, board_override=source['board']['model'])
+            self.assertEqual(settings['capture_switch']['gpio_pin'], pin)
+            self.assertEqual(settings['signal_trend']['steady_pin'], amber)
+            for key in ('increasing_pin', 'steady_pin', 'decreasing_pin'):
+                self.assertGreaterEqual(settings['signal_trend'][key], 0)
+            # A configurable input must still not overlap a fitted peripheral.
+            source['capture_switch']['gpio_pin'] = amber
+            with self.assertRaisesRegex(ValueError, 'used by'):
+                generate.validate(source)
+
     def test_board_profiles_match_documented_wiring_and_preserve_behavior(self):
         source = generate.load(ROOT/'config/settings.standalone-wiring.example.json')
         original = copy.deepcopy(source)

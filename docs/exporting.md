@@ -95,3 +95,16 @@ predicates, source provenance and effective enabled state for that build. Keep i
 with the matching firmware and settings; a later rebuild may use different rules
 with the same IDs. The shipped ruleset is empty, and unavailable categories are
 reported during generation; exports do not add signatures or infer device types.
+
+## First/last sightings
+
+Use `python3 tools/export_observations.py WU*.LOG --sightings -o sightings.csv`
+for one row per radio/address type/address/logging-controller boot across the
+selected files. Columns include readable first/last UTC, capture uptime and the
+receiver GPS fix at each endpoint. Receiver/channel differences and duplicate
+WM/WU copies do not create additional rows; controller reboots do. JSON/JSONL/TSV
+are supported too. Only observation records contribute to this summary.
+
+Ordinary CSV exports also include `first_seen_utc` and `last_seen_utc` alongside
+the raw timestamp fields. See [GPS and sightings scope](capture-switch.md#gps-stamps-and-firstlast-seen)
+for tracker limits, missing GPS handling and session selection.
