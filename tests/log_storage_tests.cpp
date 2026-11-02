@@ -167,6 +167,70 @@ int main() {
     }
     auto ample = [](size_t) { return 1; };
     auto sync = [](FILE *) { return true; };
+    // Unmatched Wi-Fi/BLE capture records retain GPS location and UTC on disk,
+    // using capture time even when a newer GPS fix arrived before serialization.
+    {
+        Directory d;
+        LogWriter writer;
+        wiknow::Gps gps;
+        auto feed = [&](const char *rmc, uint64_t at) {
+            unsigned checksum = 0;
+            for (const char *p = rmc; *p; ++p)
+                checksum ^= static_cast<unsigned char>(*p);
+            char sentence[128];
+            std::snprintf(sentence, sizeof(sentence), "$%s*%02X\r\n", rmc, checksum);
+            for (const char *p = sentence; *p; ++p)
+                gps.feed(*p, at);
+        };
+        feed("GNRMC,120000.000,A,4200.000,N,08300.000,W,0,0,271026,,,A", 1000);
+        feed("GNRMC,120001.000,A,4300.000,N,08400.000,W,0,0,271026,,,A", 2000);
+        wiknow::Tracker tracker;
+        char json[wiknow::log_line_capacity];
+        for (auto radio : {wiknow::Radio::wifi, wiknow::Radio::ble}) {
+            wiknow::Observation o{};
+            o.radio = radio;
+            o.at_ms = 1100;
+            o.timing_uncertainty_ms = 20;
+            auto fix = gps.tag(o, 350, 250);
+            auto &track = tracker.observe(o, fix);
+            CHECK(wiknow::observation_json(o, track, {}, fix, gps, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"rule_id\":null"));
+            CHECK(std::strstr(json, "\"utc_ms\":1793102400100"));
+            CHECK(std::strstr(
+                json, "\"receiver_fix\":{\"latitude\":42.0000000,\"longitude\":-83.0000000"));
+            CHECK(std::strstr(json, "\"timing_uncertainty_ms\":20"));
+            CHECK(writer.record(d.name, {32768, 8}, LogClass::unmatched, json, false, 0, ample,
+                                sync) == LogResult::stored);
+            o.at_ms = 2100;
+            fix = gps.tag(o, 350, 250);
+            tracker.observe(o, fix);
+            // An out-of-order older capture extends first seen, never rewinds last seen.
+            o.at_ms = 1050;
+            fix = gps.tag(o, 350, 250);
+            tracker.observe(o, fix);
+            CHECK(wiknow::observation_json(o, track, {}, fix, gps, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"first_seen_ms\":1050,\"last_seen_ms\":2100"));
+            CHECK(std::strstr(json, "\"first_seen_utc_ms\":1793102400050"));
+            CHECK(std::strstr(json, "\"last_seen_utc_ms\":1793102401100"));
+            o.at_ms = 10000;
+            fix = gps.tag(o, 350, 250);
+            CHECK(!fix.valid);
+            CHECK(wiknow::observation_json(o, tracker.observe(o, fix), {}, fix, gps, json,
+                                           sizeof(json)));
+            CHECK(std::strstr(json, "\"receiver_fix\":null"));
+            wiknow::Gps unknown;
+            CHECK(wiknow::observation_json(o, track, {}, {}, unknown, json, sizeof(json)));
+            CHECK(std::strstr(json, "\"utc_ms\":null"));
+            CHECK(std::strstr(json, "\"first_seen_utc_ms\":null"));
+            CHECK(std::strstr(json, "\"last_seen_utc_ms\":null"));
+        }
+        CHECK(writer.flush(sync));
+        const auto saved = d.read("WU00000001.LOG");
+        CHECK(saved.find("\"radio\":\"wifi\"") != std::string::npos);
+        CHECK(saved.find("\"radio\":\"ble\"") != std::string::npos);
+        CHECK(saved.find("\"utc_ms\":1793102400100") != std::string::npos);
+        CHECK(saved.find("\"latitude\":42.0000000") != std::string::npos);
+    }
     // Switch sessions get fresh WU files while WM stays open. Matches are mirrored;
     // ordinary Wi-Fi/BLE records are present only in the everything stream.
     {

@@ -85,3 +85,38 @@ Validate both switch boot positions, scanning-time edges and GPS timing on the
 physical assembly before field use. Host tests exercise policy/debounce,
 configuration validation, event JSON, session file separation and retention;
 firmware builds cannot establish electrical or sustained-throughput performance.
+
+## GPS stamps and first/last seen
+
+Every saved ordinary observation, matched or unmatched, includes `capture_ms`,
+`utc_ms`, `time_source`, `gps_sync_age_ms`, `timing_uncertainty_ms` and
+`receiver_fix` (latitude, longitude and fix uptime). GPS tagging uses capture time,
+not file-write time or the latest GPS position. Coordinates describe the receiver.
+Without GPS time, UTC is `null`; without a sufficiently fresh fix, location is
+`null`. GPS time can continue in holdover even when a current location is unavailable.
+
+Each observation also has `first_seen_ms`, `last_seen_ms`, `first_seen_utc_ms`
+and `last_seen_utc_ms`. Those are the live track's endpoints: receiver/node boot,
+radio/address type/address, channel and BLE acquisition kind identify a track.
+The 64-entry tracker can evict old entries, and restarting resets it. These fields
+therefore do not claim lifetime first/last detection. Out-of-order captures can
+extend first seen backwards but cannot move last seen backwards.
+
+For a clear address-level report across all selected capture files, use:
+
+```sh
+python3 tools/export_observations.py WU*.LOG --sightings -o sightings.csv
+```
+
+Each row groups radio + address type + address within a logging-controller boot,
+combining receivers and channels. It gives first/last capture uptime, UTC
+milliseconds, readable UTC timestamps, and first/last receiver GPS fixes. JSON,
+JSONL and TSV are also supported. Input order and duplicated WM/WU matching
+copies do not change endpoints. The report uses actual observation records rather
+than the bounded track's cached history. Choose only the session's files for a
+session-specific report; include all its rotated files. Reboots remain separate
+rows because uptime resets. Different/randomized addresses remain separate signals.
+
+These are first and last sightings **in the supplied logs**, not proof of when a
+device arrived or left. Queue drops, channel dwell gaps, retention and missing files
+can hide earlier/later sightings. Unknown endpoint UTC/location stays unknown.
