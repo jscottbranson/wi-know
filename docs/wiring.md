@@ -308,6 +308,46 @@ Do not tie bare ESP32 TX pins together. Universal images assign worker roles and
 IDs at runtime. Explicit manual builds use parent ID 0 and unique nonzero worker
 IDs on a separate bus; see [firmware instructions](firmware.md).
 
+## Diagnosing a silent RS-485 connection
+
+At startup, each enabled bus logs its mode, UART number, actual TX/RX/RTS GPIOs,
+baud, polling node range and timeout. A disabled bus logs `bus: disabled`.
+Capture this line and at least two five-second `bus:` summaries from **both**
+boards when a parent remains at `children=0`.
+
+The summaries contain cumulative counters since boot (32-bit, wrapping):
+
+| Field | Meaning |
+| --- | --- |
+| `tx_frames` | Frames fully written with successful UART transmit completion; this does not prove delivery on A/B |
+| `tx_errors` | Short/failed UART writes or transmit-completion timeouts |
+| `rx_bytes` | Bytes read from the UART, including noise and incomplete packets |
+| `rx_frames` | Complete frames accepted by the packet decoder, before role/node/session checks |
+| `decode_errors` | Decoder-reported corrupt or incompatible frames; not a UART framing-error count |
+| `read_errors` | UART read API failures; not a count of UART parity/overflow events |
+| `polls_accepted` | Commands accepted by a worker after node, sequence and applicable session checks |
+| `reports_accepted` | Reports accepted by the parent after response and applicable session checks |
+| `last_rx_type`, `last_rx_node`, `last_rx_seq` | Most recently decoded packet header; zero before the first frame |
+| `last_rx_age_ms` | Age of the last decoded frame; `-1` before the first frame |
+
+Packet types are poll=1, report=2, discover=3, hello=4, assign=5, assigned=6,
+session_poll=7, session_report=8. Discovery packets count as decoded frames,
+but only accepted polling commands and reports increment the acceptance counters.
+
+If parent `tx_frames` rises but child `rx_bytes` stays at zero, investigate the
+parent-to-child signal path, transceiver direction control and effective RX pin.
+If bytes rise without decoded frames, check baud, level conversion and signal
+quality; incomplete frames or noise need not increment `decode_errors`.
+If decoded frames rise without accepted polls, inspect packet type/node and
+manual-versus-universal configuration. If child accepted polls and transmitted
+frames rise but the parent receives no bytes, investigate the return path.
+Parent decoded frames without accepted reports point to protocol/response
+validation rather than a completely silent connection.
+
+Logging runs at application-loop boundaries, outside the poll/reply exchange,
+and replaces per-corrupt-frame warnings with the periodic error counter.
+These diagnostics do not change baud rates, pin assignments or protocol behavior.
+
 ## Power distribution
 
 ![Parallel power distribution](images/power-distribution.png)

@@ -440,6 +440,7 @@ static void parent_loop() {
                     if (c::universal_enabled)
                         discovery.acknowledge(next_node, session->identity, platform::now_ms(),
                                               c::bus_assignment_lease_ms);
+                    platform::bus_report_accepted();
                     uint64_t received = platform::now_ms();
                     members.seen(Node{next_node, response.boot, report.role, report.band24,
                                       report.band5, true, received},
@@ -590,6 +591,7 @@ static void parent_loop() {
                     platform::storage_name());
             last_status = now;
         }
+        platform::bus_diagnostics_tick();
         vTaskDelay(platform::ticks(5));
     }
 }
@@ -713,6 +715,7 @@ static void worker_loop() {
                 (!have_parent || request.boot != parent_boot ||
                  sequence_newer(request.sequence, last_command_sequence)) &&
                 (!c::universal_enabled || worker_identity.accept_sequence(request.sequence))) {
+                platform::bus_poll_accepted();
                 pending.acknowledge(command.ack);
                 const bool parent_changed = !have_parent || request.boot != parent_boot;
                 const bool changed = scan.apply(command, parent_changed);
@@ -770,6 +773,7 @@ static void worker_loop() {
                      platform::role == Role::follower ? "follower" : "child");
             last_identity_status = platform::now_ms();
         }
+        platform::bus_diagnostics_tick();
         vTaskDelay(platform::ticks(5));
     }
 }
