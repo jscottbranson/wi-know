@@ -113,3 +113,8 @@ QoS frames, and compare retained headers to an independent capture. Check
 standalone/worker-parent parity, management/NAN coverage during busy traffic,
 heap headroom, queue drops and scan dwell/channel behavior. No such on-device
 validation was available during implementation.
+
+Protocol 6 retains these field offsets and appends the high 32 bits of the
+scan coverage mask after the report payload (four extra bytes). Maximum report
+size is now 392 bytes, or 424 bytes in a universal identity envelope.
+See [firmware](firmware.md) for the upgrade requirement.

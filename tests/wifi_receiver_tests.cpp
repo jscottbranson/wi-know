@@ -61,7 +61,7 @@ int main() {
                 report.has_observation = true;
                 report.observation = o;
                 Packet packet{};
-                assert(pack_report(report, packet) && packet.size == 133);
+                assert(pack_report(report, packet) && packet.size == 137);
                 Report restored{};
                 assert(unpack_report(packet, restored));
                 assert(matches(receiver, restored.observation));

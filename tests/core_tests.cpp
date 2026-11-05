@@ -568,7 +568,7 @@ static void protocol_test() {
         truncated.size = size;
         CHECK(!unpack_report(truncated, roundtrip));
     }
-    c.count = 33;
+    c.count = max_channels + 1;
     CHECK(!pack_command(c, packet));
     // Random input streams and parser boundary lengths must remain memory-safe.
     uint32_t random = 123;

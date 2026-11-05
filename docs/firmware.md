@@ -79,7 +79,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 ## Implemented behavior
 
 - Fixed-capacity C++ core; radio callbacks never perform filesystem or LCD writes.
-- Deterministic capability-aware allocation of up to 32 channels across 16 nodes,
+- Deterministic capability-aware allocation of up to 36 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
 - Manual mode uses a versioned little-endian polling/report protocol with CRC32, node boot IDs,
   command sequences and assignment leases. Protocol version 5 includes a Wi-Fi
@@ -201,3 +201,8 @@ stop capture or logging. See [protocol, wiring, and hardware acceptance](air530-
 for the validity checks and firmware-dependent retained-time availability. Older
 Air530 modules remain active-RMC-only; neither model uses indefinite software
 holdover when the receiver stops supplying valid time.
+
+Bus protocol 6 preserves protocol 5 report field offsets and appends a four-byte
+little-endian high word for the channel coverage mask after each report (after
+the observation payload when present). Empty reports are 22 bytes; observation
+reports are 137 + payload length bytes. All nodes must use the same version.

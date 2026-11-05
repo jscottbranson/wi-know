@@ -461,8 +461,15 @@ class ConfigTests(unittest.TestCase):
         self.settings['buzzer'].update(enabled=True, pin=5)
         with self.assertRaises(ValueError):
             generate.validate(self.settings)
+    def test_dfs_and_channel_165(self):
+        channels = list(range(1, 12)) + list(range(36, 65, 4)) + list(range(100, 145, 4)) + list(range(149, 166, 4))
+        self.settings['wifi']['channels'] = channels
+        validated, _ = generate.validate(self.settings)
+        self.assertEqual(validated['wifi']['channels'], channels)
+        self.assertEqual(len(channels), 36)
+
     def test_bad_channels(self):
-        for channels in ([1, 1], [52], [], [True], [[]], [{}]):
+        for channels in ([1, 1], [12], [68], [96], [148], [169], [], [True], [[]], [{}]):
             settings = copy.deepcopy(self.settings)
             settings['wifi']['channels'] = channels
             with self.assertRaises(ValueError):

@@ -130,10 +130,10 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     integer(node['id'], 0 if node['role'] in ('parent', 'universal') else 1, 16, 'node.id')
     require(node['role'] != 'parent' or node['id'] == 0, 'parent ID must be 0')
     wifi = settings['wifi']
-    # Initial receive-only implementation deliberately excludes DFS / region-specific extensions.
-    allowed = set(range(1, 12)) | {36, 40, 44, 48, 149, 153, 157, 161}
+    # US passive reception, including DFS and channel 165.
+    allowed = set(range(1, 12)) | set(range(36, 65, 4)) | set(range(100, 145, 4)) | set(range(149, 166, 4))
     require(wifi['country'] == 'US', 'initial channel policy supports US only')
-    require(0 < len(wifi['channels']) <= 32, 'channels must be nonempty, unique, <=32')
+    require(0 < len(wifi['channels']) <= 36, 'channels must be nonempty, unique, <=36')
     for channel in wifi['channels']:
         integer(channel, 1, 196, 'channel')
         require(channel in allowed, f'channel {channel} outside implemented passive policy')

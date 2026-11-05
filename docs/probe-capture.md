@@ -79,3 +79,8 @@ synthetic fixtures.
    retained-report retry behavior. Check the watchdog remains healthy, matching
    queue priority works, and parent logging remains responsive. Record build ID,
    board, settings, transmitter/monitor capture and duration with results.
+
+Protocol 6 retains these field offsets and appends the high 32 bits of the
+scan coverage mask after the report payload (four extra bytes). Maximum report
+size is now 392 bytes, or 424 bytes in a universal identity envelope.
+See [firmware](firmware.md) for the upgrade requirement.
