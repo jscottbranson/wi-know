@@ -125,20 +125,56 @@ static esp_err_t uart_setup(int port, int tx, int rx, int rts, int baud, bool rs
         uart_driver_delete(uart);
     return error;
 }
+// Bus transport and protocol counters are accessed only by the application task.
+static struct {
+    uint32_t tx_frames{}, tx_errors{}, rx_bytes{}, rx_frames{}, rx_errors{}, read_errors{};
+    uint32_t polls_accepted{}, reports_accepted{};
+    uint32_t last_rx_type{}, last_rx_node{}, last_rx_sequence{};
+    uint64_t last_rx_ms{}, last_log_ms{};
+} bus_stats;
 void bus_start() {
-    if (c::bus_enabled)
-        ESP_ERROR_CHECK(uart_setup(
-            c::bus_uart,
-            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_tx_pin
-                                                                 : c::universal_worker_tx_pin)
-                                 : c::bus_tx_pin,
-            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_rx_pin
-                                                                 : c::universal_worker_rx_pin)
-                                 : c::bus_rx_pin,
-            c::universal_enabled ? (role == wiknow::Role::parent ? c::universal_parent_rts_pin
-                                                                 : c::universal_worker_rts_pin)
-                                 : c::bus_rts_pin,
-            c::bus_baud, true));
+    if (!c::bus_enabled) {
+        ESP_LOGI("bus", "disabled");
+        return;
+    }
+    const bool parent = role == wiknow::Role::parent;
+    const int tx = c::universal_enabled
+                       ? (parent ? c::universal_parent_tx_pin : c::universal_worker_tx_pin)
+                       : c::bus_tx_pin;
+    const int rx = c::universal_enabled
+                       ? (parent ? c::universal_parent_rx_pin : c::universal_worker_rx_pin)
+                       : c::bus_rx_pin;
+    const int rts = c::universal_enabled
+                        ? (parent ? c::universal_parent_rts_pin : c::universal_worker_rts_pin)
+                        : c::bus_rts_pin;
+    ESP_ERROR_CHECK(uart_setup(c::bus_uart, tx, rx, rts, c::bus_baud, true));
+    ESP_LOGI("bus", "mode=%s uart=%d baud=%d tx=%d rx=%d rts=%d nodes=%u..%u timeout_ms=%u",
+             c::universal_enabled ? "universal" : "manual", int(c::bus_uart), int(c::bus_baud), tx,
+             rx, rts, unsigned(c::bus_first_node_id), unsigned(c::bus_last_node_id),
+             unsigned(c::bus_poll_timeout_ms));
+}
+void bus_poll_accepted() {
+    ++bus_stats.polls_accepted;
+}
+void bus_report_accepted() {
+    ++bus_stats.reports_accepted;
+}
+void bus_diagnostics_tick() {
+    const auto now = now_ms();
+    if (!c::bus_enabled || now - bus_stats.last_log_ms < 5000)
+        return;
+    bus_stats.last_log_ms = now;
+    ESP_LOGI("bus",
+             "tx_frames=%u tx_errors=%u rx_bytes=%u rx_frames=%u decode_errors=%u "
+             "read_errors=%u polls_accepted=%u reports_accepted=%u "
+             "last_rx_type=%u last_rx_node=%u last_rx_seq=%u last_rx_age_ms=%lld",
+             unsigned(bus_stats.tx_frames), unsigned(bus_stats.tx_errors),
+             unsigned(bus_stats.rx_bytes), unsigned(bus_stats.rx_frames),
+             unsigned(bus_stats.rx_errors), unsigned(bus_stats.read_errors),
+             unsigned(bus_stats.polls_accepted), unsigned(bus_stats.reports_accepted),
+             unsigned(bus_stats.last_rx_type), unsigned(bus_stats.last_rx_node),
+             unsigned(bus_stats.last_rx_sequence),
+             bus_stats.rx_frames ? static_cast<long long>(now - bus_stats.last_rx_ms) : -1LL);
 }
 void bus_send(const wiknow::Packet &p) {
     uint8_t frame[wiknow::max_frame];
@@ -148,15 +184,19 @@ void bus_send(const wiknow::Packet &p) {
     int written = uart_write_bytes(uart_port_t(c::bus_uart), frame, n);
     if (written != int(n) ||
         uart_wait_tx_done(uart_port_t(c::bus_uart),
-                          ticks(wiknow::bus_tx_wait_ms(uint16_t(n), c::bus_baud))) != ESP_OK)
+                          ticks(wiknow::bus_tx_wait_ms(uint16_t(n), c::bus_baud))) != ESP_OK) {
+        ++bus_stats.tx_errors;
         ++dropped;
+    } else {
+        ++bus_stats.tx_frames;
+    }
 }
 bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
     if (!c::bus_enabled)
         return false;
     static wiknow::Decoder decoder;
     static uint64_t last_byte{};
-    static uint32_t reported_errors{};
+
     // Reset only after an inter-byte idle gap, never at a caller's polling deadline.
     constexpr uint32_t idle_ms = 20;
     uint64_t until = now_ms() + timeout;
@@ -166,14 +206,20 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         uint64_t now = now_ms();
         if (n == 0 && now - last_byte >= idle_ms)
             decoder.reset();
+        if (n < 0)
+            ++bus_stats.read_errors;
         if (n == 1) {
+            ++bus_stats.rx_bytes;
             last_byte = now;
-            if (decoder.feed(byte, packet))
+            const bool decoded = decoder.feed(byte, packet);
+            bus_stats.rx_errors = decoder.errors();
+            if (decoded) {
+                ++bus_stats.rx_frames;
+                bus_stats.last_rx_type = unsigned(packet.type);
+                bus_stats.last_rx_node = packet.node;
+                bus_stats.last_rx_sequence = packet.sequence;
+                bus_stats.last_rx_ms = now;
                 return true;
-            if (decoder.errors() != reported_errors) {
-                reported_errors = decoder.errors();
-                ESP_LOGW("bus", "Rejected incompatible or corrupt frame; errors=%u",
-                         unsigned(reported_errors));
             }
         }
     } while (now_ms() < until);

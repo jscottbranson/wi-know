@@ -42,6 +42,9 @@ void capture_transition(const char *json, bool on);
 const char *storage_name();
 void start_storage();
 void bus_start();
+void bus_poll_accepted();
+void bus_report_accepted();
+void bus_diagnostics_tick();
 void bus_send(const wiknow::Packet &packet);
 bool bus_receive(wiknow::Packet &packet, uint32_t timeout_ms);
 } // namespace platform
