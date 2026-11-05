@@ -1,5 +1,20 @@
 # wi-know
 
+## Legal disclaimer
+
+By using this repository or any part of this project, you agree to comply with
+all applicable laws and regulations and not to use the project for any unlawful
+purpose. You are solely responsible for your use of the project, including
+obtaining any required permissions or authorizations.
+
+To the fullest extent permitted by applicable law, no project owner, maintainer,
+or contributor is liable for any claims, damages, losses, or other consequences
+arising from the use or misuse of this repository or any part of this project.
+The project is provided "as is," without warranties of any kind. Use it at your
+own risk.
+
+## Overview
+
 A distributed wireless observation system built around ESP32 microcontrollers.
 Children divide the configured 2.4 GHz and 5 GHz Wi-Fi channels; a parent
 coordinates them, scans BLE, evaluates detection rules, and records observations.
