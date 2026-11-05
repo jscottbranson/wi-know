@@ -97,12 +97,12 @@
 <circle cx="1325" cy="500" r="5" fill="#147d64"/>
 <circle cx="1325" cy="555" r="5" fill="#176aa5"/>
 <text x="1190" y="537" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="16" font-weight="700" text-anchor="start">120 Ω</text>
-<text x="720" y="657" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">Dots mark electrical junctions. Unmarked crossings do not connect.</text>
+<text x="720" y="657" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="middle">REQUIRED GND wire: parent + every child/follower + every transceiver.</text>
 <rect x="48" y="690" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="723" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Bus layout</text>
-<text x="70" y="756" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Run A and B as a twisted pair; keep node stubs short. Join the grounds of this non-isolated bus.</text>
+<text x="70" y="723" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Parent and ALL children MUST share a common ground</text>
+<text x="70" y="756" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Separate breadboards: explicitly wire their GND rails together. A and B alone are not enough.</text>
 <text x="70" y="784" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Fit termination only at the two cable ends. Check existing module termination before adding resistors.</text>
-<text x="70" y="812" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use identical module A/B conventions; provide one appropriate bias network if required by the modules.</text>
+<text x="70" y="812" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Twist A/B; keep stubs short. Dots are junctions; unmarked crossings do not connect. Check module bias.</text>
 <rect x="48" y="853" width="1344" height="84" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="886" fill="#a85e08" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent uses the separate peripheral example config</text>
 <text x="70" y="919" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">*Parent GPIO11 / 3 / 7; workers GPIO11 / 12 / 7. Parent GPIO12 is tied to USB-UART TX.</text>

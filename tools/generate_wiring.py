@@ -134,9 +134,9 @@ def node_wiring(png):
         'enabled: true    uart: 1    tx_pin: 11    rx_pin: 12    rts_pin: 7    baud: 115200',
         'Use GPIO numbers in JSON. The D6 / D7 / D3 labels apply specifically to the XIAO ESP32-C5.',
     ])
-    d.note(836, 'Power is separate from data', [
-        'Supply each XIAO through USB or regulated 5 V at VBUS + GND. 3V3 powers its local transceiver.',
-        'Do not join multiple boards’ 3V3 outputs. Never connect raw TX outputs together.',
+    d.note(836, 'REQUIRED: parent and ALL children MUST share GND', [
+        'Run a GND wire between breadboard ground rails; join each ESP32 and transceiver GND.',
+        'Separate USB supplies still require shared GND. Keep independent 3V3 / +5 V outputs separate.',
     ], RED)
     d.save('xiao-rs485-wiring', png)
 
@@ -172,11 +172,11 @@ def bus_wiring(png):
         d.dot(x, 500, GREEN)
         d.dot(x, 555, BLUE)
         d.text(label_x, 537, '120 Ω', size=16, weight=700)
-    d.text(720, 657, 'Dots mark electrical junctions. Unmarked crossings do not connect.', size=18, color=MUTED, anchor='middle')
-    d.note(690, 'Bus layout', [
-        'Run A and B as a twisted pair; keep node stubs short. Join the grounds of this non-isolated bus.',
+    d.text(720, 657, 'REQUIRED GND wire: parent + every child/follower + every transceiver.', size=18, color=MUTED, anchor='middle')
+    d.note(690, 'Parent and ALL children MUST share a common ground', [
+        'Separate breadboards: explicitly wire their GND rails together. A and B alone are not enough.',
         'Fit termination only at the two cable ends. Check existing module termination before adding resistors.',
-        'Use identical module A/B conventions; provide one appropriate bias network if required by the modules.',
+        'Twist A/B; keep stubs short. Dots are junctions; unmarked crossings do not connect. Check module bias.',
     ])
     d.note(853, 'N32R8 parent uses the separate peripheral example config', [
         '*Parent GPIO11 / 3 / 7; workers GPIO11 / 12 / 7. Parent GPIO12 is tied to USB-UART TX.',
@@ -219,9 +219,9 @@ def power_wiring(png):
         d.text(x, 682, 'VCC from this XIAO only', size=16, color=MUTED, anchor='middle')
     d.note(730, 'N32R8 parent: native USB input; see parent header and peripheral diagrams', [
         'Use the left USB connector. Leave parent P1.14 / 5V unconnected with the separate LCD/buzzer/SD supply.',
-        'For this non-isolated RS-485 bus, connect parent GND to the same common ground.',
+        'MUST join parent GND to ALL child/transceiver grounds, including across separate breadboards.',
     ], ORANGE)
-    d.note(868, 'Keep the voltage rails separate', [
+    d.note(868, 'Common GND is required even with separate USB supplies', [
         'Do not feed external power into XIAO 3V3_OUT. Do not connect different boards’ 3V3 outputs together.',
         'HiLetgo SD module VCC needs 5 V; SPI signals remain 3.3 V. See the module-specific wiring diagrams.',
     ], RED)

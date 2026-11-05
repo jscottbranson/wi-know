@@ -60,8 +60,8 @@
 <text x="70" y="766" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">enabled: true    uart: 1    tx_pin: 11    rx_pin: 12    rts_pin: 7    baud: 115200</text>
 <text x="70" y="794" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Use GPIO numbers in JSON. The D6 / D7 / D3 labels apply specifically to the XIAO ESP32-C5.</text>
 <rect x="48" y="836" width="1344" height="112" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
-<text x="70" y="869" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">Power is separate from data</text>
-<text x="70" y="902" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Supply each XIAO through USB or regulated 5 V at VBUS + GND. 3V3 powers its local transceiver.</text>
-<text x="70" y="930" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Do not join multiple boards’ 3V3 outputs. Never connect raw TX outputs together.</text>
+<text x="70" y="869" fill="#b83543" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">REQUIRED: parent and ALL children MUST share GND</text>
+<text x="70" y="902" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Run a GND wire between breadboard ground rails; join each ESP32 and transceiver GND.</text>
+<text x="70" y="930" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Separate USB supplies still require shared GND. Keep independent 3V3 / +5 V outputs separate.</text>
 <text x="48" y="976" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="15" font-weight="400" text-anchor="start">Logical wiring • connectors not drawn to physical pin order • see docs/wiring.md</text>
 </svg>

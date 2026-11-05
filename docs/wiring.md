@@ -291,6 +291,12 @@ The D-to-GPIO mapping comes from the
 
 [Editable SVG](images/rs485-network.svg)
 
+**The parent, every child/follower, and all transceivers MUST share a common ground.**
+On separate breadboards, run an explicit wire between their ground rails and
+connect each board/transceiver GND to that shared ground. Separate USB power
+connections do not replace this wire. A/B connections alone are insufficient for
+this non-isolated setup. Keep independently powered +5 V and 3V3 outputs separate.
+
 Provide one transceiver per board, including the parent. Connect A to A, B to B,
 and grounds together for this non-isolated bus. Use a twisted pair for A/B in a
 linear daisy chain with short stubs. Connection dots indicate junctions; crossings
