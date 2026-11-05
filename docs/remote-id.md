@@ -235,3 +235,8 @@ storage writes and minimum internal heap. Confirm the pinned controller produces
 successive fragments rather than accumulated data in practice. No physical
 fragmentation test or captured-drone fixture has yet been performed; an existing
 drone may not emit a suitable fragmented fixture.
+
+Protocol 6 retains these field offsets and appends the high 32 bits of the
+scan coverage mask after the report payload (four extra bytes). Maximum report
+size is now 392 bytes, or 424 bytes in a universal identity envelope.
+See [firmware](firmware.md) for the upgrade requirement.

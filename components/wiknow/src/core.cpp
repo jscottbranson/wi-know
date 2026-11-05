@@ -1023,7 +1023,7 @@ Plan Membership::plan(const Channel *channels, size_t count) const {
             k += capable(p.assignments[i].node, c);
         return k;
     };
-    // Stable insertion sort is bounded to 32 channels and never allocates.
+    // Stable insertion sort is bounded to 36 channels and never allocates.
     for (size_t i = 1; i < count; ++i) {
         Channel value = work[i];
         size_t j = i;
@@ -1521,12 +1521,14 @@ bool pack_report(const Report &r, Packet &p) {
     b[3] = r.has_observation;
     put32(b + 4, r.dropped);
     put32(b + 8, r.scan.assignment_id);
-    put32(b + 12, r.scan.confirmed_channels);
+    put32(b + 12, uint32_t(r.scan.confirmed_channels));
     b[16] = uint8_t(r.scan.state);
     b[17] = r.scan.failed_channel;
-    p.size = 18;
-    if (!r.has_observation)
+    p.size = 22;
+    if (!r.has_observation) {
+        put32(b + 18, uint32_t(r.scan.confirmed_channels >> 32));
         return true;
+    }
     const auto &o = r.observation;
     put32(b + 18, r.capture_age_ms);
     put32(b + 22, o.sequence);
@@ -1544,11 +1546,13 @@ bool pack_report(const Report &r, Packet &p) {
     std::fill(b + 106, b + 132, 0);
     std::copy(o.wifi_header.begin(), o.wifi_header.begin() + o.wifi_header_size, b + 106);
     b[132] = uint8_t(o.ble_evidence);
-    p.size = uint16_t(133 + o.payload_size);
+    // Protocol 6 appends the high mask word, preserving observation offsets.
+    put32(b + 133 + o.payload_size, uint32_t(r.scan.confirmed_channels >> 32));
+    p.size = uint16_t(137 + o.payload_size);
     return true;
 }
 bool unpack_report(const Packet &p, Report &r) {
-    if (p.type != MessageType::report || p.size < 18)
+    if (p.type != MessageType::report || p.size < 22 || p.size > p.payload.size())
         return false;
     const auto *b = p.payload.data();
     if (b[0] < 1 || b[0] > 2 || b[1] > 1 || b[2] > 1 || b[3] > 1 ||
@@ -1561,15 +1565,15 @@ bool unpack_report(const Packet &p, Report &r) {
     r.has_observation = b[3];
     r.dropped = get32(b + 4);
     r.scan.assignment_id = get32(b + 8);
-    r.scan.confirmed_channels = get32(b + 12);
+    r.scan.confirmed_channels = get32(b + 12) | (uint64_t(get32(b + p.size - 4)) << 32);
     r.scan.state = ScanState(b[16]);
     r.scan.failed_channel = b[17];
     if ((r.scan.state != ScanState::scanning && r.scan.confirmed_channels) ||
         ((r.scan.state == ScanState::error) != (r.scan.failed_channel != 0)))
         return false;
     if (!r.has_observation)
-        return p.size == 18;
-    if (p.size < 133 || get16(b + 102) > max_payload || p.size != 133 + get16(b + 102) ||
+        return p.size == 22;
+    if (p.size < 137 || get16(b + 102) > max_payload || p.size != 137 + get16(b + 102) ||
         b[26] > 1 || b[27] > 1 || b[68] != 0 || b[101] != 0)
         return false;
     auto &o = r.observation;

@@ -199,10 +199,11 @@ static void log_worker_scan(uint16_t node, uint64_t now) {
     char event[384];
     std::snprintf(event, sizeof(event),
                   "{\"event\":\"worker_scan\",\"node\":%u,\"boot\":%u,"
-                  "\"assignment_id\":%u,\"scan_state\":\"%s\",\"confirmed_channel_bits\":%u,"
+                  "\"assignment_id\":%u,\"scan_state\":\"%s\",\"confirmed_channel_bits\":%llu,"
                   "\"failed_channel\":%u,\"at_ms\":%llu}\n",
                   unsigned(node), unsigned(worker->boot), unsigned(worker->scan.assignment_id),
-                  scan_state_name(worker->scan.state), unsigned(worker->scan.confirmed_channels),
+                  scan_state_name(worker->scan.state),
+                  static_cast<unsigned long long>(worker->scan.confirmed_channels),
                   unsigned(worker->scan.failed_channel), static_cast<unsigned long long>(now));
     platform::write_log(event);
 }

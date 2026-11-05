@@ -70,7 +70,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 | --- | --- |
 | `node` | Default `universal`, ID 0 placeholder; explicit manual `parent`/`child`/`follower` remain available |
 | `universal` | Optional verified hardware profile: strap GPIO10; parent bus 11/3/7; worker bus 11/12/7 |
-| `wifi` | US receive channel allowlist and dwell milliseconds; initial policy excludes DFS |
+| `wifi` | US receive channel allowlist and dwell milliseconds; includes DFS (52–64 and 100–144 in steps of 4) and channel 165 |
 | `ble` | Passive BLE scan switch, used by parent and follower |
 | `bus` | RS-485 UART/pins/baud, discoverable node ID range, poll timeout, membership/assignment leases |
 | `detection` | Rules directory and enabled categories |
@@ -198,9 +198,9 @@ BLE scanning is cancelled before tuning Wi-Fi. With `ble.enabled: false`, it hop
 Wi-Fi continuously. Settings are compiled in; rebuild and flash after changes.
 Old configs without a `standalone` section retain distributed operation.
 
-This trades coverage for needing only one board: with the example’s 19 channels,
+This trades coverage for needing only one board: with the example’s 36 channels,
 500 ms Wi-Fi dwells and 120 ms BLE windows, each Wi-Fi channel is revisited roughly
-every 11.78 seconds,
+every 22.32 seconds,
 plus switching/processing overhead. BLE also has scan interval/window gaps within
 its allotted time. Packets outside a radio/channel's window are missed. Increase
 following-alert gap and signal-staleness settings if needed for the longer sweep.
@@ -269,3 +269,8 @@ be `Grove GPS Air530Z` for TIM reception; Air530 remains active-RMC-only.
 `gps.backup_battery_present: false` does not disable reception or bypass validity.
 If UART initialization fails, firmware logs a warning and continues without GPS.
 An initially silent receiver can begin reporting later without an MCU reboot.
+
+The full US passive receive list contains 36 channels. Bus protocol 6 widens scan
+coverage reporting; rebuild and flash all bus nodes together. Tune failures remain
+visible as scan errors; reception on the added channels needs ESP32-C5 hardware
+validation. This does not enable active Wi-Fi scanning or transmission.

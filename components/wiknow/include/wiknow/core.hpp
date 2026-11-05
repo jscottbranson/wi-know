@@ -6,7 +6,7 @@
 #include <string_view>
 
 namespace wiknow {
-constexpr size_t max_channels = 32, max_nodes = 16, max_rules = 128;
+constexpr size_t max_channels = 36, max_nodes = 16, max_rules = 128;
 constexpr size_t max_tracks = 64, max_payload = 255;
 constexpr size_t max_ble_payload_pattern = 32;
 constexpr size_t log_line_capacity = 2816;
@@ -283,7 +283,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
-constexpr uint8_t protocol_version = 5;
+constexpr uint8_t protocol_version = 6;
 enum class MessageType : uint8_t {
     poll = 1,
     report = 2,
@@ -362,7 +362,8 @@ struct Command {
 };
 enum class ScanState : uint8_t { awaiting, idle, scanning, error, expired };
 struct ScanStatus {
-    uint32_t assignment_id{}, confirmed_channels{}; // bits index Command.channels
+    uint32_t assignment_id{};
+    uint64_t confirmed_channels{}; // bits index Command.channels
     ScanState state{ScanState::awaiting};
     uint8_t failed_channel{};
 };

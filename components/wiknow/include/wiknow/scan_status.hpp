@@ -57,7 +57,7 @@ class WorkerScanProgress {
         status_.failed_channel = 0;
         for (size_t i = 0; i < command_.count && i < max_channels; ++i)
             if (command_.channels[i].number == channel)
-                status_.confirmed_channels |= uint32_t(1) << i;
+                status_.confirmed_channels |= uint64_t(1) << i;
     }
     void failed(uint8_t channel) {
         error_reported_ = false;
@@ -114,10 +114,10 @@ class ScanCoverage {
         if (!node || node > max_nodes)
             return false;
         auto &entry = entries_[node - 1];
-        if (!entry.desired_valid || scan.assignment_id != entry.desired.assignment_id)
+        if (!entry.desired_valid || entry.desired.count > max_channels ||
+            scan.assignment_id != entry.desired.assignment_id)
             return false;
-        const uint32_t allowed =
-            entry.desired.count == 32 ? UINT32_MAX : (uint32_t(1) << entry.desired.count) - 1;
+        const uint64_t allowed = (uint64_t(1) << entry.desired.count) - 1;
         if (scan.confirmed_channels & ~allowed)
             return false;
         bool changed = !entry.received || entry.boot != boot || entry.scan.state != scan.state ||
@@ -155,7 +155,7 @@ class ScanCoverage {
                 ++result.errors;
             if (entry->scan.state == ScanState::scanning)
                 for (size_t c = 0; c < assignment.count; ++c)
-                    if (entry->scan.confirmed_channels & (uint32_t(1) << c))
+                    if (entry->scan.confirmed_channels & (uint64_t(1) << c))
                         ++result.confirmed;
         }
         return result;

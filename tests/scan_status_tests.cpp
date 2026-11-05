@@ -79,6 +79,36 @@ int main() {
     // New parent session invalidates worker evidence, independent of generation.
     CHECK(rebooted.apply(command, true));
     CHECK(rebooted.status().confirmed_channels == 0);
+    // A single dual-band worker must cover the entire 36-channel list.
+    Channel all[] = {{1},   {2},   {3},   {4},   {5},   {6},   {7},   {8},   {9},
+                     {10},  {11},  {36},  {40},  {44},  {48},  {52},  {56},  {60},
+                     {64},  {100}, {104}, {108}, {112}, {116}, {120}, {124}, {128},
+                     {132}, {136}, {140}, {144}, {149}, {153}, {157}, {161}, {165}};
+    auto complete = membership.plan(all, 36);
+    CHECK(complete.uncovered_count == 0 && complete.assignments[0].count == 36);
+    Command wide;
+    wide.count = 36;
+    wide.channels = complete.assignments[0].channels;
+    parent.prepare(1, wide);
+    CHECK(rebooted.apply(wide, true));
+    for (auto channel : all)
+        rebooted.tuned(channel.number);
+    CHECK(rebooted.status().confirmed_channels == ((uint64_t(1) << 36) - 1));
+    CHECK(parent.observe(1, 11, rebooted.report(), 79));
+    CHECK(parent.coverage(complete, 80, 100).confirmed == 36);
+    Packet wide_packet;
+    Command wide_decoded;
+    CHECK(pack_command(wide, wide_packet) && unpack_command(wide_packet, wide_decoded));
+    CHECK(same_assignment(wide, wide_decoded));
+    for (bool observation : {false, true}) {
+        Report wide_report, wide_result;
+        wide_report.scan = rebooted.report();
+        wide_report.has_observation = observation;
+        wide_report.observation.rssi = -50;
+        CHECK(pack_report(wide_report, wide_packet));
+        CHECK(unpack_report(wide_packet, wide_result));
+        CHECK(wide_result.scan.confirmed_channels == wide_report.scan.confirmed_channels);
+    }
     // Bit 31 is valid; never shift by 32 when validating a full assignment.
     command.count = 32;
     parent.prepare(1, command);

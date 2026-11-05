@@ -150,3 +150,8 @@ negatives, denied/busy targets, deliberate disconnects, timeouts, rotating addre
 window cancellation, reset/passive-scan recovery, and heap/stack headroom with Wi-Fi
 and storage. Measure disabled behavior (no connections), throughput and dwell loss.
 No real-device compatibility or runtime memory margin is claimed from a build alone.
+
+Protocol 6 retains these field offsets and appends the high 32 bits of the
+scan coverage mask after the report payload (four extra bytes). Maximum report
+size is now 392 bytes, or 424 bytes in a universal identity envelope.
+See [firmware](firmware.md) for the upgrade requirement.
