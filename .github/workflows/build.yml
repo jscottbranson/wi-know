@@ -1,5 +1,13 @@
 name: Build and test
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Keep only the latest run for a PR; pushes to main have their own group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   host:
     runs-on: ubuntu-latest
