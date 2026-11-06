@@ -1,17 +1,16 @@
 # One image for every board
 
 Build and flash the same universal image and configuration on the N32R8 parent
-and every XIAO ESP32-C5. Do not pass per-board role or ID arguments:
+and every XIAO ESP32-C5. Do not pass per-board role arguments:
 
 ```sh
 python3 tools/flash.py --config config/settings.json --port /dev/ttyACM0
 ```
 
 Repeat with each USB port. `settings.json` keeps parent peripherals and capture
-control disabled. This compatibility workflow uses a separate identification
+control disabled. This workflow uses a separate identification
 harness; for the four supported manual installations, use the configurations in
-[flashing instructions](flashing.md). The former universal-peripherals example
-has been removed; existing custom universal configurations remain supported.
+[flashing instructions](flashing.md).
 Keep the generated rules manifest with the image.
 For repeatable deployment, build once and flash that build directory to each
 board; record the SHA-256 of `wi_know.bin` and read back/verify each flash.
@@ -88,13 +87,13 @@ No worker role, short address or lease is saved there: reboot obtains a fresh
 assignment, avoiding duplicate saved addresses. Factory MAC identity is unchanged
 by NVS reset. Never erase factory eFuses.
 
-## Compatibility
+## Explicit roles
 
-Explicit `--role parent`, `--role child`, and `--role follower` builds now use
+Explicit `--role parent`, `--role child`, and `--role follower` builds use
 the same discovery and session identity checks, with parent-assigned worker IDs
 and scanning/follower roles. They retain their configured wiring and do not need
-the identification harness. Omit `--node-id` and keep `node.id` at 0. Update all
-bus nodes together; older fixed-ID peers cannot participate.
+the identification harness. Update all
+bus nodes together.
 CRC protects against corruption, not a malicious device on the local bus.
 
 See [discovery protocol and scheduling](discovery-protocol.md) for assignment,

@@ -69,9 +69,9 @@ compile-time check rejects cached `firmware/sdkconfig` files with the old main
 stack budget: set `CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312` or greater, or regenerate
 that local configuration from the updated defaults.
 
-Bus protocol **5** carries the header length and 26-byte padded header field,
+Bus protocol **6** carries the header length and 26-byte padded header field,
 followed by the BLE acquisition discriminator.
-Maximum report payload is 388 bytes, or 420 with the universal identity wrapper,
+Maximum report payload is 392 bytes, or 424 with the universal identity wrapper,
 within the existing 512-byte payload and conservative bus timing budget. All
 nodes must be rebuilt/flashed together: earlier protocol versions are rejected.
 Wire decoding checks the subtype, header shape, transmitter identity, zero
@@ -107,14 +107,9 @@ rules now also observe supported data headers; their confidence is unchanged.
 
 Host fixtures exercise DS roles, protected/QoS headers, forbidden forms,
 truncation, global/local/group addresses, forged wire evidence, export and target
-selection. Before claiming complete issue #39 acceptance, capture controlled
+selection. Before claiming hardware validation, capture controlled
 three-address traffic on a physical C5 in each DS direction, with protected and
 QoS frames, and compare retained headers to an independent capture. Check
 standalone/worker-parent parity, management/NAN coverage during busy traffic,
 heap headroom, queue drops and scan dwell/channel behavior. No such on-device
 validation was available during implementation.
-
-Protocol 6 retains these field offsets and appends the high 32 bits of the
-scan coverage mask after the report payload (four extra bytes). Maximum report
-size is now 392 bytes, or 424 bytes in a universal identity envelope.
-See [firmware](firmware.md) for the upgrade requirement.

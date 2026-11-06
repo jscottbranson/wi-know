@@ -48,12 +48,12 @@ pre-fix time in `$GNRMC,221032.000,V,,,,,,,021126,,,M,V*2C`. This is consistent
 with firmware predating the documented TIM support, rather than proof of a
 failed RTC or backup battery. The approximate RMC fallback accommodates it.
 
-`rtc` now covers both validated TIM and approximate void-RMC time. Neither the
+`rtc` covers both validated TIM and approximate void-RMC time. Neither the
 label nor `backup_battery_present` proves hardware-clock origin, battery health,
 or accuracy. A plausible but incorrect receiver date can therefore appear in
 logs; `utc_uncertainty_ms` remains null rather than claiming measured accuracy.
 An active GPS sample takes priority and can correct the estimate in either
-direction. Missing TIM alone no longer forces unknown time when usable void RMC
+direction. Missing TIM alone does not force unknown time when usable void RMC
 is arriving. No usable date/time or a silent module still leaves UTC unknown.
 
 The CASIC specification includes a firmware-upgrade mechanism, but this repository
@@ -68,9 +68,9 @@ or treated as a valid clock. Its active RMC reception still works.
 ## Wiring and hardware acceptance
 
 Select the Air530Z parent/standalone profile. Connect MCU TX to GPS RX: GPIO8 on
-N32R8 or GPIO0 on XIAO (remove the former amber LED/resistor). Keep GPS TX connected
+N32R8 or GPIO0 on XIAO. Keep GPS TX connected
 to MCU RX (GPIO10 or GPIO12 respectively). `tx_pin: -1` skips output configuration;
-receiver time can only be used if the module already outputs valid TIM messages.
+receiver time requires the module to already output valid TIM or usable void RMC.
 
 The full hardware acceptance checklist has **not been run**; the pre-fix
 V5.3.0.0 sample above is a user-reported observation. On the actual module, record firmware

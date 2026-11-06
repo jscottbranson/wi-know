@@ -366,7 +366,7 @@ bool ble_payload_contains(std::string_view value, const Observation &o) {
         value.size() > max_ble_payload_pattern * 2 ||
         !valid_ble_payload(o.payload.data(), o.payload_size))
         return false;
-    // Unlike legacy hex predicates, raw patterns require contiguous byte pairs.
+    // Raw payload patterns require contiguous byte pairs.
     for (const char c : value)
         if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')))
             return false;

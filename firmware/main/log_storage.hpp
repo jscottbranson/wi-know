@@ -48,8 +48,7 @@ template <class Read> bool erased_partition(size_t size, Read read) {
     }
     return size != 0;
 }
-// Legacy WK files may contain matching evidence: retain them at matched priority.
-// IDs are global across all three prefixes, so restart never appends old files.
+// IDs are global across both prefixes, so restart never appends old files.
 struct LogId {
     uint32_t sequence{};
     char kind{};

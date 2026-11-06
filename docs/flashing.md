@@ -76,7 +76,7 @@ board at startup. This selects wiring only; flash size and PSRAM settings remain
 controlled by the existing SDK configuration.
 
 Explicit `--role` choices override the config and are validated; standalone mode
-requires `parent`. The default `settings.json` retains universal mode for compatibility.
+requires `parent`. The default `settings.json` uses universal mode.
 
 Universal image (repeat for every board, changing only the USB port):
 
@@ -165,11 +165,11 @@ test does not diagnose or repair LCD wiring.
 Build products are stored under:
 
 ```text
-build/devices/<role>-0-<config-board-and-sdk-defaults-hash>/
+build/devices/<role>-<config-board-and-sdk-defaults-hash>/
 ```
 
-Each directory has its own generated header and `sdkconfig`. The `0` is the
-build-time ID placeholder; workers receive their IDs at runtime. Switching roles,
+Each directory has its own generated header and `sdkconfig`. Workers receive
+their IDs at runtime. Switching roles,
 board profiles, or config paths selects a separate build directory. Workers with
 the same settings share a build. Changes to the same settings/rule files are
 picked up by subsequent builds. The build tree is ignored by Git.

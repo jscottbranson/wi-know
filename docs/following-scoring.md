@@ -1,9 +1,7 @@
 # Optional GPS-aware following scoring
 
-Issue #38 extends the existing `FollowingDetector`; it does not add a second
-following alarm. All shipped profiles keep `following_alert.scoring_enabled`
-false. Existing `enabled: true` installations retain their earlier distance/delay
-behavior until scoring is explicitly enabled. GPS must also be enabled.
+`FollowingDetector` supports optional GPS-aware scoring. All shipped profiles keep `following_alert.scoring_enabled`
+false. With `enabled: true`, distance/delay detection runs until scoring is enabled. GPS must also be enabled.
 
 ## Evidence and identity
 
@@ -23,8 +21,7 @@ choices are unchanged.
 
 ## Configuration
 
-These fields are in every example profile's `following_alert` section. Older
-configuration files may omit all the new fields; the generator supplies defaults.
+These fields are required in every profile's `following_alert` section.
 For a GPS-equipped deployment, set `enabled` and `scoring_enabled` true:
 
 | Setting | Default | Meaning |
@@ -115,11 +112,9 @@ Host tests cover stationary persistence, movement, one alert per encounter,
 returning inside radius, jitter, jumps, GPS loss/reacquisition, stale/invalid fixes,
 late/future/duplicate/out-of-order reports, radio/address-type separation,
 rotation, gaps, decay, clock rollback, ignore entries, disabled behavior, bounded
-eviction, generated settings and retained/exported evidence. Existing legacy
-following tests remain unchanged.
+eviction, generated settings and retained/exported evidence.
 
-Controlled stationary and moving runs on C5 with real GPS remain required for
-issue #38: check GPS errors, parent/worker time alignment, standalone revisit
+Controlled stationary and moving runs on C5 with real GPS remain required to check GPS errors, parent/worker time alignment, standalone revisit
 cadence, delayed queues, UI/buzzer cooldown and heap/task headroom under Wi-Fi,
 BLE and storage load. No physical following-detection performance is claimed by
 host tests or successful firmware builds.

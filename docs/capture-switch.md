@@ -4,8 +4,7 @@ The optional maintained switch enables full structured observation logging live,
 without rebooting or changing scan assignments, detection rules or alert actions.
 Follow the [wiring and example configurations](wiring.md#optional-full-capture-switch-manual-parent--standalone).
 The shipped manual parent and standalone configurations enable the switch; universal
-configurations keep it disabled. Configurations that omit the section still default
-to disabled. To select the switch pin from the board profile, use:
+configurations keep it disabled. To select the switch pin from the board profile, use:
 
 ```json
 "capture_switch": {
@@ -31,12 +30,11 @@ runs in the parent loop, so bus polling/storage latency adds to response time.
 respectively. The standalone and bus settings are preserved.
 
 ```sh
-python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --role parent --node-id 0
-python3 tools/flash.py --config config/settings.standalone.example.json --board xiao --role parent --node-id 0
+python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --role parent
+python3 tools/flash.py --config config/settings.standalone.example.json --board xiao --role parent
 ```
 
-The older firmware displays `SW:OFF` even when switch support was compiled out.
-Updated firmware displays `SW:DISABLED` in that case. With the capture example
+Firmware displays `SW:DISABLED` when switch support is disabled. With the capture example
 flashed, a stable 3.3 V on GPIO26 should show `SW:ON` and `Capture:ALL` when the
 capture page next appears; grounding the input restores `SW:OFF` and
 `Capture:MATCH`. The example enables an internal pull-down so an unconnected switch stays OFF;
@@ -112,10 +110,10 @@ Every saved ordinary observation, matched or unmatched, includes `capture_ms`,
 `utc_ms`, `time_source`, `gps_sync_age_ms`, `timing_uncertainty_ms` and
 `receiver_fix` (latitude, longitude and fix uptime). GPS tagging uses capture time,
 not file-write time or the latest GPS position. Coordinates describe the receiver.
-Without GPS time, UTC is `null`; without a sufficiently fresh fix, location is
-`null`. Location expires after `gps.max_fix_age_ms`; established UTC continues in
-software holdover until reboot or a valid GPS correction. `gps_sync_age_ms` grows
-during holdover and is null for buffered captures preceding the latest sync.
+Without fresh GPS or receiver RTC time, UTC is `null`; without a sufficiently
+fresh fix, location is `null`. Both expire after `gps.max_fix_age_ms`.
+`gps_sync_age_ms` measures time since satellite synchronization and is null for
+buffered captures preceding the latest sync.
 It is not a bound on UTC error.
 
 Each observation also has `first_seen_ms`, `last_seen_ms`, `first_seen_utc_ms`

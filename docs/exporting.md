@@ -93,8 +93,7 @@ publication so large logs do not require loading the complete dataset in memory.
 Archive the generated `settings.rules.json` beside the logs. It records the rule
 predicates, source provenance and effective enabled state for that build. Keep it
 with the matching firmware and settings; a later rebuild may use different rules
-with the same IDs. The shipped ruleset is empty, and unavailable categories are
-reported during generation; exports do not add signatures or infer device types.
+with the same IDs. Categories without enabled rules are reported during generation; exports do not add signatures or infer device types.
 
 ## First/last sightings
 

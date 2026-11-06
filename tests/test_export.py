@@ -29,7 +29,7 @@ class ExportTests(unittest.TestCase):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.root = Path(self.directory.name)
-        self.log = self.root / 'WK00000001.LOG'
+        self.log = self.root / 'WM00000001.LOG'
         self.output = self.root / 'export'
 
     def run_export(self, rows, kind='geojson', extra=()):
@@ -62,7 +62,7 @@ class ExportTests(unittest.TestCase):
                 self.assertEqual(result['first_seen_receiver_fix'], first['receiver_fix'])
                 self.assertEqual(result['last_seen_receiver_fix'], last['receiver_fix'])
 
-    def test_observation_first_last_utc_csv_and_legacy_logs(self):
+    def test_observation_first_last_utc_csv_and_missing_times(self):
         row = observation(first_seen_utc_ms=1000, last_seen_utc_ms=2000)
         self.assertEqual(self.run_export([row, observation()], 'csv'), 0)
         results = list(csv.DictReader(io.StringIO(self.output.read_text())))
@@ -210,7 +210,7 @@ class ExportTests(unittest.TestCase):
         self.assertIsNone(unknown['geometry'])
 
     def test_peak_map_and_following_alert_without_peak(self):
-        alert = dict(event='following_alert', radio='ble', address='00:11:22:33:44:55',
+        alert = dict(schema_version=1, event='following_alert', radio='ble', address='00:11:22:33:44:55',
                      displacement_m=250, receiver_fix=None)
         self.assertEqual(self.run_export([observation(), alert], extra=['--location', 'peak']), 0)
         features = json.loads(self.output.read_text())['features']
@@ -249,6 +249,8 @@ class ExportTests(unittest.TestCase):
     def test_rejects_invalid_coordinates_versions_and_nonfinite_values(self):
         invalid = [observation(receiver_fix={'latitude': 91, 'longitude': 0}),
                    observation(receiver_fix={'latitude': True, 'longitude': 0}),
+                   observation(schema_version=None),
+                   observation(event="following_alert", schema_version=None),
                    observation(schema_version=2), observation(schema_version=True),
                    observation(rssi_dbm=float('nan'))]
         for row in invalid:

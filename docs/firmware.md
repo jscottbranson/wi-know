@@ -19,7 +19,7 @@ tests/                               host-side core and configuration tests
 Use `python3 tools/flash.py` in an activated ESP-IDF v5.5.1 environment to choose
 the USB port. The default image is universal; use the same config for all boards.
 See [universal provisioning and validation](universal.md) before wiring. See [the flashing guide](flashing.md) for the
-interactive workflow and command-line examples. It isolates each device's build
+interactive workflow and command-line examples. It isolates each role/configuration build
 and SDK settings; the manual commands below remain available.
 
 ## Toolchain and builds
@@ -33,16 +33,16 @@ repository root. Nothing is flashed by a build.
 python3 tools/generate_config.py
 idf.py -C firmware -B build-universal -DIDF_TARGET=esp32c5 build
 # Explicit roles retain configured wiring and use parent-assigned worker IDs.
-idf.py -C firmware -B build-parent -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 build
-idf.py -C firmware -B build-child -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=0 build
-idf.py -C firmware -B build-follower -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=follower -DWIKNOW_NODE_ID=0 build
+idf.py -C firmware -B build-parent -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent build
+idf.py -C firmware -B build-child -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=child build
+idf.py -C firmware -B build-follower -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=follower build
 ```
 
 Flash the same child image to each worker; the parent assigns IDs within its bus range.
 To flash a particular build, repeat its options and add your port:
 
 ```sh
-idf.py -C firmware -B build-child -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=0 -p /dev/ttyACM0 flash monitor
+idf.py -C firmware -B build-child -DWIKNOW_ROLE=child -p /dev/ttyACM0 flash monitor
 ```
 
 Use separate build directories for separate role/config combinations. Custom
@@ -60,21 +60,20 @@ cmake --build build-host
 ctest --test-dir build-host --output-on-failure
 ```
 
-CI runs host tests, both universal hardware profiles, the manual standalone image,
-and all three manual firmware roles with the pinned SDK.
+CI runs host tests, the universal image, both standalone board profiles, manual
+parent/child/follower builds, and a GATT-enabled build with the pinned SDK.
 
 ## Initial hardware setup
 
 Follow [universal provisioning](universal.md) for the shared image, identification
 harness, pin changes, recovery and physical validation procedure. Parent bus RX
-is GPIO3; worker RX is GPIO12. Default peripherals are off. The universal example
-enables the parent peripherals and moves GPS RX to GPIO26. Every board receives
+is GPIO3; worker RX is GPIO12. Default peripherals are off. Custom universal configurations must use the universal pin map, including
+GPS RX on GPIO26. Every board receives
 the exact same image. Roles and short addresses are assigned at runtime.
 
 Explicit `parent`, `child` and `follower` builds use the same discovery and
 parent-assigned worker IDs without requiring the universal identification harness.
-Their board-specific wiring remains available. Set `node.id` to 0 and update every
-bus node when upgrading from fixed-ID firmware.
+Their board-specific wiring remains available. Update all bus nodes together.
 Add reviewed rules under `rules/` and flash the same rule set to every board.
 
 ## Implemented behavior
@@ -84,12 +83,12 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
 - All bus-enabled builds use a versioned little-endian discovery and polling/report
   protocol with CRC32, node boot IDs, command sequences and assignment leases.
-  Protocol version 5 includes a Wi-Fi subtype/evidence discriminator, bounded MAC
+  Protocol version 6 includes a Wi-Fi subtype/evidence discriminator, bounded MAC
   headers and BLE acquisition discriminator; observation acknowledgments retain their existing
   behavior: a worker retains its in-flight observation until the parent acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
   are retried on subsequent polls; the parent suppresses duplicate processing.
-  Rebuild and flash every node together; version 5 cannot communicate
-  with version 1, 2, 3 or 4 firmware. Local RS-485 bus is assumed trusted;
+  Rebuild and flash every node together; version 6 cannot communicate
+  with other framing versions. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
 - Receive-only Wi-Fi beacon/probe-response metadata, bounded probe-request IE evidence,
   NAN service discovery, [header-only data/receiver evidence](wifi-receiver.md), and passive BLE advertising
@@ -118,7 +117,7 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Per-source/channel/session peak RSSI with the receiver fix at that peak. Tracking
   is bounded to 64 entries and evicts the least-recently observed entry when full.
   Logged history persists, but an evicted entry begins a new in-memory peak history.
-- Median RSSI windows, deadband and confirmation counts, with three active-high
+- Median RSSI windows, deadband and confirmation counts, with two active-high
   trend LEDs and an unknown/off state for stale data. These indicate strength, not bearing.
 - PWM buzzer with global cooldown, common PCF8574/HD44780 16×2 LCD driver, and
   SD-over-SPI logging. LCD driver mapping: RS=P0, RW=P1, E=P2, backlight=P3, D4–D7=P4–P7.
@@ -133,13 +132,12 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 The firmware must be exercised on physical hardware; compilation does not validate
 RF sensitivity, pin wiring, SD power, Air530 battery retention, LCD mapping or the
 bus. The N32R8 parent now has a header map and peripheral wiring example;
-the actual HW-125 and LCD backpack variants still require confirmation. SD mount/open failures
+the actual SD reader and LCD backpack variants still require confirmation. SD mount/open failures
 fall back to flash at boot. Later storage failures surface on the console and LCD
 status; recovery currently requires reboot. There
 is no runtime configuration reload, external RTC driver, automatic signature import,
-Hardware-verified Wi-Fi NAN interoperability, RFID reader, Bluetooth Classic
-support or triangulation in this version. These are explicit next implementation
-stages, not simulated telemetry.
+hardware-verified Wi-Fi NAN interoperability, RFID reader, Bluetooth Classic
+support or triangulation in this version.
 
 The bus returns at most one observation per node per poll. Separate bounded queues
 reserve 16 entries for observations matching local rules and 32 for ordinary
@@ -204,7 +202,7 @@ for the validity checks and firmware-dependent retained-time availability. Older
 Air530 modules remain active-RMC-only; neither model uses indefinite software
 holdover when the receiver stops supplying valid time.
 
-Bus protocol 6 preserves protocol 5 report field offsets and appends a four-byte
+Bus protocol 6 includes a four-byte
 little-endian high word for the channel coverage mask after each report (after
 the observation payload when present). Empty reports are 22 bytes; observation
 reports are 137 + payload length bytes. All nodes must use the same version.

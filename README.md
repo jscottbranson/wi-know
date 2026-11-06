@@ -43,8 +43,7 @@ support BLE, Wi-Fi beacon and passive NAN broadcasts.
 | Parent passive buzzer | Configurable match alerts |
 | Parent 1602A LCD with 5 V PCF8574 backpack | Two rows of 16 characters; I²C interface |
 | Parent Grove GPS (Air530), with onboard backup battery | Receiver coordinates and UTC from NMEA over UART; internal RTC backup |
-| Three parent LEDs | Selected signal strength increasing, decreasing, or steady |
-| Optional separate battery-backed RTC | Fallback only if Air530 startup time availability proves insufficient |
+| Two parent LEDs | Selected signal strength increasing, decreasing, or steady |
 
 The C5 supports 2.4/5 GHz Wi-Fi and Bluetooth LE. Bluetooth Classic requires
 additional compatible hardware. A node listens to one Wi-Fi channel at a time;
@@ -65,7 +64,7 @@ See [Air530Z clock fallback and firmware limitations](docs/air530-time.md).
 ## Design
 
 See [architecture](docs/architecture.md) for scheduling, protocol, detection,
-GPS association, peak RSSI, LED behavior, clock fallback, and implementation stages.
+GPS association, peak RSSI, LED behavior, clock fallback, and hardware validation.
 **Edit [config/settings.json](config/settings.json)** for device settings and GPIOs.
 **Store matching rules in [rules/](rules/README.md)** as JSON documents.
 See [configuration help](config/README.md) and [build/run instructions](docs/firmware.md).
@@ -121,12 +120,12 @@ Parent and standalone configurations include LCD, GPS, microSD, buzzer, LEDs,
 and a capture switch. Missing peripherals do not stop scanning; an absent SD
 card falls back to internal flash. The switch input defaults OFF when disconnected.
 See [flashing instructions](docs/flashing.md) and [configuration](config/README.md).
-The default `settings.json` retains the separate [universal workflow](docs/universal.md)
-for existing installations; the four commands above use manual roles.
+The default `settings.json` uses the separate [universal workflow](docs/universal.md)
+with an identification harness; the four commands above use manual roles.
 
 The local surveillance ruleset covers Axon, Flock, Ring, selected body-camera
 vendors, and possible Genetec equipment; see [coverage and limitations](rules/README.md).
-The [expanded detection pack](rules/EXPANDED.md) adds cameras, acoustic sensors, smart glasses, Flock probe/accessory evidence, and more. Tile/BLE trackers and Ubiquiti/UniFi rules are included but disabled in every shipped profile. Disabled test templates are in `rules/examples/`.
+The [expanded detection pack](rules/EXPANDED.md) adds cameras, acoustic sensors, smart glasses, Flock probe/accessory evidence, and more. Tile/BLE trackers and Ubiquiti/UniFi rules are enabled in every shipped profile. Disabled test templates are in `rules/examples/`.
 
 ## Primary references
 

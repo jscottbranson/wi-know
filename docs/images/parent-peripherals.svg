@@ -9,7 +9,7 @@
 <polyline points="48,159 1392,159" fill="none" stroke="#d5dfe8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
 <rect x="48" y="182" width="1344" height="140" rx="14" fill="#edf3f8" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="215" fill="#176aa5" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="21" font-weight="700" text-anchor="start">N32R8 parent GPIO map — config/settings.parent.example.json</text>
-<text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LEDs: GPIO0 green / GPIO1 red; both ON = steady. GPIO8 now drives GPS RX. Buzzer: GPIO9.</text>
+<text x="70" y="248" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LEDs: GPIO0 green / GPIO1 red; both ON = steady. GPIO8 drives GPS RX. Buzzer: GPIO9.</text>
 <text x="70" y="276" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">LCD: GPIO4 SDA / GPIO5 SCL. GPS UART0: GPIO10 RX / GPIO8 TX; 3.3 V logic for Air530Z.</text>
 <text x="70" y="304" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.</text>
 <rect x="48" y="350" width="650" height="405" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
@@ -154,7 +154,7 @@
 <text x="70" y="1461" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">Parent GND</text>
 <text x="930" y="1461" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS GND</text>
 <polyline points="470,1455 900,1455" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="70" y="1484" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Remove the former amber LED/resistor from GPIO8. Connect GPIO8 directly to Air530Z RX.</text>
+<text x="70" y="1484" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Connect GPIO8 directly to Air530Z RX. Use GPIO0 and GPIO1 for the trend LEDs.</text>
 <rect x="48" y="1535" width="1344" height="345" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1576" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic</text>
 <text x="70" y="1626" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="700" text-anchor="start">GPIO23 / P2.5</text>

@@ -1,7 +1,8 @@
 # Expanded detection pack
 
 Reviewed 2026-10-28. `expanded.json` adds 67 rules to the existing 25-rule
-surveillance pack: 92 total, all enabled in every shipped profile. These are
+surveillance pack. Together with three receiver-header rules, the repository
+contains 95 rules, all enabled in every shipped profile. These are
 passive observations, not authenticated identities. No physical-device
 validation has been performed. Attribution, modifications and license obligations
 are recorded in [NOTICE](../NOTICE) and [source notes](sources/README.md).
@@ -42,11 +43,9 @@ observations do not confirm camera identity or establish physical device count.
 Every config enables all shipped detection categories and leaves
 `detection.disabled_categories` empty. To opt out, move a category from
 `detection.enabled_categories` to `detection.disabled_categories`, then
-rebuild/reflash. A category cannot be in both lists. Omitted
-`disabled_categories` defaults to `[]` for existing configs. Rules stay individually
-enabled in the source pack; the generated manifest records their effective state.
-The limit is now
-128 rules, leaving 36 slots for custom rules. The inactive lab templates remain
+rebuild/reflash. Both lists are required; a category cannot be in both. Rules
+stay individually enabled in the source pack; the generated manifest records
+their effective state. The limit is 128 rules, leaving 33 slots for custom rules. The inactive lab templates remain
 outside the production rule directory glob.
 
 Tracker sightings do not establish that a tracker is following someone. Apple

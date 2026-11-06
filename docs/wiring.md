@@ -4,7 +4,7 @@
 [standalone XIAO wiring](#standalone-mini-xiao-esp32-c5). Universal images use
 [the additional identification harness and GPS RX change](universal.md): GPIO10
 is reserved for detection, and parent GPS RX moves from GPIO10 to GPIO26. Do not
-connect the legacy GPS wire to GPIO10 when using universal firmware.
+connect the GPS RX wire to GPIO10 when using universal firmware.
 
 For the distributed setup, the parent is the **ESP32-C5 WiFi6 Dev Board N32R8**, with 32 MB flash and 8 MB
 PSRAM. The supplied product pinout matches the Waveshare WIFI6-KIT header layout.
@@ -27,7 +27,7 @@ left **USB** connector for native USB Serial/JTAG console/flashing, not the righ
 Use one **Seeed Studio XIAO ESP32-C5** as a manual standalone parent, with
 its supplied antenna attached to U.FL. Fit peripherals in this priority order:
 **screen, GPS, microSD, buzzer, then LEDs**. All five fit together, including
-two trend LEDs and GPS TX on the former amber pin. A bare
+two trend LEDs and GPS TX on D1. A bare
 board needs only antenna and USB power. This setup has **no RS-485 wiring and no identification
 harness**; flash the explicit standalone profile rather than the universal image.
 
@@ -121,9 +121,9 @@ Insert a card before boot. Unrecognized/damaged filesystems are automatically
 formatted by default, erasing existing data; back up the card first. Set
 `sd.format_if_mount_failed: false` to opt out. Mount errors appear on the USB
 console and scanning continues. The example keeps
-`logging.mode: "matches"`; with the empty default ruleset, ordinary observations
+`logging.mode: "matches"`; ordinary unmatched observations
 will not populate logs. For a capture check, temporarily set it to `"all"`, then
-confirm `/sdcard/WK00000001.LOG` (and subsequent numbered files) contains
+confirm `/sdcard/WU00000001.LOG` (and subsequent numbered files) contains
 JSON-line observations and fresh GPS fixes after acquiring a fix outdoors. See
 [log export](exporting.md). Reboot after correcting a mount/write failure; the
 driver does not remount automatically. Power down before removing the card;
@@ -133,7 +133,7 @@ After activating ESP-IDF, validate and flash from the repository root:
 
 ```sh
 python3 tools/generate_config.py --config config/settings.standalone.example.json
-python3 tools/flash.py --config config/settings.standalone.example.json --role parent --node-id 0
+python3 tools/flash.py --config config/settings.standalone.example.json --role parent
 ```
 
 Settings are compiled in: rebuild and flash after changing your choices. This
@@ -228,8 +228,7 @@ its separate I²C level shifter.
 
 **Module VCC is not bare-card VDD.** Never apply 5 V to card contacts or ESP32
 GPIOs. A native 3.3 V breakout without this regulator must instead use 3.3 V;
-verify the actual board before substituting another module. The earlier HW-125
-identification was unconfirmed.
+verify the actual board before substituting another module.
 
 On the card side, contact numbers are CLK=5, CMD=3, DAT0=7, DAT3/CS=2, VDD=4
 and VSS=6; these are not the module's header order. Account for fitted resistors:
@@ -254,15 +253,14 @@ your chosen config:
 
 ```sh
 python3 tools/generate_config.py --config config/settings.parent.example.json
-idf.py -C firmware -B build-parent-wiring -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 -DWIKNOW_CONFIG="$PWD/config/settings.parent.example.json" build
+idf.py -C firmware -B build-parent-wiring -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_CONFIG="$PWD/config/settings.parent.example.json" build
 ```
 
-N32R8 identifies memory capacity; this example retains the existing conservative
-firmware flash/partition settings and does not enable PSRAM. The application does
-not need all 32 MB flash or PSRAM to operate.
+N32R8 identifies memory capacity. The firmware uses a 2 MiB partition layout
+and enables optional quad PSRAM at 40 MHz for the parent tracking table.
 
 The buzzer sounds only for a matching enabled rule with its `buzzer` action set;
-the default ruleset is empty. Hardware operation is still unverified.
+the shipped ruleset includes enabled surveillance signatures. Hardware operation is still unverified.
 
 ## Each mini child and follower
 
@@ -311,8 +309,7 @@ use one appropriate bias network if required. See the
 for bus topology and termination guidance.
 
 Do not tie bare ESP32 TX pins together. All bus-enabled builds use parent ID 0
-and assign worker IDs and roles at runtime. Keep `node.id` at 0 in every image
-and update all bus nodes together when replacing fixed-ID firmware; see
+and assign worker IDs and roles at runtime. Update all bus nodes together; see
 [firmware instructions](firmware.md).
 
 ## Diagnosing a silent RS-485 connection
@@ -403,8 +400,8 @@ has not yet been verified on the physical boards.
 
 Use a maintained SPST switch: **controller 3V3 → switch → input GPIO**, with
 **10 kΩ from the input GPIO to common GND**. Never use 5 V. All parent/system
-and standalone diagrams above include this additional circuit. All three trend
-Red and green LEDs stay connected; the former amber pin is now GPS TX.
+and standalone diagrams above include this additional circuit.
+Red and green LEDs indicate signal trend; GPS TX uses its own assigned pin.
 
 | Controller | Input | Configuration |
 | --- | --- | --- |
@@ -412,7 +409,7 @@ Red and green LEDs stay connected; the former amber pin is now GPS TX.
 | N32R8 standalone | P1.12 / GPIO26 | [Standalone configuration with `--board n32r8`](../config/settings.standalone.example.json) |
 | XIAO standalone | Underside MTCK / GPIO4 solder pad | [Standalone configuration with `--board xiao`](../config/settings.standalone.example.json) |
 
-These examples select the corresponding `board.model` and preserve all three
+These examples select the corresponding `board.model` and preserve both trend
 LEDs. No spare D0–D10 header GPIO remains on a fully populated XIAO; its underside
 **MTCK / GPIO4** pad supplies the extra input. Identify the pad using the
 [Seeed underside pinout](https://files.seeedstudio.com/wiki/XIAO_ESP32C5/Getting_started/XIAO_ESP32-C5_back_pinout.png),
@@ -421,7 +418,7 @@ Native USB Serial/JTAG remains usable. Other exposed non-strapping JTAG pads
 GPIO3/5 are also allowed if unused; MTMS/GPIO2 is a strap and is rejected.
 
 N32R8 **P1.12 / GPIO26** is unused by the manual parent peripherals and is not a
-C5 strapping pin (the old header diagram mislabeled it). Do not use this wire
+C5 strapping pin. Do not use this wire
 with universal firmware: that profile already uses GPIO26 for GPS RX.
 The pin maps were checked against the
 [Seeed pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/),
@@ -441,13 +438,12 @@ ON starts a new full-capture file, including a copy of each matching detection;
 OFF closes the session and restores the configured mode. See
 [operation and capture limits](capture-switch.md).
 
-Retained-time startup is not enabled. Board profiles now route GPS TX to the former
-amber LED pin, but boot and scanning never wait for RTC data. The GPS RX wire can
-remain disconnected until needed for commands; reception still works.
+Air530Z startup requests receiver time over GPS TX; boot and scanning never
+wait for RTC data. Receive-only custom wiring can set `gps.tx_pin: -1`.
 
-## Migrating the amber LED pin to GPS TX
+## GPS command wiring
 
-Power off before rewiring. Remove the amber LED and its resistor branch completely.
+Power off before wiring.
 On N32R8 connect **P1.9 / GPIO8 → GPS RX**; keep **GPS TX → GPIO10**.
 On XIAO connect **D1 / GPIO0 → GPS RX**; keep **GPS TX → D7 / GPIO12**.
 Use the module's signal labels, not cable colors. Keep 3.3 V power and common ground.
@@ -460,7 +456,6 @@ levels before connecting. See the
 The connection is UART TX to the GPS, not a separate RTC bus. It preserves the
 capture switch and all RS-485 pins for later parent/child operation on N32R8.
 
-Rebuild/reflash with the new board profile after rewiring. The boot LED test now
+Rebuild/reflash with the new board profile after rewiring. The boot LED test
 cycles green, red, then both together and never drives GPS TX as an indicator.
-The removed `signal_trend.steady_pin` setting must be deleted from custom JSON.
 GPS query/retained-time validation is still pending; wiring alone does not establish UTC.

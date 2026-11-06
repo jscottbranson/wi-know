@@ -56,31 +56,14 @@ def load(path):
                       parse_constant=constant)
 
 
-def validate(settings, role_override=None, node_override=None, base=ROOT, board_override=None):
+def validate(settings, role_override=None, base=ROOT, board_override=None):
     # Overrides and category switches must not change the caller's saved settings.
     settings = copy.deepcopy(settings)
-    settings.setdefault('board', {'model': 'custom'})
-    settings.setdefault('capture_switch', {'enabled': False, 'gpio_pin': -1,
-                                           'internal_pulldown': False, 'debounce_ms': 50})
-    if isinstance(settings.get('sd'), dict):
-        settings['sd'].setdefault('format_if_mount_failed', True)
-    # Optional section keeps existing schema-v1 configurations compatible.
-    settings.setdefault('standalone', {'enabled': False, 'ble_dwell_ms': 120})
-    settings.setdefault('universal', {'strap_pin': 10, 'parent_tx_pin': 11, 'parent_rx_pin': 3,
-                                    'parent_rts_pin': 7, 'worker_tx_pin': 11,
-                                    'worker_rx_pin': 12, 'worker_rts_pin': 7})
-    if isinstance(settings.get('detection'), dict):
-        settings['detection'].setdefault('disabled_categories', [])
-    scoring_defaults = {'scoring_enabled': False, 'min_duration_ms': 300000, 'min_hits': 3, 'hit_interval_ms': 1000, 'score_threshold': 3, 'score_decay_ms': 60000, 'gps_jitter_m': 20, 'max_speed_mps': 100, 'max_fix_age_ms': 2000}
-    if isinstance(settings.get('following_alert'), dict):
-        for key, value in scoring_defaults.items():
-            settings['following_alert'].setdefault(key, value)
-    settings.setdefault('gatt', {'enabled': False, 'timeout_ms': 3000, 'cooldown_ms': 60000, 'targets': []})
     template = {
         'schema_version': int,
         'board': {'model': str},
         'capture_switch': {'enabled': bool, 'gpio_pin': int, 'internal_pulldown': bool, 'debounce_ms': int},
-        'node': {'role': str, 'id': int},
+        'node': {'role': str},
         'universal': dict.fromkeys(('strap_pin', 'parent_tx_pin', 'parent_rx_pin', 'parent_rts_pin',
                                    'worker_tx_pin', 'worker_rx_pin', 'worker_rts_pin'), int),
         'wifi': {'country': str, 'channels': list, 'dwell_ms': int},
@@ -89,7 +72,7 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
         'standalone': {'enabled': bool, 'ble_dwell_ms': int},
         'bus': {**dict.fromkeys(('enabled',), bool), **dict.fromkeys(('uart', 'tx_pin', 'rx_pin', 'rts_pin', 'baud', 'first_node_id', 'last_node_id', 'poll_timeout_ms', 'membership_lease_ms', 'assignment_lease_ms'), int)},
         'detection': {'rules_directory': str, 'enabled_categories': list, 'disabled_categories': list},
-        'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list, **{k: type(v) for k, v in scoring_defaults.items()}},
+        'following_alert': {'enabled': bool, 'distance_m': int, 'delay_ms': int, 'max_gap_ms': int, 'ignore_devices': list, 'scoring_enabled': bool, **dict.fromkeys(('min_duration_ms', 'min_hits', 'hit_interval_ms', 'score_threshold', 'score_decay_ms', 'gps_jitter_m', 'max_speed_mps', 'max_fix_age_ms'), int)},
         'follower': {'enabled': bool, 'release_after_ms': int},
         'gps': {'enabled': bool, 'model': str, 'backup_battery_present': bool, **dict.fromkeys(('uart', 'rx_pin', 'tx_pin', 'baud', 'max_fix_age_ms', 'max_timing_uncertainty_ms'), int)},
         'sd': {'enabled': bool, 'format_if_mount_failed': bool, 'model': str, **dict.fromkeys(('sck_pin', 'mosi_pin', 'miso_pin', 'cs_pin', 'clock_khz'), int)},
@@ -110,8 +93,6 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     require(settings['schema_version'] == 1, 'unsupported settings schema')
     if role_override is not None:
         settings['node']['role'] = role_override
-    if node_override is not None:
-        settings['node']['id'] = node_override
     if board_override is not None:
         settings['board']['model'] = board_override
     board = settings['board']['model']
@@ -126,8 +107,6 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     node = settings['node']
     require(node['role'] in ('universal', 'parent', 'child', 'follower'), 'invalid role')
     universal = node['role'] == 'universal'
-    integer(node['id'], 0, 16, 'node.id')
-    require(node['id'] == 0, 'node.id must be 0; parents assign worker IDs at runtime')
     wifi = settings['wifi']
     # US passive reception, including DFS and channel 165.
     allowed = set(range(1, 12)) | set(range(36, 65, 4)) | set(range(100, 145, 4)) | set(range(149, 166, 4))
@@ -440,11 +419,10 @@ def main():
     parser.add_argument('--config', type=pathlib.Path, default=ROOT/'config/settings.json')
     parser.add_argument('--output', type=pathlib.Path)
     parser.add_argument('--role', choices=['universal', 'parent', 'child', 'follower'])
-    parser.add_argument('--node-id', type=int)
     parser.add_argument('--board', choices=BOARDS)
     args = parser.parse_args()
     try:
-        settings, rules = validate(load(args.config), args.role, args.node_id, board_override=args.board)
+        settings, rules = validate(load(args.config), args.role, board_override=args.board)
         if args.output:
             args.output.parent.mkdir(parents=True, exist_ok=True)
             content = emit(settings, rules)
@@ -457,7 +435,7 @@ def main():
                                  ensure_ascii=True, indent=2) + '\n'
             if not manifest.exists() or manifest.read_text(encoding='utf-8') != content:
                 manifest.write_text(content, encoding='utf-8')
-        print(f'Validated {settings["node"]["role"]} node {settings["node"]["id"]}: {len(rules)} rules ({sum(r["enabled"] for r in rules)} enabled)')
+        print(f'Validated {settings["node"]["role"]} configuration: {len(rules)} rules ({sum(r["enabled"] for r in rules)} enabled)')
         if not any(r['enabled'] for r in rules):
             print('NOTE: no enabled detection rules; match alerts unavailable. See rules/README.md.')
         available = {r['category'] for r in rules if r['enabled']}

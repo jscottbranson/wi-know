@@ -143,14 +143,12 @@ class ConfigTests(unittest.TestCase):
         settings = generate.load(ROOT/'config/settings.parent.example.json')
         with self.assertRaisesRegex(ValueError, 'GPIO .* used'):
             generate.validate(settings, board_override='xiao')
-        settings, _ = generate.validate(self.settings, 'child', 0, board_override='xiao')
+        settings, _ = generate.validate(self.settings, 'child', board_override='xiao')
         self.assertEqual(settings['bus']['rx_pin'], 12)
 
     def test_sd_formatting_defaults_on_with_explicit_boolean_opt_out(self):
-        self.settings['sd'].pop('format_if_mount_failed', None)
         settings, rules = generate.validate(self.settings)
         self.assertTrue(settings['sd']['format_if_mount_failed'])
-        self.assertNotIn('format_if_mount_failed', self.settings['sd'])
         self.assertIn('sd_format_if_mount_failed = true', generate.emit(settings, rules))
         self.settings['sd']['format_if_mount_failed'] = False
         settings, rules = generate.validate(self.settings)
@@ -205,8 +203,8 @@ class ConfigTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 generate.validate(invalid)
 
-    def test_legacy_following_short_gap(self):
-        self.settings['following_alert'] = dict(enabled=False, distance_m=100, delay_ms=0, max_gap_ms=1, ignore_devices=[])
+    def test_following_short_gap_without_scoring(self):
+        self.settings['following_alert'].update(enabled=False, distance_m=100, delay_ms=0, max_gap_ms=1, ignore_devices=[])
         settings, _ = generate.validate(self.settings)
         self.assertFalse(settings['following_alert']['scoring_enabled'])
 
@@ -227,7 +225,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_standalone_wiring_uses_all_header_pins(self):
         settings, rules = generate.validate(generate.load(ROOT/'config/settings.standalone.example.json'))
-        self.assertEqual(settings['node'], {'role': 'parent', 'id': 0})
+        self.assertEqual(settings['node'], {'role': 'parent'})
         self.assertTrue(settings['standalone']['enabled'])
         self.assertFalse(settings['bus']['enabled'])
         header = generate.emit(settings, rules)
@@ -327,16 +325,24 @@ class ConfigTests(unittest.TestCase):
         self.assertIn('discovery_enabled = false', generate.emit(settings, rules))
         for role in ('child', 'follower'):
             with self.assertRaisesRegex(ValueError, 'parent role'):
-                generate.validate(self.settings, role, 0)
+                generate.validate(self.settings, role)
         for value in (0, 99, 60001, True):
             self.settings['standalone']['ble_dwell_ms'] = value
             with self.assertRaises(ValueError):
                 generate.validate(self.settings)
 
-    def test_legacy_config_defaults_to_distributed(self):
-        del self.settings['standalone']
-        settings, _ = generate.validate(self.settings)
-        self.assertFalse(settings['standalone']['enabled'])
+    def test_missing_settings_are_rejected(self):
+        for section, fields in self.settings.items():
+            missing = copy.deepcopy(self.settings)
+            del missing[section]
+            with self.subTest(section=section), self.assertRaises(ValueError):
+                generate.validate(missing)
+            if isinstance(fields, dict):
+                for field in fields:
+                    missing = copy.deepcopy(self.settings)
+                    del missing[section][field]
+                    with self.subTest(section=section, field=field), self.assertRaises(ValueError):
+                        generate.validate(missing)
 
     def test_standalone_example(self):
         settings, _ = generate.validate(generate.load(ROOT/'config/settings.standalone.example.json'))
@@ -411,10 +417,7 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'both enabled and disabled'):
             generate.validate(self.settings)
 
-    def test_disabled_categories_backward_compatibility_and_validation(self):
-        self.settings['detection'].pop('disabled_categories')
-        settings, _ = generate.validate(self.settings)
-        self.assertEqual(settings['detection']['disabled_categories'], [])
+    def test_disabled_categories_validation(self):
         for invalid in (['a', 'a'], ['Bad Category'], [1], 'ble_trackers'):
             self.settings['detection']['disabled_categories'] = invalid
             with self.assertRaises(ValueError):
@@ -439,11 +442,12 @@ class ConfigTests(unittest.TestCase):
     def test_all_roles_use_parent_assigned_ids(self):
         self.settings['bus'].update(first_node_id=3, last_node_id=5)
         for role in ('parent', 'child', 'follower', 'universal'):
-            settings, rules = generate.validate(self.settings, role, 0)
+            settings, rules = generate.validate(self.settings, role)
             self.assertIn('discovery_enabled = true', generate.emit(settings, rules))
-            for node_id in (1, 3, 5):
-                with self.assertRaisesRegex(ValueError, 'assign worker IDs'):
-                    generate.validate(self.settings, role, node_id)
+            invalid = copy.deepcopy(self.settings)
+            invalid['node']['id'] = 0
+            with self.assertRaisesRegex(ValueError, 'unknown keys'):
+                generate.validate(invalid, role)
 
     def test_unwired_peripheral(self):
         self.settings['gps']['enabled'] = True
@@ -637,10 +641,10 @@ class ConfigTests(unittest.TestCase):
                     generate.load(path)
     def test_validation_does_not_mutate_settings(self):
         before = copy.deepcopy(self.settings)
-        generate.validate(self.settings, 'child', 0)
+        generate.validate(self.settings, 'child')
         self.assertEqual(self.settings, before)
         with self.assertRaises(ValueError):
-            generate.validate(self.settings, 'child', 3)
+            generate.validate(self.settings, 'invalid')
         self.assertEqual(self.settings, before)
 
     def test_malformed_rule_shapes_report_value_errors(self):

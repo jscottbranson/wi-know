@@ -32,13 +32,12 @@
 namespace platform {
 namespace c = wiknow::config;
 std::atomic<wiknow::Role> role{c::role};
-std::atomic<uint16_t> node_id{c::node_id};
+std::atomic<uint16_t> node_id{UINT16_MAX};
 wiknow::DeviceId device_id{};
 void detect_identity() {
     ESP_ERROR_CHECK(esp_efuse_mac_get_default(device_id.data()));
     if (!c::universal_enabled) {
-        if (c::discovery_enabled && role != wiknow::Role::parent)
-            node_id = UINT16_MAX;
+        node_id = role == wiknow::Role::parent ? 0 : UINT16_MAX;
         return;
     }
     // Input only, no internal pulls: the external resistor defines disconnected wiring.
