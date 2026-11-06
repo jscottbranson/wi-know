@@ -1,12 +1,12 @@
 # Sharing and mapping detections
 
-Copy the `W[KMU]*.LOG` JSON Lines files from the parent's microSD card. Export them
+Copy the `W[MU]*.LOG` JSON Lines files from the parent's microSD card. Export them
 with Python 3; no additional packages are needed:
 
 ```sh
-python3 tools/export_observations.py /path/to/logs/W[KMU]*.LOG -o detections.json
-python3 tools/export_observations.py /path/to/logs/W[KMU]*.LOG -o detections.csv
-python3 tools/export_observations.py /path/to/logs/W[KMU]*.LOG -o detections.geojson
+python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o detections.json
+python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o detections.csv
+python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o detections.geojson
 ```
 
 For internal flash, close the serial monitor, activate ESP-IDF v5.5.1, and run:
@@ -57,8 +57,8 @@ tool that accepts GeoJSON. Share that file with recipients who need the same
 points and detection details. For drone broadcasts, choose which position to map:
 
 ```sh
-python3 tools/export_observations.py /path/to/logs/W[KMU]*.LOG -o aircraft.geojson --location aircraft
-python3 tools/export_observations.py /path/to/logs/W[KMU]*.LOG -o operators.geojson --location operator
+python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o aircraft.geojson --location aircraft
+python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o operators.geojson --location operator
 ```
 
 Aircraft points come from Remote ID Location messages; operator points come from

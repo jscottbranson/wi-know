@@ -163,7 +163,7 @@ python "$IDF_PATH/components/fatfs/fatfsparse.py" --wl-layer enabled logs.bin
 Use the board's current port. Keep `logs.bin` as a raw backup. ESP-IDF's parser
 extracts the FAT directory tree under its volume-label directory in the current
 directory; use a fresh backup directory for each extraction. Feed the extracted
-`W[KMU]*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
+`W[MU]*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
 with BOOT released afterward to resume operation. Entering download mode can
 lose records that were still buffered in RAM.
 

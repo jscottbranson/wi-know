@@ -123,8 +123,9 @@ formatted by default, erasing existing data; back up the card first. Set
 console and scanning continues. The example keeps
 `logging.mode: "matches"`; ordinary unmatched observations
 will not populate logs. For a capture check, temporarily set it to `"all"`, then
-confirm `/sdcard/WU00000001.LOG` (and subsequent numbered files) contains
-JSON-line observations and fresh GPS fixes after acquiring a fix outdoors. See
+confirm the numbered `/sdcard/WU########.LOG` files contain JSON Lines
+observations and fresh GPS fixes after acquiring a fix outdoors. File numbering
+continues above existing WM/WU logs, so the first new file may not be `WU00000001.LOG`. See
 [log export](exporting.md). Reboot after correcting a mount/write failure; the
 driver does not remount automatically. Power down before removing the card;
 verify cold boots, sustained writes and GPS reception with every fitted peripheral active.
