@@ -14,7 +14,6 @@ class GattConfigTests(unittest.TestCase):
     def setUp(self):
         self.settings = generate.load(ROOT/'config/settings.json')
     def test_defaults_and_invalid_targets(self):
-        self.settings.pop('gatt')
         settings, _ = generate.validate(self.settings)
         self.assertFalse(settings['gatt']['enabled'])
         self.settings['gatt'] = settings['gatt']

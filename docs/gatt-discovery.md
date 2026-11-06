@@ -124,8 +124,8 @@ JSONL identifies `ble_acquisition: "connected_primary_discovery"` and retains
 retention and rule provenance apply. Service rules never match advertising evidence,
 and advertising predicates cannot inspect connected-service bytes.
 
-Bus protocol 5 adds the BLE evidence discriminator at report offset 132; payload
-starts at 133. Maximum report payload is 388 bytes (420 within a universal identity
+Bus protocol 6 includes the BLE evidence discriminator at report offset 132; payload
+starts at 133. Maximum report payload is 392 bytes (424 within a universal identity
 envelope). Upgrade every bus participant together; older protocol versions are
 rejected rather than interpreted as advertising.
 
@@ -144,14 +144,9 @@ category disabling, token/handle reuse, cancellation races, timeouts, reset watc
 wire/retention/log evidence and isolation from passive RSSI/following. CI compiles both
 passive profiles and the enabled-central synthetic fixture.
 
-**Hardware validation remains pending (issue #40 stays open).** On a controlled C5
+**Hardware validation remains pending.** On a controlled C5
 and advertiser, verify discovered-only versus advertised-only services, generic
 negatives, denied/busy targets, deliberate disconnects, timeouts, rotating addresses,
 window cancellation, reset/passive-scan recovery, and heap/stack headroom with Wi-Fi
 and storage. Measure disabled behavior (no connections), throughput and dwell loss.
 No real-device compatibility or runtime memory margin is claimed from a build alone.
-
-Protocol 6 retains these field offsets and appends the high 32 bits of the
-scan coverage mask after the report payload (four extra bytes). Maximum report
-size is now 392 bytes, or 424 bytes in a universal identity envelope.
-See [firmware](firmware.md) for the upgrade requirement.

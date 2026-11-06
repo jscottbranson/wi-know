@@ -34,9 +34,7 @@ exFAT is disabled; large cards such as 256 GB SDXC cards are formatted as FAT32.
 **This can erase existing files. Back up cards before inserting them.** A readable
 FAT filesystem is preserved, even if it has no logger files yet.
 
-The default is `sd.format_if_mount_failed: true`, including settings files that
-omit the field. Existing custom configs explicitly setting it to `false` remain
-opted out: change that value to `true` and rebuild/reflash to enable preparation.
+Shipped profiles set `sd.format_if_mount_failed: true`.
 To preserve unrecognized cards instead, set it to `false`; mount failures then
 fall back to internal flash. The flashing helper and firmware print a warning
 when automatic SD formatting is enabled.
@@ -52,9 +50,8 @@ through this setting.
 The partition table reserves 512 KiB at `0x180000` for a wear-levelled FAT
 filesystem. The app starts at `0x10000` and has `0x170000` bytes available. The
 whole layout still fits 2 MiB boards; an 8 MiB device does not need a different
-image. This reduces the old app partition by 512 KiB, so use a full normal flash
-(bootloader, partition table, and app), not an app-only update. Build checks
-enforce the smaller app limit. Normal subsequent flashes leave the logs partition
+image. Use a full normal flash (bootloader, partition table, and app) when
+installing this layout. Build checks enforce the app partition limit. Normal subsequent flashes leave the logs partition
 alone; a full-chip erase or an older/larger app can destroy it. Back up logs before
 changing firmware layouts.
 
@@ -84,19 +81,16 @@ observations/classifications together.
 
 At most two files are open. Retention never unlinks an open file: a matched
 arrival may first close the unmatched stream to reclaim it. Both streams count
-against the configured limit, including a limit of one. Space reservations cover
+against the configured limit, which must be at least two. Space reservations cover
 a full file per open stream (including buffered writes), rounded up to the
 mounted volume's actual allocation-cluster size, plus 8 KiB of metadata headroom. Unrelated files are never deleted; if they occupy all usable space,
 incoming records are dropped. Filesystem/open/write/flush failures instead stop
 persistent logging with `OFF`. Do not modify the mounted filesystem concurrently.
 
-Existing `WK########.LOG` files may contain mixed data. They are never rewritten,
-appended, or scanned for JSON classification; they receive **matched retention
-priority** to protect unknown evidence, and can only be deleted for new matched
-records. New files use sequence numbers above all existing owned names, so a
-restart never appends to an earlier session. Only regular files with exactly the
-`WK`, `WM`, or `WU` prefix, eight decimal digits, and `.LOG` suffix are eligible
-for deletion. Export accepts all three prefixes, preserving legacy compatibility.
+New files use sequence numbers above all existing owned names, so a restart
+never appends to an earlier session. Only regular files with exactly the `WM`
+or `WU` prefix, eight decimal digits, and `.LOG` suffix belong to retention
+and automatic flash export. Other files are left untouched.
 
 SD uses `logging.rotate_bytes`, `logging.max_files`, and
 `logging.flush_interval_ms`. Flash caps those first two settings at **32 KiB per
@@ -169,7 +163,7 @@ python "$IDF_PATH/components/fatfs/fatfsparse.py" --wl-layer enabled logs.bin
 Use the board's current port. Keep `logs.bin` as a raw backup. ESP-IDF's parser
 extracts the FAT directory tree under its volume-label directory in the current
 directory; use a fresh backup directory for each extraction. Feed the extracted
-`W[KMU]*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
+`W[MU]*.LOG` files to [the export tool](exporting.md), just like SD logs. Tap RESET
 with BOOT released afterward to resume operation. Entering download mode can
 lose records that were still buffered in RAM.
 

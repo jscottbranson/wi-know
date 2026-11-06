@@ -29,7 +29,6 @@ def parser():
                         help='Override the config role; a board profile defaults universal configs to parent')
     result.add_argument('--board', choices=generate_config.BOARDS,
                         help='Apply documented board pin mapping; custom keeps configured pins')
-    result.add_argument('--node-id', type=int, help='Must be 0; parents assign worker IDs at runtime')
     result.add_argument('--port', help='Serial device, e.g. /dev/ttyACM0 or COM5')
     result.add_argument('--config', type=Path, default=ROOT/'config/settings.json')
     result.add_argument('--idf-path', type=Path, help='ESP-IDF checkout; its environment must be activated')
@@ -133,18 +132,18 @@ def idf_command(idf_path=None, dry_run=False):
     return [executable, str(script)]
 
 
-def build_directory(role, node_id, config, board='custom'):
+def build_directory(role, config, board='custom'):
     # Settings/rules rebuild incrementally, but changed SDK defaults need a new
     # sdkconfig: IDF does not override values already saved in an existing cache.
     digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + board.encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
-    return ROOT/'build'/'devices'/f'{role}-{node_id}-{digest}'
+    return ROOT/'build'/'devices'/f'{role}-{digest}'
 
 
-def commands(idf, role, node_id, config, port, baud, build_only, monitor, board='custom'):
-    directory = build_directory(role, node_id, config, board)
+def commands(idf, role, config, port, baud, build_only, monitor, board='custom'):
+    directory = build_directory(role, config, board)
     common = [*idf, '-C', str(ROOT/'firmware'), '-B', str(directory),
               '-DIDF_TARGET=esp32c5', f'-DSDKCONFIG={directory / "sdkconfig"}',
-              f'-DWIKNOW_ROLE={role}', f'-DWIKNOW_NODE_ID={node_id}',
+              f'-DWIKNOW_ROLE={role}',
               f'-DWIKNOW_CONFIG={config.resolve()}', f'-DWIKNOW_BOARD={board}']
     result = [[*common, 'build']]
     if not build_only:
@@ -181,23 +180,20 @@ def main(argv=None):
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
         raw = generate_config.load(config)
-        # Select the role and node ID placeholder independently of stored defaults.
+        # Select the role independently of the stored configuration.
         # Validate the common settings first; validate the selected device below.
-        generate_config.validate(raw, 'parent', 0, board_override=args.board)
-        board = args.board or raw.get('board', {}).get('model', 'custom')
+        generate_config.validate(raw, 'parent', board_override=args.board)
+        board = args.board or raw['board']['model']
         role = args.role or (raw['node']['role'] if raw['node']['role'] != 'universal'
                              else 'parent' if board != 'custom' else 'universal')
-        node_id = args.node_id
-        if node_id is None:
-            node_id = 0
-        validated, rules = generate_config.validate(raw, role, node_id, board_override=board)
+        validated, rules = generate_config.validate(raw, role, board_override=board)
         port = args.port
         if port is not None and (not port.strip() or port.startswith('-')):
             raise ValueError('Invalid serial port.')
         if not args.build_only and port is None:
             port = '<serial-port>' if args.dry_run else select_port()
         idf = idf_command(args.idf_path, args.dry_run)
-        planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor, board)
+        planned = commands(idf, role, config, port, args.baud, args.build_only, args.monitor, board)
         print(f'\nDevice: {role} / ESP32-C5')
         if role in ('child', 'follower'):
             print('Worker ID and scanning/follower role: assigned by parent at runtime')
@@ -212,7 +208,7 @@ def main(argv=None):
         print(f'Config: {config}')
         if role in ('parent', 'universal') and validated['sd']['enabled'] and validated['sd']['format_if_mount_failed']:
             print('WARNING: SD formatting is enabled; an unrecognized or damaged filesystem may be erased.')
-        print(f'Build:  {build_directory(role, node_id, config, board)}')
+        print(f'Build:  {build_directory(role, config, board)}')
         if port:
             print(f'Port:   {port}')
         if not any(rule['enabled'] for rule in rules):

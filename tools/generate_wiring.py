@@ -362,7 +362,7 @@ def standalone_wiring(png):
         d.text(920, y + 6, right, size=19)
         points = [(880, y), (525, y)] if incoming else [(525, y), (880, y)]
         d.line(points, color, arrow=color == BLUE)
-    d.text(70, 1070, 'Remove the former amber LED/resistor from D1 before connecting GPS RX. Both LEDs mean steady.', size=18)
+    d.text(70, 1070, 'Connect D1 directly to Air530Z RX. Green and red LEDs together mean steady.', size=18)
     d.text(70, 1096, '100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.', size=18, color=MUTED)
 
     d.box(48, 1135, 1344, 455)
@@ -426,7 +426,7 @@ def parent_wiring(png):
     d = Diagram('Parent LEDs, buzzer, LCD, GPS and microSD',
                 'ESP32-C5 WiFi6 N32R8 • GPIO/header mapping from supplied pinout and Waveshare schematic.', 2190)
     d.note(182, 'N32R8 parent GPIO map — config/settings.parent.example.json', [
-        'LEDs: GPIO0 green / GPIO1 red; both ON = steady. GPIO8 now drives GPS RX. Buzzer: GPIO9.',
+        'LEDs: GPIO0 green / GPIO1 red; both ON = steady. GPIO8 drives GPS RX. Buzzer: GPIO9.',
         'LCD: GPIO4 SDA / GPIO5 SCL. GPS UART0: GPIO10 RX / GPIO8 TX; 3.3 V logic for Air530Z.',
         'Parent RS-485: GPIO11 TX / GPIO3 RX / GPIO7 RTS. microSD: SCK23 / MOSI24 / MISO2 / CS25.',
     ])
@@ -445,7 +445,7 @@ def parent_wiring(png):
         d.text(930, y + 6, right, size=19)
         points = [(470, y), (900, y)]
         d.line(list(reversed(points)) if reverse else points, color, arrow=color == BLUE)
-    d.text(70, 1484, 'Remove the former amber LED/resistor from GPIO8. Connect GPIO8 directly to Air530Z RX.', size=18, color=MUTED)
+    d.text(70, 1484, 'Connect GPIO8 directly to Air530Z RX. Use GPIO0 and GPIO1 for the trend LEDs.', size=18, color=MUTED)
     d.box(48, 1535, 1344, 345)
     d.text(70, 1576, '5  HiLetgo microSD reader — 5 V VCC, 3.3 V SPI logic', size=25, weight=700)
     for y, left, right, reverse in [
@@ -546,7 +546,7 @@ def main():
             parser.error(f'Parent example {section} changed; update the peripheral diagram before regenerating.')
     standalone = json.loads((ROOT / 'config/settings.standalone.example.json').read_text())
     expected_standalone = {
-        'node': {'role': 'parent', 'id': 0}, 'standalone': {'enabled': True},
+        'node': {'role': 'parent'}, 'standalone': {'enabled': True},
         'bus': {'enabled': False},
         'gps': {'enabled': True, 'uart': 0, 'rx_pin': 12, 'tx_pin': 0, 'baud': 9600},
         'sd': {'enabled': True, 'sck_pin': 8, 'mosi_pin': 10, 'miso_pin': 9, 'cs_pin': 11, 'clock_khz': 4000},

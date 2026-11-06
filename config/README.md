@@ -13,19 +13,20 @@ Standalone and parent configurations enable LCD, GPS, microSD, buzzer, trend LED
 and the capture switch. The standalone configuration disables RS-485; the parent
 and child configurations enable it. Child nodes have no parent peripherals or
 capture switch. Flash the same child image to every XIAO; the parent assigns IDs
-from `bus.first_node_id` through `bus.last_node_id` at runtime. Leave `node.id`
-at 0 and omit `--node-id`. The parent also selects scanning/follower roles using
-`follower.enabled`. Update all bus nodes together when replacing fixed-ID firmware.
+from `bus.first_node_id` through `bus.last_node_id` at runtime.
+The parent also selects scanning/follower roles using `follower.enabled`.
 
-The duplicate wiring/capture examples have been consolidated into these three
-role configurations. `settings.json` remains the default for existing universal
-builds, with parent peripherals and capture control disabled. Universal firmware
+`settings.json` is the default for universal builds, with parent peripherals
+and capture control disabled. Universal firmware
 requires its separate [identification harness](../docs/universal.md).
+
+All settings sections and fields are required, including disabled features. Start
+from a shipped profile; missing and unknown keys are rejected.
 
 All paths in settings are relative to the repository root unless absolute.
 Detection rules live separately in `../rules/`.
 
-Optional `"board": {"model": "xiao"}` or `"board": {"model": "n32r8"}` selects
+`"board": {"model": "xiao"}` or `"board": {"model": "n32r8"}` selects
 the corresponding documented GPIO mapping for manual roles. `custom` (the default)
 keeps the pins in the JSON. `tools/flash.py --board` and `WIKNOW_BOARD` override the
 stored choice. Profile pins replace JSON pins before conflict validation; enable
@@ -71,8 +72,8 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 
 | Section | Key settings |
 | --- | --- |
-| `node` | Default `universal`, ID 0 placeholder; explicit `parent`/`child`/`follower` builds also use parent-assigned worker IDs |
-| `universal` | Optional verified hardware profile: strap GPIO10; parent bus 11/3/7; worker bus 11/12/7 |
+| `node` | Default `universal`; explicit `parent`/`child`/`follower` builds also use parent-assigned worker IDs |
+| `universal` | Verified hardware profile: strap GPIO10; parent bus 11/3/7; worker bus 11/12/7 |
 | `wifi` | US receive channel allowlist and dwell milliseconds; includes DFS (52–64 and 100–144 in steps of 4) and channel 165 |
 | `ble` | Passive BLE scan switch, used by parent and follower |
 | `bus` | RS-485 UART/pins/baud, discoverable node ID range, poll timeout, membership/assignment leases |
@@ -94,7 +95,7 @@ observations logged in `all` mode do not light these LEDs.
 For multiple boards, flash the same universal config and binary onto every board.
 Only detected parents initialize the configured peripherals. The generator checks
 the strap against active parent peripheral pins and the selected parent bus pins.
-The optional `universal` section defaults to the verified profiles above; changing
+The `universal` section specifies the verified profiles above; changing
 those pins requires a reviewed hardware port, not a per-board build override.
 Explicit role overrides disable harness detection but retain discovery and
 parent-assigned worker IDs when the bus is enabled. Use USB Serial/JTAG for the
@@ -182,7 +183,7 @@ The capture input has an internal pull-down so an absent switch stays OFF.
 For XIAO, the peripheral pins are: LCD on GPIO23/24, GPS RX on GPIO12 and TX on GPIO0,
 SPI microSD on GPIO8/9/10 with CS GPIO11, buzzer on GPIO7, and LEDs on GPIO1
 (D0, green/increasing) and GPIO25 (D2, red/decreasing).
-All 11 header GPIOs are used; remove the former amber LED and repurpose its pin for GPS TX. For the
+All 11 header GPIOs are used, including D1 for GPS TX. For the
 compact screen/GPS/storage build, disable `buzzer` and `signal_trend`. Disable
 each other omitted peripheral through its `enabled` setting before rebuilding.
 Set individual omitted trend LED pins to `-1`; they are not initialized or driven.
@@ -192,7 +193,7 @@ keeps `logging.mode: "matches"`; choose `"all"` for a capture check with no rule
 Flash the example with the normal helper (after activating ESP-IDF):
 
 ```sh
-python3 tools/flash.py --config config/settings.standalone.example.json --role parent --node-id 0
+python3 tools/flash.py --config config/settings.standalone.example.json --role parent
 ```
 
 The parent visits each configured Wi-Fi channel for `wifi.dwell_ms`, then scans
@@ -253,18 +254,15 @@ All shipped manual parent and standalone configurations enable the switch with
 validated against the selected board and other peripherals. Set `enabled: false`
 to disable the switch. Universal configurations explicitly keep it disabled.
 
-Air530Z retained-time startup is requested over GPS TX on the former amber LED
-pin. Valid TIM receiver time is used until active GPS time arrives, and again on GPS
-loss. Older Air530Z firmware may not support TIM/`PCAS60`; checksum-valid void-RMC
+Air530Z retained-time startup is requested over GPS TX. Valid TIM receiver time
+is used until active GPS time arrives, and again on GPS loss. Older Air530Z firmware may not support TIM/`PCAS60`; checksum-valid void-RMC
 date/time is then accepted as approximate `rtc` time, without a valid position or
 GPS synchronization. Accuracy is unknown. See [receiver time limitations](../docs/air530-time.md). If neither source is available, logs have null UTC and the clock shows dashes.
 Boot and scanning never wait for either source.
 
-The amber LED and `signal_trend.steady_pin` setting are removed. Delete that key
-from existing custom configurations. Both remaining LEDs light for steady or
-accumulating samples; unknown/stale turns both off. Board profiles assign the
-freed pin to `gps.tx_pin` (N32R8: 8; XIAO: 0). Custom profiles can retain `tx_pin: -1`
-for receive-only GPS. Remove the amber LED/resistor before connecting GPS RX.
+Both LEDs light for steady or accumulating samples; unknown/stale turns both off. Board profiles assign the
+UART TX pin to `gps.tx_pin` (N32R8: 8; XIAO: 0). Custom profiles can retain `tx_pin: -1`
+for receive-only GPS.
 
 GPS time is optional at startup. Air530Z output configuration uses nonblocking
 FIFO writes and periodic retries. Each GPS update reads at most 512 bytes with

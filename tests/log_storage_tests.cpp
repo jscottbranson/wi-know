@@ -75,33 +75,35 @@ int main() {
         CHECK(log.file && log.result == LogResult::stored);
         CHECK(std::fclose(log.file) == 0);
     };
-    // Count pressure removes unmatched before older matched/legacy data; within
+    // Count pressure removes unmatched before older matched data; within
     // each priority it removes the oldest ID, independent of readdir order.
     for (auto classification : {LogClass::matched, LogClass::unmatched}) {
         Directory d;
         d.put("WM00000001.LOG");
-        d.put("WK00000002.LOG");
+        d.put("WM00000002.LOG");
         d.put("WU00000004.LOG");
         d.put("WU00000003.LOG");
         d.put("keep.txt");
+        d.put("WK99999999.LOG");
         close(open_next_log(d.name, 4, classification, inactive, room));
         CHECK(!d.has("WU00000003.LOG") && d.has("WU00000004.LOG"));
-        CHECK(d.has("WM00000001.LOG") && d.has("WK00000002.LOG") && d.has("keep.txt"));
+        CHECK(d.has("WM00000001.LOG") && d.has("WM00000002.LOG") && d.has("keep.txt"));
         close(open_next_log(d.name, 4, classification, inactive, room));
         CHECK(!d.has("WU00000004.LOG"));
+        CHECK(d.read("WK99999999.LOG") == "evidence\n");
     }
     // With only protected files, an unmatched arrival cannot make room even when
-    // the highest ID is a legacy mixed file from a previous firmware/boot.
+    // the highest ID is a matched file from a previous firmware/boot.
     {
         Directory d;
         d.put("WM00000001.LOG");
-        d.put("WK00000002.LOG");
+        d.put("WM00000002.LOG");
         CHECK(open_next_log(d.name, 2, LogClass::unmatched, inactive, room).result ==
               LogResult::blocked);
-        CHECK(d.has("WM00000001.LOG") && d.has("WK00000002.LOG"));
+        CHECK(d.has("WM00000001.LOG") && d.has("WM00000002.LOG"));
         close(open_next_log(d.name, 2, LogClass::matched, inactive, room));
-        CHECK(!d.has("WM00000001.LOG") && d.has("WK00000002.LOG") && d.has("WM00000003.LOG"));
-        CHECK(d.read("WK00000002.LOG") == "evidence\n");
+        CHECK(!d.has("WM00000001.LOG") && d.has("WM00000002.LOG") && d.has("WM00000003.LOG"));
+        CHECK(d.read("WM00000002.LOG") == "evidence\n");
     }
     // Low space applies the same order, preserving the originally chosen next ID.
     {
@@ -160,7 +162,7 @@ int main() {
         CHECK(d.has("WM00000007.LOG") && d.read("keep.txt") == "evidence\n");
         CHECK(std::filesystem::is_directory(d.path("WU00000005.LOG")));
         CHECK(std::filesystem::is_symlink(d.path("WM00000006.LOG")));
-        d.put("WK99999999.LOG");
+        d.put("WM99999999.LOG");
         CHECK(open_next_log(d.name, 1, LogClass::matched, inactive, room).result ==
               LogResult::error);
         CHECK(d.has("WM00000007.LOG"));
@@ -384,8 +386,7 @@ int main() {
                 return LogResult::error;
             return result;
         };
-        CHECK(append_with_fallback(selected, written, append, fallback) ==
-              LogResult::stored);
+        CHECK(append_with_fallback(selected, written, append, fallback) == LogResult::stored);
         CHECK(selected == Storage::flash && written && fallbacks == 1);
         CHECK(flash.read("WM00000001.LOG") == "first\n");
         selected = Storage::sd;

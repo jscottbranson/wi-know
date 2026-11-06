@@ -78,7 +78,7 @@
 <text x="90" y="1042" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">XIAO GND</text>
 <text x="920" y="1042" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="19" font-weight="400" text-anchor="start">GPS GND</text>
 <polyline points="525,1036 880,1036" fill="none" stroke="#405165" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
-<text x="70" y="1070" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Remove the former amber LED/resistor from D1 before connecting GPS RX. Both LEDs mean steady.</text>
+<text x="70" y="1070" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">Connect D1 directly to Air530Z RX. Green and red LEDs together mean steady.</text>
 <text x="70" y="1096" fill="#526577" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="18" font-weight="400" text-anchor="start">100 nF at GPS VCC/GND. Coordinates locate this receiver; a fresh valid fix is required for tagging.</text>
 <rect x="48" y="1135" width="1344" height="455" rx="14" fill="white" stroke="#d0dce6" stroke-width="2"/>
 <text x="70" y="1176" fill="#183044" font-family="DejaVu Sans, Noto Sans, sans-serif" font-size="25" font-weight="700" text-anchor="start">3  HiLetgo microSD reader / 5 V VCC / 3.3 V SPI at 4 MHz</text>

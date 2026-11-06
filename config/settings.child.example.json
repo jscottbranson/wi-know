@@ -1,8 +1,7 @@
 {
   "schema_version": 1,
   "node": {
-    "role": "child",
-    "id": 0
+    "role": "child"
   },
   "wifi": {
     "country": "US",
@@ -173,5 +172,14 @@
   },
   "board": {
     "model": "xiao"
+  },
+  "universal": {
+    "strap_pin": 10,
+    "parent_tx_pin": 11,
+    "parent_rx_pin": 3,
+    "parent_rts_pin": 7,
+    "worker_tx_pin": 11,
+    "worker_rx_pin": 12,
+    "worker_rts_pin": 7
   }
 }

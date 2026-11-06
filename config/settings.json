@@ -1,6 +1,12 @@
 {
   "schema_version": 1,
-  "node": { "role": "universal", "id": 0 },
+  "board": { "model": "custom" },
+  "universal": {
+    "strap_pin": 10,
+    "parent_tx_pin": 11, "parent_rx_pin": 3, "parent_rts_pin": 7,
+    "worker_tx_pin": 11, "worker_rx_pin": 12, "worker_rts_pin": 7
+  },
+  "node": { "role": "universal" },
   "wifi": {
     "country": "US",
     "channels": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 36, 40, 44, 48, 52, 56, 60, 64, 100, 104, 108, 112, 116, 120, 124, 128, 132, 136, 140, 144, 149, 153, 157, 161, 165],

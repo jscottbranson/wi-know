@@ -73,7 +73,7 @@ def records(paths, skip_invalid=False, matches_only=False, location=None):
                     if event not in ('observation', 'following_alert', 'drone_detection',
                                      'device_persistence', 'following_score', 'following_reset'):
                         continue
-                    version = record.get('schema_version', 1 if event == 'following_alert' else None)
+                    version = record.get('schema_version')
                     if type(version) is not int or version != 1:
                         raise ValueError('unsupported or missing schema_version')
                     if record.get('radio') not in ('wifi', 'ble') or not isinstance(record.get('address'), str):
@@ -221,7 +221,7 @@ def sightings(rows):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(
-        description=__doc__, epilog='Example: %(prog)s WK00000001.LOG -o detections.json')
+        description=__doc__, epilog='Example: %(prog)s WM00000001.LOG -o detections.json')
     parser.add_argument('inputs', nargs='+', type=Path, help='JSONL log files in desired order')
     parser.add_argument('--format', choices=('json', 'jsonl', 'csv', 'tsv', 'geojson'),
                         help='override output extension; default: JSON for stdout')

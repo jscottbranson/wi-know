@@ -32,9 +32,9 @@ The subtype is an explicit wire field: report payload offset 104 (after the
 little-endian IE/payload length at 102), followed by the Wi-Fi header length at 105 and header bytes at 106–131.
 The BLE evidence discriminator is at 132 and payload bytes start at 133. Values
 are 4=probe request, 5=probe response, 8=beacon, 13=supported NAN action,
-16=data, 24=QoS data, and 255=unknown/not applicable. BLE requires 255. Maximum report payload is now 388
+16=data, 24=QoS data, and 255=unknown/not applicable. BLE requires 255. Maximum report payload is 392
 bytes; the 32-byte universal envelope still fits the existing 512-byte packet.
-Bus framing is **version 5** and rejects earlier versions; reflash all nodes together.
+Bus framing is **version 6** and rejects earlier versions; reflash all nodes together.
 Subtype 4 selects complete `probe_ie_v1` evidence. Other Wi-Fi subtypes retain
 existing Remote ID vendor-IE/NAN-body semantics; BLE separately distinguishes AD data from connected-service evidence.
 Probe-request vendor IEs are not a supported Remote ID transport and cannot
@@ -79,8 +79,3 @@ synthetic fixtures.
    retained-report retry behavior. Check the watchdog remains healthy, matching
    queue priority works, and parent logging remains responsive. Record build ID,
    board, settings, transmitter/monitor capture and duration with results.
-
-Protocol 6 retains these field offsets and appends the high 32 bits of the
-scan coverage mask after the report payload (four extra bytes). Maximum report
-size is now 392 bytes, or 424 bytes in a universal identity envelope.
-See [firmware](firmware.md) for the upgrade requirement.

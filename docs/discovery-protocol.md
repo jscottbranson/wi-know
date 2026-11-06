@@ -2,8 +2,7 @@
 
 All bus-enabled builds use the factory base MAC as their six-byte discovery UUID.
 Board-specific builds select parent versus worker at flash time; only universal
-builds require the identification harness. Leave `node.id` at 0 in every image;
-workers start unassigned and the parent chooses their addresses and roles.
+builds require the identification harness. Workers start unassigned and the parent chooses their addresses and roles.
 The short RS-485 address is a separate, volatile assignment. A new random 32-bit
 boot session distinguishes restarts; assignments also carry a parent-issued
 monotonically advancing token. These identifiers prevent accidental stale traffic
@@ -11,7 +10,7 @@ from affecting another assignment; this local-bus protocol is not authenticated.
 
 ## Framing and messages
 
-CRC-protected, little-endian framing is version 5. All nodes must be updated
+CRC-protected, little-endian framing is version 6. All nodes must be updated
 together; earlier framing versions are rejected. Reports retain the Wi-Fi subtype
 and bounded MAC header and distinguish BLE advertising from connected primary-service
 discovery. Discovery envelopes and message types retain their existing layout.
