@@ -1,6 +1,9 @@
-# Universal discovery and runtime identity
+# Discovery and runtime identity
 
-The universal image uses the factory base MAC as its six-byte discovery UUID.
+All bus-enabled builds use the factory base MAC as their six-byte discovery UUID.
+Board-specific builds select parent versus worker at flash time; only universal
+builds require the identification harness. Leave `node.id` at 0 in every image;
+workers start unassigned and the parent chooses their addresses and roles.
 The short RS-485 address is a separate, volatile assignment. A new random 32-bit
 boot session distinguishes restarts; assignments also carry a parent-issued
 monotonically advancing token. These identifiers prevent accidental stale traffic
@@ -12,8 +15,8 @@ CRC-protected, little-endian framing is version 5. All nodes must be updated
 together; earlier framing versions are rejected. Reports retain the Wi-Fi subtype
 and bounded MAC header and distinguish BLE advertising from connected primary-service
 discovery. Discovery envelopes and message types retain their existing layout.
-Manual poll/report types 1/2 remain supported only by manually configured builds.
-Universal builds use types 3–8:
+Legacy poll/report types 1/2 are rejected on the bus. All bus-enabled builds use
+types 3–8 (types 1/2 remain internal payload formats):
 
 | Type | Purpose |
 | --- | --- |
@@ -59,8 +62,7 @@ foreign discover, assignment, session poll, or legacy manual poll latches a pare
 conflict: that parent stops all bus transmission until reboot. A worker that sees
 a second parent while leased also halts until reboot. The parent display shows
 `PARENT CONFLICT / Bus stopped`; serial logs explain the stop. Remove or rewire
-the unintended parent and reboot conflicted boards. Do not connect mixed manual
-and universal clusters. Electrical arbitration and collision recovery must still
+the unintended parent and reboot conflicted boards. Do not connect older fixed-ID firmware to a discovery cluster. Electrical arbitration and collision recovery must still
 be verified on the physical RS-485 network as described in the acceptance test.
 
 ## Assignments, roles and recovery
@@ -108,7 +110,7 @@ in assignment logs.
 ## Scheduling and capture continuity
 
 The generator validates leases against two conservative complete node sweeps.
-Universal mode budgets three request/response exchanges per address (discovery,
+Discovery budgets three request/response exchanges per address (discovery,
 assignment ACK, normal poll), request serialization, the random receive interval
 and task scheduling slack. Configurations that cannot maintain the leases are
 rejected, including heavily populated slow buses. Ordinary extra observation

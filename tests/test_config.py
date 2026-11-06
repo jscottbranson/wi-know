@@ -143,7 +143,7 @@ class ConfigTests(unittest.TestCase):
         settings = generate.load(ROOT/'config/settings.parent.example.json')
         with self.assertRaisesRegex(ValueError, 'GPIO .* used'):
             generate.validate(settings, board_override='xiao')
-        settings, _ = generate.validate(self.settings, 'child', 1, board_override='xiao')
+        settings, _ = generate.validate(self.settings, 'child', 0, board_override='xiao')
         self.assertEqual(settings['bus']['rx_pin'], 12)
 
     def test_sd_formatting_defaults_on_with_explicit_boolean_opt_out(self):
@@ -324,9 +324,10 @@ class ConfigTests(unittest.TestCase):
         self.settings['bus']['enabled'] = False
         settings, rules = generate.validate(self.settings)
         self.assertIn('standalone_enabled = true', generate.emit(settings, rules))
+        self.assertIn('discovery_enabled = false', generate.emit(settings, rules))
         for role in ('child', 'follower'):
             with self.assertRaisesRegex(ValueError, 'parent role'):
-                generate.validate(self.settings, role, 1)
+                generate.validate(self.settings, role, 0)
         for value in (0, 99, 60001, True):
             self.settings['standalone']['ble_dwell_ms'] = value
             with self.assertRaises(ValueError):
@@ -435,23 +436,15 @@ class ConfigTests(unittest.TestCase):
                 self.assertTrue(categories <= {rule['category'] for rule in rules
                                                if rule['enabled']})
 
-    def test_role_requires_unique_nonzero_id(self):
-        with self.assertRaises(ValueError):
-            generate.validate(self.settings, 'child', 0)
-        settings, _ = generate.validate(self.settings, 'child', 3)
-        self.assertEqual(settings['node']['id'], 3)
-    def test_worker_id_must_be_discoverable(self):
+    def test_all_roles_use_parent_assigned_ids(self):
         self.settings['bus'].update(first_node_id=3, last_node_id=5)
-        for role in ('child', 'follower'):
-            for node_id in (2, 6):
-                with self.assertRaisesRegex(ValueError, 'discovery range'):
-                    generate.validate(copy.deepcopy(self.settings), role, node_id)
-            for node_id in (3, 5):
-                settings, _ = generate.validate(copy.deepcopy(self.settings), role, node_id)
-                self.assertEqual(settings['node']['id'], node_id)
-        generate.validate(copy.deepcopy(self.settings), 'parent', 0)
-        self.settings['bus']['enabled'] = False
-        generate.validate(self.settings, 'child', 2)
+        for role in ('parent', 'child', 'follower', 'universal'):
+            settings, rules = generate.validate(self.settings, role, 0)
+            self.assertIn('discovery_enabled = true', generate.emit(settings, rules))
+            for node_id in (1, 3, 5):
+                with self.assertRaisesRegex(ValueError, 'assign worker IDs'):
+                    generate.validate(self.settings, role, node_id)
+
     def test_unwired_peripheral(self):
         self.settings['gps']['enabled'] = True
         with self.assertRaises(ValueError):
@@ -644,10 +637,10 @@ class ConfigTests(unittest.TestCase):
                     generate.load(path)
     def test_validation_does_not_mutate_settings(self):
         before = copy.deepcopy(self.settings)
-        generate.validate(self.settings, 'child', 3)
+        generate.validate(self.settings, 'child', 0)
         self.assertEqual(self.settings, before)
         with self.assertRaises(ValueError):
-            generate.validate(self.settings, 'child', 0)
+            generate.validate(self.settings, 'child', 3)
         self.assertEqual(self.settings, before)
 
     def test_malformed_rule_shapes_report_value_errors(self):
@@ -856,6 +849,14 @@ class ConfigTests(unittest.TestCase):
             self.assertEqual(manifest['rules'][0]['predicates'], document['rules'][0]['predicates'])
             self.assertFalse(manifest['rules'][0]['enabled'])
             self.assertIn('no enabled rules for categories: other', result.stdout)
+    def test_board_builds_budget_discovery_exchanges(self):
+        for variant in ('parent', 'child'):
+            settings = generate.load(ROOT/f'config/settings.{variant}.example.json')
+            settings['bus'].update(baud=9600, poll_timeout_ms=600, last_node_id=16,
+                                   membership_lease_ms=20000, assignment_lease_ms=30000)
+            with self.subTest(variant=variant), self.assertRaisesRegex(ValueError, 'two worst-case bus sweeps'):
+                generate.validate(settings)
+
     def test_universal_discovery_budget(self):
         self.settings['node']['role'] = 'universal'
         self.settings['bus'].update(baud=9600, poll_timeout_ms=600, last_node_id=16,

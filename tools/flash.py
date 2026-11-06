@@ -29,7 +29,7 @@ def parser():
                         help='Use the config role; a board profile selects parent for universal configs')
     result.add_argument('--board', choices=generate_config.BOARDS,
                         help='Apply documented board pin mapping; custom keeps configured pins')
-    result.add_argument('--node-id', type=int, help='Parent: 0; children/follower: unique bus ID')
+    result.add_argument('--node-id', type=int, help='Must be 0; parents assign worker IDs at runtime')
     result.add_argument('--port', help='Serial device, e.g. /dev/ttyACM0 or COM5')
     result.add_argument('--config', type=Path, default=ROOT/'config/settings.json')
     result.add_argument('--idf-path', type=Path, help='ESP-IDF checkout; its environment must be activated')
@@ -83,29 +83,13 @@ def show_ports(ports):
 
 def prompt(text, default=None):
     if not sys.stdin.isatty():
-        raise ValueError('Interactive input unavailable. Supply --role, --node-id (for workers), and --port; '
+        raise ValueError('Interactive input unavailable. Supply --role and --port; '
                          'or use --build-only/--dry-run.')
     suffix = f' [{default}]' if default is not None else ''
     answer = input(f'{text}{suffix}: ').strip()
     if not answer and default is not None:
         return str(default)
     return answer
-
-
-def select_id(role, first, last):
-    if role in ('parent', 'universal'):
-        return 0
-    print(f'Choose a unique node ID in {first}–{last}; children and followers share the same ID space.')
-    default = first if role == 'child' else min(first+1, last)
-    while True:
-        answer = prompt('Node ID', default)
-        try:
-            value = int(answer)
-            if first <= value <= last:
-                return value
-        except ValueError:
-            pass
-        print(f'Enter a whole number from {first} to {last}.')
 
 
 def select_port():
@@ -197,19 +181,16 @@ def main(argv=None):
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
         raw = generate_config.load(config)
-        # The menu/CLI selects role and ID independently of the stored defaults.
+        # Select the role and runtime-ID placeholder independently of stored defaults.
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0, board_override=args.board)
         board = args.board or raw.get('board', {}).get('model', 'custom')
         role = args.role or (raw['node']['role'] if raw['node']['role'] != 'universal'
                              else 'parent' if board != 'custom' else 'universal')
-        first, last = raw['bus']['first_node_id'], raw['bus']['last_node_id']
         node_id = args.node_id
         if node_id is None:
-            node_id = select_id(role, first, last)
+            node_id = 0
         validated, rules = generate_config.validate(raw, role, node_id, board_override=board)
-        if role not in ('parent', 'universal') and not first <= node_id <= last:
-            raise ValueError(f'Node ID {node_id} is outside the configured bus discovery range {first}–{last}.')
         port = args.port
         if port is not None and (not port.strip() or port.startswith('-')):
             raise ValueError('Invalid serial port.')
@@ -218,6 +199,8 @@ def main(argv=None):
         idf = idf_command(args.idf_path, args.dry_run)
         planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor, board)
         print(f'\nDevice: {role} / node {node_id} / ESP32-C5')
+        if role in ('child', 'follower'):
+            print('Worker ID and scanning/follower role: assigned by parent at runtime')
         print(f'Board:  {board}')
         for section in generate_config.BOARD_PINS['xiao']:
             if validated[section]['enabled']:

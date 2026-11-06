@@ -113,8 +113,8 @@ python3 tools/flash.py --config config/settings.standalone.example.json --board 
 python3 tools/flash.py --config config/settings.standalone.example.json --board xiao
 # Distributed parent N32R8
 python3 tools/flash.py --config config/settings.parent.example.json --board n32r8
-# Child XIAO; assign a unique ID to each child
-python3 tools/flash.py --config config/settings.child.example.json --board xiao --node-id 1
+# Child XIAO; the parent assigns its ID at runtime
+python3 tools/flash.py --config config/settings.child.example.json --board xiao
 ```
 
 Parent and standalone configurations include LCD, GPS, microSD, buzzer, LEDs,

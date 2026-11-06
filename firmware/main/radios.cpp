@@ -40,7 +40,7 @@ bool local_scanning() {
 }
 bool standalone_scheduler() {
     return wiknow::config::standalone_enabled ||
-           (wiknow::config::universal_enabled && role == wiknow::Role::parent);
+           (wiknow::config::discovery_enabled && role == wiknow::Role::parent);
 }
 static portMUX_TYPE capture_lock = portMUX_INITIALIZER_UNLOCKED;
 void set_runtime_role(wiknow::Role value, uint16_t node) {
@@ -284,7 +284,7 @@ static void ble_boundary() {
 }
 static bool ble_scan_desired() {
     return wiknow::ble_phase_wants_scan(standalone_scheduler(), standalone_scan.ble(),
-                                        wiknow::config::universal_enabled, local_scanning(),
+                                        wiknow::config::discovery_enabled, local_scanning(),
                                         wifi_receiving);
 }
 #if CONFIG_BT_NIMBLE_ROLE_CENTRAL
@@ -550,7 +550,7 @@ static void scan_ble() {
 static void standalone_step() {
     namespace c = wiknow::config;
     const auto now = now_ms();
-    if (c::universal_enabled && !local_scanning()) {
+    if (c::discovery_enabled && !local_scanning()) {
         pause_wifi();
         if (ble_ready && !ble_gap_disc_active())
             scan_ble();
@@ -690,7 +690,7 @@ void start_radios() {
         // Reception starts when the first nonempty assignment is applied.
     }
     if (wiknow::config::ble_enabled &&
-        (wiknow::config::universal_enabled || role != wiknow::Role::child)) {
+        (wiknow::config::discovery_enabled || role != wiknow::Role::child)) {
         ESP_LOGI("radio", "Before BLE: internal free=%u largest=%u",
                  unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
                  unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));

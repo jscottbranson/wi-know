@@ -90,10 +90,11 @@ by NVS reset. Never erase factory eFuses.
 
 ## Compatibility
 
-Explicit `--role parent`, `--role child --node-id N`, and
-`--role follower --node-id N` retain manual provisioning for an isolated legacy
-bus. Do not mix manually addressed and universal nodes. Universal discovery uses
-new packet types and session identity checks; older peers cannot participate.
+Explicit `--role parent`, `--role child`, and `--role follower` builds now use
+the same discovery and session identity checks, with parent-assigned worker IDs
+and scanning/follower roles. They retain their configured wiring and do not need
+the identification harness. Omit `--node-id` and keep `node.id` at 0. Update all
+bus nodes together; older fixed-ID peers cannot participate.
 CRC protects against corruption, not a malicious device on the local bus.
 
 See [discovery protocol and scheduling](discovery-protocol.md) for assignment,

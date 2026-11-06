@@ -2,7 +2,7 @@
   "schema_version": 1,
   "node": {
     "role": "child",
-    "id": 1
+    "id": 0
   },
   "wifi": {
     "country": "US",

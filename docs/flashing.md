@@ -6,11 +6,13 @@ Use the local helper from the repository root. Choose one of four installations:
 python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8
 python3 tools/flash.py --config config/settings.standalone.example.json --board xiao
 python3 tools/flash.py --config config/settings.parent.example.json --board n32r8
-python3 tools/flash.py --config config/settings.child.example.json --board xiao --node-id 1
+python3 tools/flash.py --config config/settings.child.example.json --board xiao
 ```
 
 The helper asks for the USB port, validates settings, builds, and then flashes.
-Each child needs a unique node ID. Parent and standalone configurations assume
+Children receive IDs from the parent; no ID prompt is needed. Update parent and
+children together when upgrading from fixed-ID firmware. Parent and standalone
+configurations assume
 LCD, GPS, microSD, buzzer, LEDs, and capture-switch wiring; there are no separate
 wiring or capture variants. Missing LCD/GPS/indicators do not stop scanning. An
 absent SD card falls back to internal flash, and an absent switch stays OFF via
@@ -62,7 +64,8 @@ You can persist the choice as `"board": {"model": "n32r8"}` in settings. The CLI
 option takes precedence. Without either, `custom` preserves existing pin settings.
 The helper uses the role stored in the config. A board profile applied to a
 universal config selects the parent role; pass
-`--role child --node-id 1` or `--role follower --node-id 2` for manual workers.
+`--role child` or `--role follower` for workers. The parent selects
+scanning/follower roles at runtime.
 Board profiles cannot be combined with `--role universal`: keep the existing
 universal configuration and identification harness for that workflow.
 
@@ -90,16 +93,17 @@ bus**. Manual and universal nodes must not share a bus. Parent:
 python3 tools/flash.py --role parent --port /dev/ttyACM0
 ```
 
-Child with node ID 3:
+Child with a parent-assigned ID:
 
 ```sh
-python3 tools/flash.py --role child --node-id 3 --port /dev/ttyACM0
+python3 tools/flash.py --role child --port /dev/ttyACM0
 ```
 
-Dedicated follower with node ID 2, followed by a serial monitor:
+Worker using the follower build option, followed by a serial monitor
+(the parent determines its runtime scanning/follower role):
 
 ```sh
-python3 tools/flash.py --role follower --node-id 2 --port /dev/ttyACM0 --monitor
+python3 tools/flash.py --role follower --port /dev/ttyACM0 --monitor
 ```
 
 On Windows, replace the port with a value such as `COM5`. On macOS, use the listed
@@ -110,7 +114,7 @@ To list ports or inspect the exact commands without building/flashing:
 ```sh
 python3 tools/flash.py --list-ports
 python3 tools/flash.py --role parent --dry-run
-python3 tools/flash.py --role child --node-id 3 --dry-run
+python3 tools/flash.py --role child --dry-run
 ```
 
 A dry run needs neither an installed SDK nor a board. It still validates the config
@@ -119,7 +123,7 @@ and rules. Missing port is shown as `<serial-port>` without probing devices.
 Build without touching hardware:
 
 ```sh
-python3 tools/flash.py --role child --node-id 3 --build-only
+python3 tools/flash.py --role child --build-only
 ```
 
 Use a different settings file, SDK location, or flashing speed:
@@ -127,7 +131,7 @@ Use a different settings file, SDK location, or flashing speed:
 ```sh
 python3 tools/flash.py --role parent --port /dev/ttyACM0 --config /path/to/settings.json
 python3 tools/flash.py --role parent --port /dev/ttyACM0 --idf-path /path/to/esp-idf
-python3 tools/flash.py --role child --node-id 3 --port /dev/ttyACM0 --baud 115200
+python3 tools/flash.py --role child --port /dev/ttyACM0 --baud 115200
 ```
 
 `--idf-path` locates an installed SDK; its tools/Python environment still needs
