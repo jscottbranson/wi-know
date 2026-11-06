@@ -25,12 +25,28 @@ class FlashTests(unittest.TestCase):
             with self.subTest(variant=variant, board=board):
                 status, output = self.run_main(
                     '--config', str(ROOT/f'config/settings.{variant}.example.json'),
-                    '--board', board, '--node-id', '1' if role == 'child' else '0', '--dry-run')
+                    '--board', board, '--dry-run')
                 self.assertEqual(status, 0, output)
                 self.assertIn(f'Device: {role}', output)
                 self.assertIn(f'Capture switch: {switch}', output)
                 self.assertIn(f'-DWIKNOW_BOARD={board}', output)
                 self.assertIn(f'-DWIKNOW_ROLE={role}', output)
+
+    def test_child_image_needs_no_id_or_prompt(self):
+        builds = []
+        for port in ('/dev/ttyACM1', '/dev/ttyACM2'):
+            with patch.object(flash, 'prompt', side_effect=AssertionError('Unexpected prompt')), \
+                 patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
+                 patch.object(flash, 'check_idf'), \
+                 patch.object(flash.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0)) as execute:
+                status, output = self.run_main(
+                    '--port', port, '--config', str(ROOT/'config/settings.child.example.json'),
+                    '--board', 'xiao')
+                self.assertEqual(status, 0, output)
+                self.assertIn('assigned by parent at runtime', output)
+                builds.append(execute.call_args_list[0].args[0])
+                self.assertEqual([call.args[0][-1] for call in execute.call_args_list], ['build', 'flash'])
+        self.assertEqual(builds[0], builds[1])
 
     def test_board_selection_remaps_standalone_and_reaches_every_stage(self):
         config = ROOT/'config/settings.standalone.example.json'
@@ -143,7 +159,7 @@ class FlashTests(unittest.TestCase):
         with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
              patch.object(flash, 'check_idf'), \
              patch.object(flash.subprocess, 'run', return_value=subprocess.CompletedProcess([], 2)) as execute:
-            status, output = self.run_main('--role', 'child', '--node-id', '3', '--port', 'COM7', '--monitor')
+            status, output = self.run_main('--role', 'child', '--node-id', '0', '--port', 'COM7', '--monitor')
         self.assertEqual(status, 2)
         self.assertEqual(execute.call_count, 1)
         self.assertEqual(execute.call_args.args[0][-1], 'build')
@@ -154,7 +170,7 @@ class FlashTests(unittest.TestCase):
         with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
              patch.object(flash, 'check_idf'), \
              patch.object(flash.subprocess, 'run', side_effect=outcomes) as execute:
-            status, _ = self.run_main('--role', 'follower', '--node-id', '2', '--port', 'COM7', '--monitor')
+            status, _ = self.run_main('--role', 'follower', '--node-id', '0', '--port', 'COM7', '--monitor')
         self.assertEqual(status, 3)
         self.assertEqual([call.args[0][-1] for call in execute.call_args_list], ['build', 'flash'])
 
@@ -169,7 +185,7 @@ class FlashTests(unittest.TestCase):
     def test_build_only_never_selects_port(self):
         with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
              patch.object(flash, 'serial_ports') as ports:
-            status, output = self.run_main('--role', 'child', '--node-id', '3', '--build-only', '--dry-run')
+            status, output = self.run_main('--role', 'child', '--node-id', '0', '--build-only', '--dry-run')
         self.assertEqual(status, 0)
         self.assertNotIn('<serial-port>', output)
         ports.assert_not_called()
@@ -178,17 +194,18 @@ class FlashTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             config = pathlib.Path(folder)/'settings.json'
             settings = flash.generate_config.load(ROOT/'config/settings.json')
-            settings['node'] = {'role': 'child', 'id': 0}
+            settings['node'] = {'role': 'child', 'id': 3}
             config.write_text(json.dumps(settings))
             with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']):
                 status, output = self.run_main('--config', str(config), '--role', 'child',
-                                               '--node-id', '3', '--build-only', '--dry-run')
+                                               '--node-id', '0', '--build-only', '--dry-run')
             self.assertEqual(status, 0, output)
-            self.assertIn('child / node 3', output)
+            self.assertIn('Device: child / ESP32-C5', output)
+            self.assertIn('-DWIKNOW_NODE_ID=0', output)
 
     def test_invalid_ids_and_option_combinations(self):
         cases = [('--role', 'parent', '--node-id', '1'),
-                 ('--role', 'child', '--node-id', '0'),
+                 ('--role', 'child', '--node-id', '1'),
                  ('--role', 'child', '--node-id', '9'),
                  ('--role', 'follower', '--node-id', '17'),
                  ('--build-only', '--monitor'),
@@ -204,7 +221,7 @@ class FlashTests(unittest.TestCase):
              patch.object(flash, 'idf_command', return_value=['python', 'idf.py']):
             status, output = self.run_main('--dry-run')
         self.assertEqual(status, 0, output)
-        self.assertIn('universal / node 0', output)
+        self.assertIn('Device: universal / ESP32-C5', output)
         self.assertIn('-DWIKNOW_ROLE=universal', output)
         self.assertIn('-DWIKNOW_NODE_ID=0', output)
         first = flash.commands(['idf.py'], 'universal', 0, ROOT/'config/settings.json', 'COM7', 460800, False, False)
@@ -220,7 +237,7 @@ class FlashTests(unittest.TestCase):
                 status, output = self.run_main('--config', str(ROOT/'config'/name),
                                                '--port', '/dev/ttyACM1', '--dry-run')
                 self.assertEqual(status, 0, output)
-                self.assertIn('parent / node 0', output)
+                self.assertIn('Device: parent / ESP32-C5', output)
                 self.assertIn('-DWIKNOW_ROLE=parent', output)
                 self.assertIn('-DWIKNOW_NODE_ID=0', output)
 
@@ -229,7 +246,7 @@ class FlashTests(unittest.TestCase):
             with self.subTest(role=role), patch.object(flash.subprocess, 'run') as execute:
                 status, output = self.run_main(
                     '--config', str(ROOT/'config/settings.standalone.example.json'),
-                    '--role', role, '--node-id', '0' if role == 'universal' else '1', '--dry-run')
+                    '--role', role, '--node-id', '0', '--dry-run')
                 self.assertEqual(status, 1, output)
                 self.assertIn('board profiles require a manual role' if role == 'universal'
                               else 'standalone mode requires the parent role', output)

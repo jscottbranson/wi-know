@@ -126,9 +126,8 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     node = settings['node']
     require(node['role'] in ('universal', 'parent', 'child', 'follower'), 'invalid role')
     universal = node['role'] == 'universal'
-    require(not universal or node['id'] == 0, 'universal node ID must be 0 (assigned at runtime)')
-    integer(node['id'], 0 if node['role'] in ('parent', 'universal') else 1, 16, 'node.id')
-    require(node['role'] != 'parent' or node['id'] == 0, 'parent ID must be 0')
+    integer(node['id'], 0, 16, 'node.id')
+    require(node['id'] == 0, 'node.id must be 0; parents assign worker IDs at runtime')
     wifi = settings['wifi']
     # US passive reception, including DFS and channel 165.
     allowed = set(range(1, 12)) | set(range(36, 65, 4)) | set(range(100, 145, 4)) | set(range(149, 166, 4))
@@ -149,16 +148,13 @@ def validate(settings, role_override=None, node_override=None, base=ROOT, board_
     for field in ('first_node_id', 'last_node_id'):
         integer(bus[field], 1, 16, f'bus.{field}')
     require(bus['first_node_id'] <= bus['last_node_id'], 'invalid bus ID range')
-    require(not bus['enabled'] or node['role'] in ('parent', 'universal') or
-            bus['first_node_id'] <= node['id'] <= bus['last_node_id'],
-            'worker node ID must be inside the bus discovery range')
     integer(bus['poll_timeout_ms'], 20, 1000, 'bus.poll_timeout_ms')
     integer(bus['baud'], 9600, 921600, 'bus.baud')
     require(bus['poll_timeout_ms'] >= (532 * 10000 + bus['baud'] - 1) // bus['baud'] + 10, 'poll timeout too short for bus baud rate')
     integer(bus['membership_lease_ms'], 100, 60000, 'bus.membership_lease_ms')
     integer(bus['assignment_lease_ms'], 100, 60000, 'bus.assignment_lease_ms')
     sweep = (bus['last_node_id'] - bus['first_node_id'] + 1) * (bus['poll_timeout_ms'] + 5)
-    if universal:
+    if bus['enabled']:
         # Each node can incur discovery query/reply and assignment/ACK in
         # addition to its poll. Include request transmission and scheduler slack.
         request_ms = (128 * 10000 + bus['baud'] - 1) // bus['baud']
@@ -425,6 +421,7 @@ def emit(settings, rules):
     out.append('inline constexpr FollowingConfig following_config{following_alert_enabled, following_alert_distance_m, following_alert_delay_ms, following_alert_max_gap_ms, following_alert_scoring_enabled, following_alert_min_duration_ms, following_alert_min_hits, following_alert_hit_interval_ms, following_alert_score_threshold, following_alert_score_decay_ms, following_alert_gps_jitter_m, following_alert_max_speed_mps, following_alert_max_fix_age_ms};')
     universal = settings['node']['role'] == 'universal'
     out.append(f'inline constexpr bool universal_enabled = {cpp(universal)};')
+    out.append(f'inline constexpr bool discovery_enabled = {cpp(settings["bus"]["enabled"])};')
     role = 'child' if universal else settings['node']['role']
     out.append(f'inline constexpr Role role = Role::{role};')
     channels = ','.join('Channel{'+str(n)+'}' for n in settings['wifi']['channels'])

@@ -310,9 +310,10 @@ use one appropriate bias network if required. See the
 [TI RS-485 transceiver datasheet](https://www.ti.com/lit/ds/symlink/thvd1450.pdf)
 for bus topology and termination guidance.
 
-Do not tie bare ESP32 TX pins together. Universal images assign worker roles and
-IDs at runtime. Explicit manual builds use parent ID 0 and unique nonzero worker
-IDs on a separate bus; see [firmware instructions](firmware.md).
+Do not tie bare ESP32 TX pins together. All bus-enabled builds use parent ID 0
+and assign worker IDs and roles at runtime. Keep `node.id` at 0 in every image
+and update all bus nodes together when replacing fixed-ID firmware; see
+[firmware instructions](firmware.md).
 
 ## Diagnosing a silent RS-485 connection
 

@@ -36,8 +36,11 @@ std::atomic<uint16_t> node_id{c::node_id};
 wiknow::DeviceId device_id{};
 void detect_identity() {
     ESP_ERROR_CHECK(esp_efuse_mac_get_default(device_id.data()));
-    if (!c::universal_enabled)
+    if (!c::universal_enabled) {
+        if (c::discovery_enabled && role != wiknow::Role::parent)
+            node_id = UINT16_MAX;
         return;
+    }
     // Input only, no internal pulls: the external resistor defines disconnected wiring.
     gpio_config_t pin{};
     pin.pin_bit_mask = 1ULL << c::universal_strap_pin;

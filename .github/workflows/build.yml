@@ -37,11 +37,11 @@ jobs:
             config: settings.parent.example.json
             board: n32r8
           - role: child
-            id: 1
+            id: 0
             config: settings.child.example.json
             board: xiao
           - role: follower
-            id: 2
+            id: 0
     steps:
       - uses: actions/checkout@v4
       - shell: bash

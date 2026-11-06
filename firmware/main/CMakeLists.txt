@@ -1,7 +1,7 @@
 set(WIKNOW_CONFIG "${CMAKE_CURRENT_LIST_DIR}/../../config/settings.json" CACHE FILEPATH "wi-know JSON settings")
 set(WIKNOW_BOARD "" CACHE STRING "Board pin profile: custom, xiao, n32r8")
 set(WIKNOW_ROLE "" CACHE STRING "Override role: universal, parent, child, follower")
-set(WIKNOW_NODE_ID "" CACHE STRING "Override node ID (children/followers 1..16)")
+set(WIKNOW_NODE_ID "" CACHE STRING "Node ID placeholder (must be 0; assigned at runtime)")
 set(GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 set(GENERATOR "${CMAKE_CURRENT_LIST_DIR}/../../tools/generate_config.py")
 set(GENERATE_ARGS --config "${WIKNOW_CONFIG}" --output "${GENERATED_DIR}/settings.hpp")

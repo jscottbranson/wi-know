@@ -12,7 +12,10 @@ Choose a configuration for the installation and select the hardware with `--boar
 Standalone and parent configurations enable LCD, GPS, microSD, buzzer, trend LEDs,
 and the capture switch. The standalone configuration disables RS-485; the parent
 and child configurations enable it. Child nodes have no parent peripherals or
-capture switch; give each child a unique `--node-id`.
+capture switch. Flash the same child image to every XIAO; the parent assigns IDs
+from `bus.first_node_id` through `bus.last_node_id` at runtime. Leave `node.id`
+at 0 and omit `--node-id`. The parent also selects scanning/follower roles using
+`follower.enabled`. Update all bus nodes together when replacing fixed-ID firmware.
 
 The duplicate wiring/capture examples have been consolidated into these three
 role configurations. `settings.json` remains the default for existing universal
@@ -68,7 +71,7 @@ reserved pins or exposed pads. Confirm the parent board and wiring before enabli
 
 | Section | Key settings |
 | --- | --- |
-| `node` | Default `universal`, ID 0 placeholder; explicit manual `parent`/`child`/`follower` remain available |
+| `node` | Default `universal`, ID 0 placeholder; explicit `parent`/`child`/`follower` builds also use parent-assigned worker IDs |
 | `universal` | Optional verified hardware profile: strap GPIO10; parent bus 11/3/7; worker bus 11/12/7 |
 | `wifi` | US receive channel allowlist and dwell milliseconds; includes DFS (52–64 and 100–144 in steps of 4) and channel 165 |
 | `ble` | Passive BLE scan switch, used by parent and follower |
@@ -93,8 +96,9 @@ Only detected parents initialize the configured peripherals. The generator check
 the strap against active parent peripheral pins and the selected parent bus pins.
 The optional `universal` section defaults to the verified profiles above; changing
 those pins requires a reviewed hardware port, not a per-board build override.
-Manual role/ID overrides disable universal provisioning and require an isolated
-legacy bus. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-485.
+Explicit role overrides disable harness detection but retain discovery and
+parent-assigned worker IDs when the bus is enabled. Use USB Serial/JTAG for the
+console, UART0 for GPS and UART1 for RS-485.
 
 The 5 V PCF8574 LCD backpack is configured at address 39 (`0x27`); verify its
 address and pin mapping against the driver configuration.

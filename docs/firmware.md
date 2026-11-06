@@ -32,20 +32,20 @@ repository root. Nothing is flashed by a build.
 ```sh
 python3 tools/generate_config.py
 idf.py -C firmware -B build-universal -DIDF_TARGET=esp32c5 build
-# Explicit manual roles below require an isolated legacy bus.
+# Explicit roles retain configured wiring and use parent-assigned worker IDs.
 idf.py -C firmware -B build-parent -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=parent -DWIKNOW_NODE_ID=0 build
-idf.py -C firmware -B build-child-1 -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=1 build
-idf.py -C firmware -B build-follower -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=follower -DWIKNOW_NODE_ID=2 build
+idf.py -C firmware -B build-child -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=0 build
+idf.py -C firmware -B build-follower -DIDF_TARGET=esp32c5 -DWIKNOW_ROLE=follower -DWIKNOW_NODE_ID=0 build
 ```
 
-Give each additional worker a distinct nonzero ID, within the parent's bus range.
+Flash the same child image to each worker; the parent assigns IDs within its bus range.
 To flash a particular build, repeat its options and add your port:
 
 ```sh
-idf.py -C firmware -B build-child-1 -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=1 -p /dev/ttyACM0 flash monitor
+idf.py -C firmware -B build-child -DWIKNOW_ROLE=child -DWIKNOW_NODE_ID=0 -p /dev/ttyACM0 flash monitor
 ```
 
-Use separate build directories for separate role/ID/config combinations. Custom
+Use separate build directories for separate role/config combinations. Custom
 settings: add `-DWIKNOW_CONFIG=/absolute/path/to/settings.json` on configure/build.
 `firmware/sdkconfig.defaults` selects passive BLE observation with NimBLE extended
 advertisements, a USB Serial/JTAG console, and a single factory app partition for
@@ -71,9 +71,10 @@ is GPIO3; worker RX is GPIO12. Default peripherals are off. The universal exampl
 enables the parent peripherals and moves GPS RX to GPIO26. Every board receives
 the exact same image. Roles and short addresses are assigned at runtime.
 
-Explicit manual `parent`, `child` and `follower` builds remain available for a
-separate legacy bus, using unique nonzero worker IDs. Their original parent wiring
-example and protocol remain available; never mix manual and universal bus nodes.
+Explicit `parent`, `child` and `follower` builds use the same discovery and
+parent-assigned worker IDs without requiring the universal identification harness.
+Their board-specific wiring remains available. Set `node.id` to 0 and update every
+bus node when upgrading from fixed-ID firmware.
 Add reviewed rules under `rules/` and flash the same rule set to every board.
 
 ## Implemented behavior
@@ -81,9 +82,10 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Fixed-capacity C++ core; radio callbacks never perform filesystem or LCD writes.
 - Deterministic capability-aware allocation of up to 36 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
-- Manual mode uses a versioned little-endian polling/report protocol with CRC32, node boot IDs,
-  command sequences and assignment leases. Protocol version 5 includes a Wi-Fi
-  subtype/evidence discriminator, bounded MAC headers and BLE acquisition discriminator; observation acknowledgments retain their existing
+- All bus-enabled builds use a versioned little-endian discovery and polling/report
+  protocol with CRC32, node boot IDs, command sequences and assignment leases.
+  Protocol version 5 includes a Wi-Fi subtype/evidence discriminator, bounded MAC
+  headers and BLE acquisition discriminator; observation acknowledgments retain their existing
   behavior: a worker retains its in-flight observation until the parent acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
   are retried on subsequent polls; the parent suppresses duplicate processing.
   Rebuild and flash every node together; version 5 cannot communicate

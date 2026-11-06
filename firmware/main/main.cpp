@@ -48,7 +48,7 @@ static bool receive_parent(Packet &packet, uint32_t timeout) {
     const auto until = platform::now_ms() + timeout;
     do {
         if (platform::bus_receive(packet, 1)) {
-            if (c::universal_enabled && conflict(packet))
+            if (c::discovery_enabled && conflict(packet))
                 return false;
             return true;
         }
@@ -332,7 +332,7 @@ static void parent_loop() {
     capture_switch.start(platform::capture_switch_high(), platform::now_ms());
     if (c::capture_switch_enabled)
         log_capture_transition(true);
-    if (c::universal_enabled) {
+    if (c::discovery_enabled) {
         discovery_token = esp_random() | 1u;
         // Listen before any transmission; stagger simultaneous power-up.
         const auto until = platform::now_ms() + 2000 + (esp_random() % 2000);
@@ -364,7 +364,7 @@ static void parent_loop() {
             target_rule = nullptr;
             target_trend = Trend::unknown;
         }
-        if (c::universal_enabled) {
+        if (c::discovery_enabled) {
             discovery_step();
             for (uint16_t id = c::bus_first_node_id; id <= c::bus_last_node_id; ++id) {
                 bool online = false;
@@ -383,9 +383,9 @@ static void parent_loop() {
                     scanners = true;
             platform::local_scanning(!scanners);
         }
-        auto *session = c::universal_enabled ? discovery.get(next_node) : nullptr;
+        auto *session = c::discovery_enabled ? discovery.get(next_node) : nullptr;
         if (c::bus_enabled && !parent_conflict &&
-            (!c::universal_enabled || (session && session->node && session->acknowledged))) {
+            (!c::discovery_enabled || (session && session->node && session->acknowledged))) {
             bool more = false;
             if (!burst)
                 burst_started = platform::now_ms();
@@ -417,7 +417,7 @@ static void parent_loop() {
             request.boot = platform::boot_id;
             request.sequence = ++sequence;
             pack_command(command, request);
-            if (c::universal_enabled)
+            if (c::discovery_enabled)
                 pack_identity(session->identity, request, MessageType::session_poll);
             uint64_t sent = platform::now_ms();
             platform::bus_send(request);
@@ -426,7 +426,7 @@ static void parent_loop() {
                 response.sequence == sequence) {
                 Report report{};
                 bool valid = true;
-                if (c::universal_enabled) {
+                if (c::discovery_enabled) {
                     Identity identity{};
                     Packet inner{};
                     valid = response.type == MessageType::session_report &&
@@ -437,8 +437,8 @@ static void parent_loop() {
                         response = inner;
                 }
                 if (valid && unpack_report(response, report) &&
-                    (!c::universal_enabled || report.role == session->identity.role)) {
-                    if (c::universal_enabled)
+                    (!c::discovery_enabled || report.role == session->identity.role)) {
+                    if (c::discovery_enabled)
                         discovery.acknowledge(next_node, session->identity, platform::now_ms(),
                                               c::bus_assignment_lease_ms);
                     platform::bus_report_accepted();
@@ -471,7 +471,7 @@ static void parent_loop() {
                     next_node = c::bus_first_node_id;
             }
         }
-        if (c::universal_enabled && (!session || !session->node || !session->acknowledged)) {
+        if (c::discovery_enabled && (!session || !session->node || !session->acknowledged)) {
             burst = 0;
             if (++next_node > c::bus_last_node_id)
                 next_node = c::bus_first_node_id;
@@ -539,7 +539,7 @@ static void parent_loop() {
                 std::snprintf(line2, sizeof(line2), "Gap:%u %s", unsigned(plan.uncovered_count),
                               platform::storage_name());
             }
-            if ((c::standalone_enabled || (c::universal_enabled && platform::local_scanning())) &&
+            if ((c::standalone_enabled || (c::discovery_enabled && platform::local_scanning())) &&
                 page == 0 && !(following_visible && now - following_alert_at < 30000)) {
                 const int channel = platform::standalone_scan_channel();
                 std::snprintf(line1, sizeof(line1), "Standalone");
@@ -551,7 +551,7 @@ static void parent_loop() {
                                   : channel == -2 ? "Starting scan"
                                                   : "Scan error");
             }
-            if (c::universal_enabled && page == 3) {
+            if (c::discovery_enabled && page == 3) {
                 std::snprintf(line1, sizeof(line1), "Parent %02X%02X%02X", platform::device_id[3],
                               platform::device_id[4], platform::device_id[5]);
                 std::snprintf(line2, sizeof(line2), "Join errors:%u", unsigned(discovery_failures));
@@ -574,7 +574,7 @@ static void parent_loop() {
         if (now - last_status >= 5000) {
             auto plan = members.plan(c::channels.data(), c::channels.size());
             auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
-            if (c::standalone_enabled || (c::universal_enabled && platform::local_scanning()))
+            if (c::standalone_enabled || (c::discovery_enabled && platform::local_scanning()))
                 ESP_LOGI("parent",
                          "standalone scan_channel=%d (0=BLE -1=error -2=starting) local_drops=%u "
                          "storage=%s",
@@ -608,7 +608,7 @@ static void worker_loop() {
     bool worker_conflict = false;
     uint64_t last_identity_status = 0;
     auto update_radio = [&](uint64_t now) {
-        if (now >= expires || (c::universal_enabled && !worker_identity.active(now))) {
+        if (now >= expires || (c::discovery_enabled && !worker_identity.active(now))) {
             platform::pause_wifi();
             platform::set_capture_assignment(assignment, 0);
             tuned = 0;
@@ -647,7 +647,7 @@ static void worker_loop() {
         bool received = c::bus_enabled && platform::bus_receive(request, 10);
         if (worker_conflict)
             received = false;
-        if (c::universal_enabled && received) {
+        if (c::discovery_enabled && received) {
             if (request.type == MessageType::poll) {
                 ESP_LOGE("discovery", "Incompatible manual controller; worker halted until reboot");
                 worker_conflict = true;
@@ -715,7 +715,7 @@ static void worker_loop() {
             if (unpack_command(request, command) &&
                 (!have_parent || request.boot != parent_boot ||
                  sequence_newer(request.sequence, last_command_sequence)) &&
-                (!c::universal_enabled || worker_identity.accept_sequence(request.sequence))) {
+                (!c::discovery_enabled || worker_identity.accept_sequence(request.sequence))) {
                 platform::bus_poll_accepted();
                 pending.acknowledge(command.ack);
                 const bool parent_changed = !have_parent || request.boot != parent_boot;
@@ -725,7 +725,7 @@ static void worker_loop() {
                 last_command_sequence = request.sequence;
                 assignment = command;
                 expires = platform::now_ms() + command.lease_ms;
-                if (c::universal_enabled)
+                if (c::discovery_enabled)
                     worker_identity.expires = platform::now_ms() + c::bus_assignment_lease_ms;
                 platform::set_capture_assignment(assignment, expires);
                 if (changed) {
@@ -737,7 +737,7 @@ static void worker_loop() {
                 Report report{};
                 report.scan = scan.report();
                 report.role = platform::role.load();
-                if (c::universal_enabled) {
+                if (c::discovery_enabled) {
                     report.band24 = worker_identity.identity.capabilities & capability_wifi24;
                     report.band5 = worker_identity.identity.capabilities & capability_wifi5;
                 }
@@ -757,13 +757,13 @@ static void worker_loop() {
                 response.boot = platform::boot_id;
                 response.sequence = request.sequence;
                 pack_report(report, response);
-                if (c::universal_enabled)
+                if (c::discovery_enabled)
                     pack_identity(worker_identity.identity, response, MessageType::session_report);
                 platform::bus_send(response);
             }
         }
         update_radio(platform::now_ms());
-        if (c::universal_enabled && platform::now_ms() - last_identity_status >= 10000) {
+        if (c::discovery_enabled && platform::now_ms() - last_identity_status >= 10000) {
             ESP_LOGI("discovery", "MAC=%02x:%02x:%02x:%02x:%02x:%02x state=%s node=%u role=%s",
                      platform::device_id[0], platform::device_id[1], platform::device_id[2],
                      platform::device_id[3], platform::device_id[4], platform::device_id[5],

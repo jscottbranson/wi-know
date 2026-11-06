@@ -6,15 +6,17 @@ Use the local helper from the repository root. Choose one of four installations:
 python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8
 python3 tools/flash.py --config config/settings.standalone.example.json --board xiao
 python3 tools/flash.py --config config/settings.parent.example.json --board n32r8
-python3 tools/flash.py --config config/settings.child.example.json --board xiao --node-id 1
+python3 tools/flash.py --config config/settings.child.example.json --board xiao
 ```
 
 The helper asks for the USB port, validates settings, builds, and then flashes.
-Each child needs a unique node ID. Parent and standalone configurations assume
-LCD, GPS, microSD, buzzer, LEDs, and capture-switch wiring; there are no separate
-wiring or capture variants. Missing LCD/GPS/indicators do not stop scanning. An
-absent SD card falls back to internal flash, and an absent switch stays OFF via
-its internal pull-down. The helper prints the resolved capture GPIO before flashing.
+Children receive IDs from the parent; no ID prompt is needed. Update parent and
+children together when upgrading from fixed-ID firmware. Parent and standalone
+configurations assume LCD, GPS, microSD, buzzer, LEDs, and capture-switch wiring;
+there are no separate wiring or capture variants. Missing LCD/GPS/indicators do
+not stop scanning. An absent SD card falls back to internal flash, and an absent
+switch stays OFF via its internal pull-down. The helper prints the resolved
+capture GPIO before flashing.
 
 ## One-time prerequisites
 
@@ -44,7 +46,7 @@ python3 tools/flash.py --port /dev/ttyACM1 --config config/settings.standalone.e
 Use `--board xiao` or `--board n32r8` to apply the GPIO assignments from the
 corresponding wiring diagram. This is an explicit build-time selection; the
 firmware does not detect the carrier board or discover connected peripherals.
-For a standalone N32R8 with LCD, GPS, SD, buzzer and all two LEDs enabled:
+For a standalone N32R8 with LCD, GPS, SD, buzzer and both LEDs enabled:
 
 ```sh
 python3 tools/flash.py --config config/settings.standalone.example.json --board n32r8 --dry-run
@@ -62,7 +64,8 @@ You can persist the choice as `"board": {"model": "n32r8"}` in settings. The CLI
 option takes precedence. Without either, `custom` preserves existing pin settings.
 The helper uses the role stored in the config. A board profile applied to a
 universal config selects the parent role; pass
-`--role child --node-id 1` or `--role follower --node-id 2` for manual workers.
+`--role child` or `--role follower` for workers. The parent selects
+scanning/follower roles at runtime.
 Board profiles cannot be combined with `--role universal`: keep the existing
 universal configuration and identification harness for that workflow.
 
@@ -83,23 +86,25 @@ python3 tools/flash.py --build-only --config config/settings.json
 python3 tools/flash.py --dry-run
 ```
 
-The following explicit roles retain manual provisioning for a **separate legacy
-bus**. Manual and universal nodes must not share a bus. Parent:
+The following explicit roles use the configured wiring without the identification
+harness. All bus-enabled builds use discovery and parent-assigned worker IDs.
+Parent:
 
 ```sh
 python3 tools/flash.py --role parent --port /dev/ttyACM0
 ```
 
-Child with node ID 3:
+Child with a parent-assigned ID:
 
 ```sh
-python3 tools/flash.py --role child --node-id 3 --port /dev/ttyACM0
+python3 tools/flash.py --role child --port /dev/ttyACM0
 ```
 
-Dedicated follower with node ID 2, followed by a serial monitor:
+Worker using the follower build option, followed by a serial monitor
+(the parent determines its runtime scanning/follower role):
 
 ```sh
-python3 tools/flash.py --role follower --node-id 2 --port /dev/ttyACM0 --monitor
+python3 tools/flash.py --role follower --port /dev/ttyACM0 --monitor
 ```
 
 On Windows, replace the port with a value such as `COM5`. On macOS, use the listed
@@ -110,7 +115,7 @@ To list ports or inspect the exact commands without building/flashing:
 ```sh
 python3 tools/flash.py --list-ports
 python3 tools/flash.py --role parent --dry-run
-python3 tools/flash.py --role child --node-id 3 --dry-run
+python3 tools/flash.py --role child --dry-run
 ```
 
 A dry run needs neither an installed SDK nor a board. It still validates the config
@@ -119,7 +124,7 @@ and rules. Missing port is shown as `<serial-port>` without probing devices.
 Build without touching hardware:
 
 ```sh
-python3 tools/flash.py --role child --node-id 3 --build-only
+python3 tools/flash.py --role child --build-only
 ```
 
 Use a different settings file, SDK location, or flashing speed:
@@ -127,7 +132,7 @@ Use a different settings file, SDK location, or flashing speed:
 ```sh
 python3 tools/flash.py --role parent --port /dev/ttyACM0 --config /path/to/settings.json
 python3 tools/flash.py --role parent --port /dev/ttyACM0 --idf-path /path/to/esp-idf
-python3 tools/flash.py --role child --node-id 3 --port /dev/ttyACM0 --baud 115200
+python3 tools/flash.py --role child --port /dev/ttyACM0 --baud 115200
 ```
 
 `--idf-path` locates an installed SDK; its tools/Python environment still needs
@@ -160,13 +165,14 @@ test does not diagnose or repair LCD wiring.
 Build products are stored under:
 
 ```text
-build/devices/<role>-<node-id>-<config-and-sdk-defaults-hash>/
+build/devices/<role>-0-<config-board-and-sdk-defaults-hash>/
 ```
 
-Each directory has its own generated header and `sdkconfig`. Switching roles,
-IDs, or config paths cannot accidentally reuse another device's settings. Changes
-to the same settings/rule files are picked up by subsequent builds. The build tree
-is ignored by Git.
+Each directory has its own generated header and `sdkconfig`. The `0` is the
+build-time ID placeholder; workers receive their IDs at runtime. Switching roles,
+board profiles, or config paths selects a separate build directory. Workers with
+the same settings share a build. Changes to the same settings/rule files are
+picked up by subsequent builds. The build tree is ignored by Git.
 
 The directory hash also includes `firmware/sdkconfig.defaults`. When those defaults
 change, the helper uses a new build directory so existing SDK settings cannot
