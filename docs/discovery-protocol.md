@@ -62,8 +62,10 @@ foreign discover, assignment, session poll, or legacy manual poll latches a pare
 conflict: that parent stops all bus transmission until reboot. A worker that sees
 a second parent while leased also halts until reboot. The parent display shows
 `PARENT CONFLICT / Bus stopped`; serial logs explain the stop. Remove or rewire
-the unintended parent and reboot conflicted boards. Do not connect older fixed-ID firmware to a discovery cluster. Electrical arbitration and collision recovery must still
-be verified on the physical RS-485 network as described in the acceptance test.
+the unintended parent and reboot conflicted boards. Do not connect older fixed-ID
+firmware to a discovery cluster. Electrical arbitration and collision recovery
+must still be verified on the physical RS-485 network as described in the
+acceptance test.
 
 ## Assignments, roles and recovery
 

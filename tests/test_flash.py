@@ -200,7 +200,8 @@ class FlashTests(unittest.TestCase):
                 status, output = self.run_main('--config', str(config), '--role', 'child',
                                                '--node-id', '0', '--build-only', '--dry-run')
             self.assertEqual(status, 0, output)
-            self.assertIn('child / node 0', output)
+            self.assertIn('Device: child / ESP32-C5', output)
+            self.assertIn('-DWIKNOW_NODE_ID=0', output)
 
     def test_invalid_ids_and_option_combinations(self):
         cases = [('--role', 'parent', '--node-id', '1'),
@@ -220,7 +221,7 @@ class FlashTests(unittest.TestCase):
              patch.object(flash, 'idf_command', return_value=['python', 'idf.py']):
             status, output = self.run_main('--dry-run')
         self.assertEqual(status, 0, output)
-        self.assertIn('universal / node 0', output)
+        self.assertIn('Device: universal / ESP32-C5', output)
         self.assertIn('-DWIKNOW_ROLE=universal', output)
         self.assertIn('-DWIKNOW_NODE_ID=0', output)
         first = flash.commands(['idf.py'], 'universal', 0, ROOT/'config/settings.json', 'COM7', 460800, False, False)
@@ -236,7 +237,7 @@ class FlashTests(unittest.TestCase):
                 status, output = self.run_main('--config', str(ROOT/'config'/name),
                                                '--port', '/dev/ttyACM1', '--dry-run')
                 self.assertEqual(status, 0, output)
-                self.assertIn('parent / node 0', output)
+                self.assertIn('Device: parent / ESP32-C5', output)
                 self.assertIn('-DWIKNOW_ROLE=parent', output)
                 self.assertIn('-DWIKNOW_NODE_ID=0', output)
 

@@ -82,9 +82,10 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
 - Fixed-capacity C++ core; radio callbacks never perform filesystem or LCD writes.
 - Deterministic capability-aware allocation of up to 36 channels across 16 nodes,
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
-- Manual mode uses a versioned little-endian polling/report protocol with CRC32, node boot IDs,
-  command sequences and assignment leases. Protocol version 5 includes a Wi-Fi
-  subtype/evidence discriminator, bounded MAC headers and BLE acquisition discriminator; observation acknowledgments retain their existing
+- All bus-enabled builds use a versioned little-endian discovery and polling/report
+  protocol with CRC32, node boot IDs, command sequences and assignment leases.
+  Protocol version 5 includes a Wi-Fi subtype/evidence discriminator, bounded MAC
+  headers and BLE acquisition discriminator; observation acknowledgments retain their existing
   behavior: a worker retains its in-flight observation until the parent acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
   are retried on subsequent polls; the parent suppresses duplicate processing.
   Rebuild and flash every node together; version 5 cannot communicate

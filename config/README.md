@@ -97,7 +97,8 @@ the strap against active parent peripheral pins and the selected parent bus pins
 The optional `universal` section defaults to the verified profiles above; changing
 those pins requires a reviewed hardware port, not a per-board build override.
 Explicit role overrides disable harness detection but retain discovery and
-parent-assigned worker IDs. Use USB Serial/JTAG for the console, UART0 for GPS and UART1 for RS-485.
+parent-assigned worker IDs when the bus is enabled. Use USB Serial/JTAG for the
+console, UART0 for GPS and UART1 for RS-485.
 
 The 5 V PCF8574 LCD backpack is configured at address 39 (`0x27`); verify its
 address and pin mapping against the driver configuration.

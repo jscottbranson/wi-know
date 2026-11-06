@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the universal wi-know ESP32-C5 image and flash one USB-connected board."""
+"""Build wi-know ESP32-C5 firmware and flash one USB-connected board."""
 import argparse
 import glob
 import hashlib
@@ -26,7 +26,7 @@ def parser():
         'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
     result.add_argument('--role', choices=ROLES,
-                        help='Use the config role; a board profile selects parent for universal configs')
+                        help='Override the config role; a board profile defaults universal configs to parent')
     result.add_argument('--board', choices=generate_config.BOARDS,
                         help='Apply documented board pin mapping; custom keeps configured pins')
     result.add_argument('--node-id', type=int, help='Must be 0; parents assign worker IDs at runtime')
@@ -83,7 +83,7 @@ def show_ports(ports):
 
 def prompt(text, default=None):
     if not sys.stdin.isatty():
-        raise ValueError('Interactive input unavailable. Supply --role and --port; '
+        raise ValueError('Interactive input unavailable. Supply --port, '
                          'or use --build-only/--dry-run.')
     suffix = f' [{default}]' if default is not None else ''
     answer = input(f'{text}{suffix}: ').strip()
@@ -181,7 +181,7 @@ def main(argv=None):
             raise ValueError('--baud must be between 9600 and 2000000.')
         config = args.config.expanduser().resolve()
         raw = generate_config.load(config)
-        # Select the role and runtime-ID placeholder independently of stored defaults.
+        # Select the role and node ID placeholder independently of stored defaults.
         # Validate the common settings first; validate the selected device below.
         generate_config.validate(raw, 'parent', 0, board_override=args.board)
         board = args.board or raw.get('board', {}).get('model', 'custom')
@@ -198,7 +198,7 @@ def main(argv=None):
             port = '<serial-port>' if args.dry_run else select_port()
         idf = idf_command(args.idf_path, args.dry_run)
         planned = commands(idf, role, node_id, config, port, args.baud, args.build_only, args.monitor, board)
-        print(f'\nDevice: {role} / node {node_id} / ESP32-C5')
+        print(f'\nDevice: {role} / ESP32-C5')
         if role in ('child', 'follower'):
             print('Worker ID and scanning/follower role: assigned by parent at runtime')
         print(f'Board:  {board}')
@@ -235,7 +235,7 @@ def main(argv=None):
                           'release BOOT, then retry; --baud 115200 may help.', file=sys.stderr)
                 return result.returncode if result.returncode > 0 else 1
             if command[-1] == 'flash':
-                print(f'\nFlashed {role} node {node_id} successfully.', flush=True)
+                print(f'\nFlashed {role} firmware successfully.', flush=True)
         if args.build_only:
             print('\nBuild complete.')
         return 0
