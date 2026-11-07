@@ -20,8 +20,8 @@ capture GPIO before flashing.
 
 ## One-time prerequisites
 
-- Install **ESP-IDF v5.5.1** with its **ESP32-C5** tools using
-  [Espressif's setup guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/get-started/index.html).
+- Install **ESP-IDF v5.5.5** with its **ESP32-C5** tools using
+  [Espressif's setup guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/get-started/index.html).
 - Activate ESP-IDF before starting the helper. On Linux/macOS, source the installed
   checkout's `export.sh`. On Windows, open its ESP-IDF terminal and use `python`
   instead of `python3` if necessary.
@@ -32,6 +32,21 @@ The helper itself uses only Python's standard library; it uses pyserial for port
 listing if available in your environment, otherwise falls back to platform discovery.
 It does not download/install the SDK, change your shell environment, or run a full-chip
 `erase-flash`. Normal flashing writes the firmware's bootloader, partition table and app.
+
+### Upgrading from ESP-IDF v5.5.1
+
+Activate an ESP-IDF **v5.5.5** installation before rebuilding. This release includes
+[Espressif's USB reset fix](https://github.com/espressif/esp-idf/commit/ffc08c2)
+for ESP32-C5 silicon revisions 1.0 and earlier: with USB Serial/JTAG as the primary
+console, the old SDK could disable a UART0 clock needed by ROM during a USB reset.
+Affected XIAO children may need one final manual **BOOT/RESET** sequence to flash
+the rebuilt firmware. Subsequent USB flashes should enter download mode automatically
+when this SDK bug was the cause; verify that behavior on the actual boards.
+
+The firmware retains native USB Serial/JTAG as its primary console. Do not switch
+the console to UART0 as a workaround: its default GPIO11/12 signals overlap the
+RS-485 wiring, and parent configurations may use UART0 for GPS. The SDK fix changes
+clock handling without changing the board's GPIO assignments.
 
 ## Commands without the menu
 
@@ -136,7 +151,7 @@ python3 tools/flash.py --role child --port /dev/ttyACM0 --baud 115200
 ```
 
 `--idf-path` locates an installed SDK; its tools/Python environment still needs
-activation. The helper accepts exactly the tested release, **v5.5.1**.
+activation. The helper accepts exactly the tested release, **v5.5.5**.
 
 ## Build isolation and troubleshooting
 
@@ -165,7 +180,7 @@ test does not diagnose or repair LCD wiring.
 Build products are stored under:
 
 ```text
-build/devices/<role>-<config-board-and-sdk-defaults-hash>/
+build/devices/<role>-<config-board-sdk-version-and-defaults-hash>/
 ```
 
 Each directory has its own generated header and `sdkconfig`. Workers receive
@@ -174,13 +189,14 @@ board profiles, or config paths selects a separate build directory. Workers with
 the same settings share a build. Changes to the same settings/rule files are
 picked up by subsequent builds. The build tree is ignored by Git.
 
-The directory hash also includes `firmware/sdkconfig.defaults`. When those defaults
-change, the helper uses a new build directory so existing SDK settings cannot
-silently keep an old memory profile. Previous build outputs are left intact. If
+The directory hash also includes the pinned SDK version and `firmware/sdkconfig.defaults`.
+When the SDK version or defaults change, the helper uses a new build directory so
+existing SDK settings cannot silently keep an old memory profile or SDK cache.
+Previous build outputs are left intact. If
 you flash manually with `@flash_args`, use the **Build:** directory printed by the
 latest helper invocation. Manual `idf.py` users should use a fresh build directory
 and an explicit `-DSDKCONFIG=/absolute/path/to/new-build/sdkconfig` when adopting
-changed SDK defaults.
+a new SDK version or changed SDK defaults.
 
 The memory profile enables optional quad PSRAM at 40 MHz, allocates the parent
 tracking table there when available, and disables Wi-Fi IRAM throughput
@@ -189,6 +205,12 @@ prints the tracking-table location and available internal heap. Missing PSRAM
 does not prevent boot: parents fall back to internal tracking RAM; workers do
 not allocate the table. Hardware tests still need to verify radio and storage
 headroom on boards without PSRAM. Task stacks and radio/DMA buffers stay internal.
+
+`CONFIG_BT_NIMBLE_STATIC_TO_DYNAMIC=n` retains the previous static allocation of
+NimBLE host state covered by that option. This avoids a newly enabled startup
+allocation path that can return early on out-of-memory without failing port
+initialization. BLE still uses heap allocations elsewhere; total memory use and
+radio/storage headroom must be measured on the boards.
 
 If flashing cannot connect, check the selected port, USB data cable, and operating
 system serial-port permissions. If needed, hold **BOOT**, tap **RESET**, release

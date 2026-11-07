@@ -24,14 +24,16 @@ This change adds no production connected-service signatures and makes no vendor
 parity claim. Generic standard services and Nordic DFU are not vendor identity.
 A custom rule must have reviewed provenance; the included fixture is synthetic.
 
-The SDK audited is ESP-IDF v5.5.1 and its pinned NimBLE:
+The SDK audited is ESP-IDF v5.5.5 and its pinned NimBLE revision
+[`685675c0128deafdd201c9eb82e61d227364646c`](https://github.com/espressif/esp-nimble/tree/685675c0128deafdd201c9eb82e61d227364646c):
 `host/include/host/ble_gap.h`, `ble_gatt.h`, `host/src/ble_gap.c`, and `ble_sm.c`.
 `ble_gap_conn_cancel()` acknowledges the controller command before delivering its
 CONNECT cancellation callback. The application keeps the attempt occupied until
 that callback. A successful connection uses `ble_gattc_disc_all_svcs()` and only
 `BLE_HS_EDONE` publishes the complete primary-service list. With BLE security
-compiled out, the `!MYNEWT_VAL(BLE_SM)` branch in `ble_sm.c` responds with
-`BLE_SM_ERR_PAIR_NOT_SUPP`. The build rejects enabled GATT if security is compiled
+compiled out, the `!MYNEWT_VAL(BLE_SM)` branch in `ble_sm.c` rejects security requests;
+its response path sends `BLE_SM_ERR_PAIR_NOT_SUPP` when a connection and response
+buffer are available. The build rejects enabled GATT if security is compiled
 in, including custom SDK configurations: Just Works pairing must not slip through
 without a passkey callback.
 

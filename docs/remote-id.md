@@ -146,11 +146,11 @@ those measurements must be added after hardware testing.
 
 ## Bounded BLE extended-advertising reassembly
 
-The implementation targets **ESP-IDF v5.5.1** and its pinned esp-nimble revision
-[`b45dcedcafb7888174c3567002c36b342ec0b723`](https://github.com/espressif/esp-nimble/tree/b45dcedcafb7888174c3567002c36b342ec0b723).
-In that revision, [`ble_hs_hci_evt.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs_hci_evt.c)
+The implementation targets **ESP-IDF v5.5.5** and its pinned esp-nimble revision
+[`685675c0128deafdd201c9eb82e61d227364646c`](https://github.com/espressif/esp-nimble/tree/685675c0128deafdd201c9eb82e61d227364646c).
+In that revision, [`ble_hs_hci_evt.c`](https://github.com/espressif/esp-nimble/blob/685675c0128deafdd201c9eb82e61d227364646c/nimble/host/src/ble_hs_hci_evt.c)
 passes each HCI extended-report data pointer/length and data status directly to
-[`ble_gap_rx_ext_adv_report`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_gap.c).
+[`ble_gap_rx_ext_adv_report`](https://github.com/espressif/esp-nimble/blob/685675c0128deafdd201c9eb82e61d227364646c/nimble/host/src/ble_gap.c).
 The host does **not** accumulate those bytes. Both the 1M and coded PHY scan
 parameters explicitly enable observer mode, bypassing the host's AD-flags filter
 so a fragment with a split AD header can reach the callback. This is source-level
@@ -179,9 +179,9 @@ to make an unsafe late tail look like a new report. The maintenance timer checks
 every 50 ms and retries failed cancellations/starts. A normal scan stop, host reset,
 or standalone Wi-Fi/BLE transition also clears reassembly. A stop-command ACK
 alone is **not** a drain barrier: pinned
-[`ble_hs_hci.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs_hci.c)
+[`ble_hs_hci.c`](https://github.com/espressif/esp-nimble/blob/685675c0128deafdd201c9eb82e61d227364646c/nimble/host/src/ble_hs_hci.c)
 handles command ACKs synchronously while
-[`ble_hs.c`](https://github.com/espressif/esp-nimble/blob/b45dcedcafb7888174c3567002c36b342ec0b723/nimble/host/src/ble_hs.c)
+[`ble_hs.c`](https://github.com/espressif/esp-nimble/blob/685675c0128deafdd201c9eb82e61d227364646c/nimble/host/src/ble_hs.c)
 queues advertising events individually. After a confirmed cancellation or reset/sync,
 all scan-start paths stay gated until a marker posted on the host event queue has
 drained older reports while discovery remains inactive. Overlapping boundaries

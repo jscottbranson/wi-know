@@ -1,6 +1,6 @@
 # System architecture
 
-The firmware targets ESP32-C5 with ESP-IDF v5.5.1. Portable C++17 components
+The firmware targets ESP32-C5 with ESP-IDF v5.5.5. Portable C++17 components
 implement parsing, detection, scheduling, tracking and bus framing; ESP-IDF
 adapters provide radio reception, RS-485 transport and parent peripherals.
 Settings and rules are validated and compiled into the image. Changes require a

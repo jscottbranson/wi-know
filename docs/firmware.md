@@ -16,7 +16,7 @@ tests/                               host-side core and configuration tests
 
 ## Easy flashing
 
-Use `python3 tools/flash.py` in an activated ESP-IDF v5.5.1 environment to choose
+Use `python3 tools/flash.py` in an activated ESP-IDF v5.5.5 environment to choose
 the USB port. The default image is universal; use the same config for all boards.
 See [universal provisioning and validation](universal.md) before wiring. See [the flashing guide](flashing.md) for the
 interactive workflow and command-line examples. It isolates each role/configuration build
@@ -24,10 +24,12 @@ and SDK settings; the manual commands below remain available.
 
 ## Toolchain and builds
 
-Use ESP-IDF **v5.5.1** with the ESP32-C5 toolchain. Follow
-[Espressif's installation instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5.1/esp32c5/get-started/index.html),
+Use ESP-IDF **v5.5.5** with the ESP32-C5 toolchain. Follow
+[Espressif's installation instructions](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/get-started/index.html),
 then activate its environment with `export.sh` before these commands. Run from the
-repository root. Nothing is flashed by a build.
+repository root. Both the helper and direct firmware CMake builds require version
+5.5.5. Nothing is flashed by a build. For an SDK upgrade, use a fresh build directory
+and `sdkconfig` as described in [build isolation](flashing.md#build-isolation-and-troubleshooting).
 
 ```sh
 python3 tools/generate_config.py
