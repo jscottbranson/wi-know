@@ -1,3 +1,4 @@
+#include "device_identity.hpp"
 #include "driver/gpio.h"
 #include "driver/i2c_master.h"
 #include "driver/ledc.h"
@@ -5,7 +6,6 @@
 #include "driver/spi_common.h"
 #include "driver/uart.h"
 #include "esp_log.h"
-#include "esp_mac.h"
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
 #include "esp_vfs_fat.h"
@@ -35,7 +35,7 @@ std::atomic<wiknow::Role> role{c::role};
 std::atomic<uint16_t> node_id{UINT16_MAX};
 wiknow::DeviceId device_id{};
 void detect_identity() {
-    ESP_ERROR_CHECK(esp_efuse_mac_get_default(device_id.data()));
+    ESP_ERROR_CHECK(read_device_identity(device_id));
     if (!c::universal_enabled) {
         node_id = role == wiknow::Role::parent ? 0 : UINT16_MAX;
         return;
