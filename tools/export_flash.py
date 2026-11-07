@@ -33,7 +33,7 @@ def main(argv=None):
     parser.add_argument('--location', choices=('capture', 'peak', 'aircraft', 'operator'), default='capture')
     parser.add_argument('--matches-only', action='store_true')
     parser.add_argument('--skip-invalid', action='store_true', help='skip malformed records with warnings')
-    parser.add_argument('--idf-path', type=Path, help='activated ESP-IDF v5.5.1 checkout')
+    parser.add_argument('--idf-path', type=Path, help=f'activated ESP-IDF v{flash.SUPPORTED_IDF} checkout')
     parser.add_argument('--baud', type=int, default=115200)
     parser.add_argument('--manual-reset', action='store_true', help='disable automatic reset for boards requiring BOOT/RESET')
     args = parser.parse_args(argv)

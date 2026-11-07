@@ -9,7 +9,7 @@ python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o detections.csv
 python3 tools/export_observations.py /path/to/logs/W[MU]*.LOG -o detections.geojson
 ```
 
-For internal flash, close the serial monitor, activate ESP-IDF v5.5.1, and run:
+For internal flash, close the serial monitor, activate ESP-IDF v5.5.5, and run:
 
 ```sh
 python3 tools/export_flash.py --port /dev/ttyACM1 --format csv
