@@ -52,6 +52,12 @@ errors and assignment/capacity failures expose trouble; workers log their MAC,
 state, last address and role every ten seconds. A healthy default sweep normally
 takes several seconds and can take longer while assignments retry.
 
+Pending assignments are retried round-robin, one per discovery opportunity. A
+worker with a missing ACK cannot monopolize retries while other reservations
+expire. During each response window the parent ignores stale or unrelated replies
+and continues waiting for the matching reply until the original deadline;
+controller-conflict checks still run on every decoded frame.
+
 Each discovery exchange includes an actual random 1–64 ms receive interval
 before transmission, in addition to a randomized 100–150 ms scheduling interval.
 The receive interval remains in force even when other bus operations run late.
@@ -87,12 +93,15 @@ parent versus worker identification.
 Every role change issues a new token and requires another assignment ACK before
 normal polling. The parent refreshes the current discovery nonce in repeated
 offers, so losing an assignment or ACK does not wedge retries across sweeps.
+Token advancement skips reserved value zero, including at counter wrap.
 A worker accepts an offer only for its factory MAC/current boot and the last
 parent probe it heard. Older tokens remain rejected after lease expiry; an expired token cannot be
 reactivated. A repeated live offer is acknowledged idempotently without renewing
 the lease or resetting command sequence/capture state.
 The parent accepts an ACK/report only for the matching MACs, boots, address,
-role and token. Commands must additionally have a newer sequence number. A
+role and token within a live lease. A report arriving at or after identity lease
+expiry cannot restore membership or deliver observations. Commands must
+additionally have a newer sequence number. A
 role-only reassignment retains observation delivery acknowledgements; reusing
 an address for another MAC resets them.
 
@@ -140,3 +149,24 @@ stale session and token rejection, lease expiry, collision retries, capacity,
 duplicate MAC boots, address reuse, role thresholds/replacement, and removal of
 stale membership. Physical boot ordering, bus collisions, harness voltages and
 RF performance are not claimed as validated by host tests or CI builds.
+
+## Diagnosing incomplete joins
+
+The parent logs cumulative `hellos`, assignment `offers`, `acks`, and `failures`
+every five seconds, alongside current `leased` and `pending` reservation counts
+and the latched `conflict` flag. An ACK confirms identity assignment; only a valid
+session report establishes online membership. `children` counts scanning children,
+excluding the dedicated follower: with five online workers and following enabled,
+expect four scanning children and one follower.
+
+Bus `last_rx_type=4` means the latest decoded frame was a hello. Rising hello/offer
+counts with no ACKs locate the failure between discovery and assignment completion;
+ACKs with no accepted reports locate it in session polling. `rx_bytes` without
+corresponding `rx_frames` does not prove successful reception: incomplete frames
+discarded after an idle gap do not increment the CRC/decode error counter. These
+counters alone cannot distinguish timing, collisions, or an electrical fault.
+
+Host regression tests exercise five workers through actual framing and session
+helpers, including a collided discovery slot, lost assignment ACKs, a permanently
+missing low-address ACK, and lost/duplicate observation traffic. They verify
+protocol recovery and retry fairness, not physical RS-485 timing or wiring.

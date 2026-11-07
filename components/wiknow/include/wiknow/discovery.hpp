@@ -18,6 +18,12 @@ using DeviceId = std::array<uint8_t, 6>;
 constexpr uint8_t discovery_version = 1, discovery_slots = 32;
 constexpr size_t identity_size = 32;
 constexpr uint8_t capability_wifi24 = 1, capability_wifi5 = 2, capability_follow = 4;
+inline uint32_t next_discovery_token(uint32_t &token) {
+    // Zero is reserved for an unassigned identity, including at counter wrap.
+    if (!++token)
+        ++token;
+    return token;
+}
 struct Identity {
     DeviceId parent{}, worker{};
     uint32_t parent_boot{}, worker_boot{}, token{}, nonce{};
@@ -102,6 +108,17 @@ inline bool controller_conflict(const Packet &packet, const DeviceId &self, uint
     return unpack_identity(packet, identity) &&
            (identity.parent != self || identity.parent_boot != boot);
 }
+inline bool worker_controller_conflict(const Packet &packet, const DeviceId &parent, bool leased) {
+    if (packet.type == MessageType::poll)
+        return true;
+    if (!leased || (packet.type != MessageType::discover && packet.type != MessageType::assign &&
+                    packet.type != MessageType::session_poll))
+        return false;
+    Identity identity{};
+    // A reboot of our own parent is recovered after lease expiry. Commands from
+    // another physical parent prove a conflict even when addressed elsewhere.
+    return unpack_identity(packet, identity) && identity.parent != parent;
+}
 inline bool same_session(const Identity &a, const Identity &b) {
     return a.parent == b.parent && a.parent_boot == b.parent_boot && a.worker == b.worker &&
            a.worker_boot == b.worker_boot && a.token == b.token && a.role == b.role;
@@ -125,6 +142,17 @@ class DiscoveryTable {
         for (auto &n : nodes_)
             if (n.node && now >= n.expires)
                 n = {};
+    }
+    DiscoveredNode *next_offer() {
+        // A silent worker must not consume every assignment opportunity while
+        // other workers' reservations expire. Continue after the last attempt.
+        for (size_t checked = 0; checked < nodes_.size(); ++checked) {
+            auto &node = nodes_[offer_cursor_];
+            offer_cursor_ = (offer_cursor_ + 1) % nodes_.size();
+            if (node.node && !node.acknowledged)
+                return &node;
+        }
+        return nullptr;
     }
     DiscoveredNode *offer(const Identity &hello, uint64_t now, uint32_t lease, uint32_t token) {
         if (!valid_device(hello.worker) || !(hello.capabilities & capability_wifi24) || !token)
@@ -181,7 +209,7 @@ class DiscoveryTable {
                 Role desired = n.node == follower ? Role::follower : Role::child;
                 if (n.identity.role != desired) {
                     n.identity.role = desired;
-                    n.identity.token = ++token;
+                    n.identity.token = next_discovery_token(token);
                     n.acknowledged = false;
                 }
             }
@@ -189,6 +217,7 @@ class DiscoveryTable {
 
   private:
     uint16_t first_, last_;
+    size_t offer_cursor_{};
     std::array<DiscoveredNode, max_nodes> nodes_{};
 };
 inline Membership current_membership(const Membership &previous, DiscoveryTable &table) {

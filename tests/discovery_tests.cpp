@@ -12,7 +12,80 @@ static Identity hello(uint8_t id, uint32_t boot = 1) {
     h.nonce = 12;
     return h;
 }
+static void pending_offer_fairness(uint16_t first) {
+    DiscoveryTable table(first, first + 4);
+    uint32_t token = 0;
+    assert(!table.next_offer());
+    for (uint16_t address = first; address < first + 5; ++address) {
+        const auto *entry =
+            table.offer(hello(uint8_t(address)), 0, 10000, next_discovery_token(token));
+        assert(entry && entry->node == address);
+    }
+    table.roles(true, token);
+    assert(table.acknowledge(first, table.get(first)->identity, 0, 10000));
+    // One joined worker, one silent worker, and three ready to join. A failed
+    // assignment must not delay all later addresses until its 10-second expiry.
+    for (uint64_t opportunity = 1; opportunity <= 4; ++opportunity) {
+        auto *entry = table.next_offer();
+        assert(entry);
+        assert(entry->node == first + opportunity);
+        if (entry->node != first + 1)
+            assert(table.acknowledge(entry->node, entry->identity, opportunity, 10000));
+    }
+    for (const auto &entry : table.nodes())
+        if (entry.node)
+            assert(entry.acknowledged == (entry.node != first + 1));
+    // The silent address continues to receive bounded retry opportunities.
+    auto *retry = table.next_offer();
+    assert(retry && retry->node == first + 1);
+    assert(table.acknowledge(retry->node, retry->identity, 5, 10000));
+    assert(!table.next_offer());
+}
+static void pending_offer_expiry() {
+    DiscoveryTable table(12, 16);
+    for (uint16_t address = 12; address <= 16; ++address)
+        assert(table.offer(hello(uint8_t(address)), 0, address == 12 || address == 15 ? 100 : 300,
+                           address));
+    assert(table.acknowledge(14, table.get(14)->identity, 0, 300));
+    assert(table.next_offer()->node == 12);
+    table.expire(100);
+    assert(table.next_offer()->node == 13);
+    assert(table.next_offer()->node == 16); // expired and acknowledged entries skipped
+    auto *retry = table.next_offer();
+    assert(retry && retry->node == 13); // cursor wraps across the configured range
+    assert(table.acknowledge(13, retry->identity, 100, 300));
+    auto *replacement = table.offer(hello(20), 100, 300, 20);
+    assert(replacement && replacement->node == 12);
+    assert(table.next_offer()->node == 16);
+    assert(table.next_offer()->node == 12); // reused lower addresses are not starved
+    table.expire(400);
+    assert(!table.next_offer());
+}
+static void assignment_token_wrap() {
+    uint32_t token = UINT32_MAX - 1;
+    assert(next_discovery_token(token) == UINT32_MAX);
+    assert(next_discovery_token(token) == 1);
+    assert(sequence_newer(token, UINT32_MAX));
+    DiscoveryTable table(1, 2);
+    assert(table.offer(hello(1), 0, 10000, UINT32_MAX - 1));
+    auto *entry = table.offer(hello(2), 0, 10000, UINT32_MAX);
+    assert(entry);
+    WorkerIdentity worker;
+    const auto initial = entry->identity;
+    assert(worker.assign(initial, entry->node, initial.worker, initial.worker_boot, initial, 0,
+                         10000));
+    token = UINT32_MAX;
+    table.roles(true, token);
+    assert(entry->identity.role == Role::follower && entry->identity.token == 1);
+    assert(worker.assign(entry->identity, entry->node, initial.worker, initial.worker_boot, initial,
+                         1, 10000));
+    assert(table.acknowledge(entry->node, worker.identity, 1, 10000));
+}
 int main() {
+    pending_offer_fairness(1);
+    pending_offer_fairness(4);
+    pending_offer_expiry();
+    assignment_token_wrap();
     assert(hardware_identity(0, 16, 0) == HardwareIdentity::worker);
     assert(hardware_identity(16, 16, 0) == HardwareIdentity::parent);
     assert(hardware_identity(8, 16, 0) == HardwareIdentity::invalid);

@@ -6,6 +6,7 @@
 #include "platform.hpp"
 #include "sdkconfig.h"
 #include "wiknow/alert_cooldown.hpp"
+#include "wiknow/bus_exchange.hpp"
 #include "wiknow/capture_switch.hpp"
 #include "wiknow/remote_id.hpp"
 #include "wiknow/report_delivery.hpp"
@@ -31,6 +32,7 @@ static WorkerIdentity worker_identity;
 static Identity last_probe;
 static bool parent_conflict{};
 static uint32_t discovery_failures{}, discovery_token{};
+static uint32_t discovery_hellos{}, discovery_offers{}, discovery_acks{};
 static Identity parent_identity() {
     Identity id{};
     id.parent = platform::device_id;
@@ -44,16 +46,11 @@ static bool conflict(const Packet &packet) {
     }
     return parent_conflict;
 }
-static bool receive_parent(Packet &packet, uint32_t timeout) {
-    const auto until = platform::now_ms() + timeout;
-    do {
-        if (platform::bus_receive(packet, 1)) {
-            if (c::discovery_enabled && conflict(packet))
-                return false;
-            return true;
-        }
-    } while (platform::now_ms() < until);
-    return false;
+template <class Matches>
+static bool receive_parent(Packet &packet, uint32_t timeout, Matches matches) {
+    return receive_bus_reply(
+        packet, timeout, platform::now_ms, platform::bus_receive,
+        [](const Packet &incoming) { return c::discovery_enabled && conflict(incoming); }, matches);
 }
 static void discovery_step() {
     static uint8_t slot{};
@@ -84,12 +81,15 @@ static void discovery_step() {
     platform::bus_send(packet);
     Packet response{};
     Identity hello{};
-    if (receive_parent(response, c::bus_poll_timeout_ms) && response.type == MessageType::hello &&
-        unpack_identity(response, hello) && hello.parent == query.parent &&
-        hello.parent_boot == query.parent_boot && hello.nonce == nonce && hello.slot == slot &&
-        discovery_slot(hello.worker, hello.worker_boot, nonce) == slot) {
+    if (receive_parent(response, c::bus_poll_timeout_ms, [&](const Packet &incoming) {
+            return incoming.type == MessageType::hello && unpack_identity(incoming, hello) &&
+                   hello.parent == query.parent && hello.parent_boot == query.parent_boot &&
+                   hello.nonce == nonce && hello.slot == slot &&
+                   discovery_slot(hello.worker, hello.worker_boot, nonce) == slot;
+        })) {
+        ++discovery_hellos;
         auto *offered = discovery.offer(hello, platform::now_ms(), c::bus_assignment_lease_ms,
-                                        ++discovery_token);
+                                        next_discovery_token(discovery_token));
         if (offered && receipt_devices[offered->node - 1] != hello.worker) {
             report_receipts[offered->node - 1] = {};
             receipt_devices[offered->node - 1] = hello.worker;
@@ -103,30 +103,29 @@ static void discovery_step() {
     slot = (slot + 1) % discovery_slots;
     if (parent_conflict)
         return;
-    for (const auto &entry : discovery.nodes())
-        if (entry.node && !entry.acknowledged) {
-            auto *node = discovery.get(entry.node);
-            node->identity.nonce = nonce;
-            node->identity.slot = query.slot;
-            Packet offer{};
-            offer.node = node->node;
-            pack_identity(node->identity, offer, MessageType::assign);
-            platform::bus_send(offer);
-            Identity ack{};
-            if (receive_parent(response, c::bus_poll_timeout_ms) &&
-                response.type == MessageType::assigned && response.node == node->node &&
-                unpack_identity(response, ack) &&
-                discovery.acknowledge(node->node, ack, platform::now_ms(),
-                                      c::bus_assignment_lease_ms)) {
-                ESP_LOGI("discovery",
-                         "Assigned %02x:%02x:%02x:%02x:%02x:%02x node=%u role=%s token=%u",
-                         ack.worker[0], ack.worker[1], ack.worker[2], ack.worker[3], ack.worker[4],
-                         ack.worker[5], unsigned(node->node),
-                         ack.role == Role::follower ? "follower" : "child", unsigned(ack.token));
-            } else
-                ++discovery_failures;
-            break;
-        }
+    if (auto *node = discovery.next_offer()) {
+        node->identity.nonce = nonce;
+        node->identity.slot = query.slot;
+        Packet offer{};
+        offer.node = node->node;
+        pack_identity(node->identity, offer, MessageType::assign);
+        ++discovery_offers;
+        platform::bus_send(offer);
+        Identity ack{};
+        if (receive_parent(response, c::bus_poll_timeout_ms, [&](const Packet &incoming) {
+                return incoming.type == MessageType::assigned && incoming.node == node->node &&
+                       unpack_identity(incoming, ack) &&
+                       discovery.acknowledge(node->node, ack, platform::now_ms(),
+                                             c::bus_assignment_lease_ms);
+            })) {
+            ++discovery_acks;
+            ESP_LOGI("discovery", "Assigned %02x:%02x:%02x:%02x:%02x:%02x node=%u role=%s token=%u",
+                     ack.worker[0], ack.worker[1], ack.worker[2], ack.worker[3], ack.worker[4],
+                     ack.worker[5], unsigned(node->node),
+                     ack.role == Role::follower ? "follower" : "child", unsigned(ack.token));
+        } else
+            ++discovery_failures;
+    }
     // Remove stale role/capability evidence immediately, keeping only current sessions.
     members = current_membership(members, discovery);
 }
@@ -422,45 +421,33 @@ static void parent_loop() {
             uint64_t sent = platform::now_ms();
             platform::bus_send(request);
             Packet response{};
-            if (receive_parent(response, c::bus_poll_timeout_ms) && response.node == next_node &&
-                response.sequence == sequence) {
-                Report report{};
-                bool valid = true;
-                if (c::discovery_enabled) {
-                    Identity identity{};
-                    Packet inner{};
-                    valid = response.type == MessageType::session_report &&
-                            unpack_identity(response, identity, &inner) &&
-                            same_session(session->identity, identity) &&
-                            response.boot == identity.worker_boot;
-                    if (valid)
-                        response = inner;
-                }
-                if (valid && unpack_report(response, report) &&
-                    (!c::discovery_enabled || report.role == session->identity.role)) {
+            Report report{};
+            if (receive_parent(response, c::bus_poll_timeout_ms, [&](const Packet &incoming) {
                     if (c::discovery_enabled)
-                        discovery.acknowledge(next_node, session->identity, platform::now_ms(),
-                                              c::bus_assignment_lease_ms);
-                    platform::bus_report_accepted();
-                    uint64_t received = platform::now_ms();
-                    members.seen(Node{next_node, response.boot, report.role, report.band24,
-                                      report.band5, true, received},
-                                 received);
-                    if (worker_losses.update(next_node, response.boot, report.dropped))
-                        log_worker_losses(next_node, received);
-                    if (scan_coverage.observe(next_node, response.boot, report.scan, received))
-                        log_worker_scan(next_node, received);
-                    if (report.has_observation) {
-                        more = true;
-                        auto &o = report.observation;
-                        uint64_t delay = received - sent;
-                        o.at_ms = report.capture_age_ms <= received
-                                      ? received - report.capture_age_ms
-                                      : 0;
-                        o.timing_uncertainty_ms = uint32_t(std::min<uint64_t>(UINT32_MAX, delay));
-                        if (report_receipts[next_node - 1].accept(o))
-                            consume(o);
-                    }
+                        return accept_session_report(discovery, incoming, next_node, sequence,
+                                                     platform::now_ms(), c::bus_assignment_lease_ms,
+                                                     report);
+                    return incoming.node == next_node && incoming.sequence == sequence &&
+                           unpack_report(incoming, report);
+                })) {
+                platform::bus_report_accepted();
+                uint64_t received = platform::now_ms();
+                members.seen(Node{next_node, response.boot, report.role, report.band24,
+                                  report.band5, true, received},
+                             received);
+                if (worker_losses.update(next_node, response.boot, report.dropped))
+                    log_worker_losses(next_node, received);
+                if (scan_coverage.observe(next_node, response.boot, report.scan, received))
+                    log_worker_scan(next_node, received);
+                if (report.has_observation) {
+                    more = true;
+                    auto &o = report.observation;
+                    uint64_t delay = received - sent;
+                    o.at_ms =
+                        report.capture_age_ms <= received ? received - report.capture_age_ms : 0;
+                    o.timing_uncertainty_ms = uint32_t(std::min<uint64_t>(UINT32_MAX, delay));
+                    if (report_receipts[next_node - 1].accept(o))
+                        consume(o);
                 }
             }
             // Drain busy workers in bounded bursts; still service local input each iteration.
@@ -572,6 +559,19 @@ static void parent_loop() {
             last_display = now;
         }
         if (now - last_status >= 5000) {
+            if (c::discovery_enabled) {
+                unsigned leased = 0, pending = 0;
+                for (const auto &entry : discovery.nodes())
+                    if (entry.node && now < entry.expires) {
+                        ++leased;
+                        pending += !entry.acknowledged;
+                    }
+                ESP_LOGI("discovery",
+                         "hellos=%u offers=%u acks=%u failures=%u leased=%u pending=%u conflict=%u",
+                         unsigned(discovery_hellos), unsigned(discovery_offers),
+                         unsigned(discovery_acks), unsigned(discovery_failures), leased, pending,
+                         unsigned(parent_conflict));
+            }
             auto plan = members.plan(c::channels.data(), c::channels.size());
             auto coverage = scan_coverage.coverage(plan, now, c::bus_membership_lease_ms);
             if (c::standalone_enabled || (c::discovery_enabled && platform::local_scanning()))
@@ -647,35 +647,30 @@ static void worker_loop() {
         bool received = c::bus_enabled && platform::bus_receive(request, 10);
         if (worker_conflict)
             received = false;
+        if (c::discovery_enabled && received &&
+            worker_controller_conflict(request, worker_identity.identity.parent,
+                                       worker_identity.active(platform::now_ms()))) {
+            ESP_LOGE("discovery", "Another or incompatible parent; worker halted until reboot");
+            worker_conflict = true;
+            expires = 0;
+            received = false;
+        }
         if (c::discovery_enabled && received) {
-            if (request.type == MessageType::poll) {
-                ESP_LOGE("discovery", "Incompatible manual controller; worker halted until reboot");
-                worker_conflict = true;
-                expires = 0;
-            }
             Identity identity{};
             if (!unpack_identity(request, identity))
                 received = false;
             else if (request.type == MessageType::discover) {
-                if (worker_identity.active(platform::now_ms()) &&
-                    identity.parent != worker_identity.identity.parent) {
-                    ESP_LOGE("discovery", "Multiple parents; worker halted until reboot");
-                    worker_conflict = true;
-                    expires = 0;
-                    received = false;
-                } else {
-                    last_probe = identity;
-                    if (!worker_identity.active(platform::now_ms()) &&
-                        discovery_slot(platform::device_id, platform::boot_id, identity.nonce) ==
-                            identity.slot) {
-                        identity.worker = platform::device_id;
-                        identity.worker_boot = platform::boot_id;
-                        identity.capabilities =
-                            capability_wifi24 | capability_wifi5 | capability_follow;
-                        Packet hello{};
-                        pack_identity(identity, hello, MessageType::hello);
-                        platform::bus_send(hello);
-                    }
+                last_probe = identity;
+                if (!worker_identity.active(platform::now_ms()) &&
+                    discovery_slot(platform::device_id, platform::boot_id, identity.nonce) ==
+                        identity.slot) {
+                    identity.worker = platform::device_id;
+                    identity.worker_boot = platform::boot_id;
+                    identity.capabilities =
+                        capability_wifi24 | capability_wifi5 | capability_follow;
+                    Packet hello{};
+                    pack_identity(identity, hello, MessageType::hello);
+                    platform::bus_send(hello);
                 }
                 received = false;
             } else if (request.type == MessageType::assign) {
