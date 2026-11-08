@@ -66,6 +66,19 @@ ctest --test-dir build-host --output-on-failure
 CI runs host tests, the universal image, both standalone board profiles, manual
 parent/child/follower builds, and a GATT-enabled build with the pinned SDK.
 
+The separate [CodeQL workflow](../.github/workflows/codeql.yml) scans C/C++,
+Python, and GitHub Actions on pull requests to `main`, pushes to `main`, and
+weekly. C++ analysis traces fresh host, universal firmware, and GATT-enabled
+firmware builds in the ESP-IDF container. A database query checks for parsed
+function bodies in the core/host tests, all three firmware source files, and the
+optional GATT implementation; successful compilation alone does not prove
+extraction. This is representative source coverage, not analysis of every board
+or configuration. The existing build/test matrix remains separate.
+
+Results appear in GitHub's code-scanning alerts and PR checks. This repository
+uses advanced setup; do not enable a duplicate CodeQL default-setup scan. The
+weekly schedule starts after the workflow is merged into the default branch.
+
 ## Initial hardware setup
 
 Follow [universal provisioning](universal.md) for the shared image, identification

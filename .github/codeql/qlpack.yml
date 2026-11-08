@@ -1,0 +1,4 @@
+name: wi-know/extraction-check
+version: 0.0.0
+dependencies:
+  codeql/cpp-all: '*'
