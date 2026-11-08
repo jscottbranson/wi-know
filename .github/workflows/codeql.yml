@@ -1,0 +1,96 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '23 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cpp:
+    name: C/C++ (host and ESP32-C5)
+    runs-on: ubuntu-latest
+    # Initialization, builds and analysis must share a container for tracing.
+    container: espressif/idf:v6.1
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trust mounted checkout
+        shell: bash
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Initialize CodeQL
+        id: init
+        uses: github/codeql-action/init@v4
+        with:
+          languages: c-cpp
+          build-mode: manual
+      - name: Build host code
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          cmake -S . -B build-codeql-host -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build-codeql-host --parallel 2
+      - name: Build universal and GATT firmware
+        shell: bash
+        run: |
+          . /opt/esp/idf/export.sh
+          # Fresh build trees and sdkconfigs; cached compilation bypasses tracing.
+          idf.py -C firmware -B build-codeql-universal -DIDF_TARGET=esp32c5 \
+            -DSDKCONFIG=$PWD/build-codeql-universal/sdkconfig -DCCACHE_ENABLE=OFF \
+            -DWIKNOW_ROLE=universal build
+          idf.py -C firmware -B build-codeql-gatt -DIDF_TARGET=esp32c5 \
+            -DSDKCONFIG=$PWD/build-codeql-gatt/sdkconfig -DCCACHE_ENABLE=OFF \
+            '-DSDKCONFIG_DEFAULTS=sdkconfig.defaults;sdkconfig.gatt.defaults' \
+            -DWIKNOW_CONFIG=$PWD/tests/fixtures/gatt/settings.json build
+      - name: Analyze
+        id: analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:c-cpp
+      - name: Verify firmware extraction
+        shell: bash
+        env:
+          CODEQL: ${{ steps.init.outputs.codeql-path }}
+          DATABASE: ${{ fromJSON(steps.analyze.outputs.db-locations || '{}').cpp }}
+        run: |
+          # Resolve cpp-all from this CLI bundle, not a newer registry release.
+          "$CODEQL" query run .github/codeql/coverage.ql --database="$DATABASE" \
+            --search-path="$(dirname "$CODEQL")" \
+            --output="$RUNNER_TEMP/codeql-coverage.bqrs"
+          "$CODEQL" bqrs decode "$RUNNER_TEMP/codeql-coverage.bqrs" --format=csv \
+            --output="$RUNNER_TEMP/codeql-coverage.csv"
+          python3 .github/codeql/verify_coverage.py "$RUNNER_TEMP/codeql-coverage.csv"
+
+  interpreted:
+    name: ${{ matrix.language }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, actions]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: none
+      - uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
