@@ -26,7 +26,7 @@ and Wi-Fi scanning on one board, trading scan coverage for fewer devices.
 
 ## Project status
 
-The initial C++ firmware targets ESP-IDF v5.5.5 on ESP32-C5, with parent, child,
+The initial C++ firmware targets ESP-IDF v6.1 on ESP32-C5, with parent, child,
 and follower roles. It includes passive radio reception, coordination, matching,
 GPS/peak tracking, and peripheral drivers. Host tests and firmware builds check the
 software; physical hardware validation is still required. Reviewed community detection rules are included; identifiers can be spoofed and matches can be false positives. [Drone Remote ID decoding and storage](docs/remote-id.md)
@@ -102,7 +102,7 @@ to avoid the onboard USB-UART output on GPIO12.
 
 ## Quick start
 
-After installing and activating ESP-IDF v5.5.5, connect the board by USB and
+After installing and activating ESP-IDF v6.1, connect the board by USB and
 choose its installation:
 
 ```sh

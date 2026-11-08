@@ -17,7 +17,7 @@ import generate_config
 
 ROOT = Path(__file__).resolve().parents[1]
 SDK_DEFAULTS = ROOT/'firmware/sdkconfig.defaults'
-SUPPORTED_IDF = '5.5.5'
+SUPPORTED_IDF = '6.1'
 ROLES = ('universal', 'parent', 'child', 'follower')
 
 
@@ -163,8 +163,9 @@ def check_idf(idf):
     if result.returncode:
         raise ValueError('ESP-IDF could not start. Activate its installed Python/toolchain environment.\n' +
                          (result.stderr or result.stdout).strip())
-    version = re.search(r'ESP-IDF\s+v(\d+\.\d+\.\d+)(?=\s|$)', result.stdout)
-    if not version or version.group(1) != SUPPORTED_IDF:
+    version = re.fullmatch(r'ESP-IDF\s+v(\d+\.\d+(?:\.\d+)?)', result.stdout.strip())
+    # The v6.1 release tag and its normalized version identify the same SDK.
+    if not version or version.group(1) not in (SUPPORTED_IDF, f'{SUPPORTED_IDF}.0'):
         raise ValueError(f'Expected ESP-IDF v{SUPPORTED_IDF}; got {result.stdout.strip()!r}. '
                          'Activate the pinned SDK before flashing.')
 

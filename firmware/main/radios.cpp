@@ -2,12 +2,12 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_netif.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 #include "esp_wifi.h"
 #include "host/ble_gatt.h"
 #include "host/ble_hs.h"
 #include "nimble/nimble_port.h"
-#include "nimble/nimble_port_freertos.h"
 #include "nvs_flash.h"
 #include "platform.hpp"
 #include "wiknow/ble_reassembly.hpp"
@@ -639,7 +639,8 @@ static void ble_maintenance(struct ble_npl_event *) {
 }
 static void ble_task(void *) {
     nimble_port_run();
-    nimble_port_freertos_deinit();
+    // The application owns this task so creation failure can be checked.
+    vTaskDelete(nullptr);
 }
 void start_radios() {
 #if CONFIG_BT_NIMBLE_SECURITY_ENABLE
@@ -681,8 +682,10 @@ void start_radios() {
         ESP_ERROR_CHECK(esp_wifi_set_band_mode(WIFI_BAND_MODE_AUTO));
         wifi_started = true;
         raw_wifi = xQueueCreate(8, sizeof(RawWifi));
-        configASSERT(raw_wifi);
-        configASSERT(xTaskCreate(wifi_worker, "wifi_parse", 4096, nullptr, 4, nullptr) == pdPASS);
+        if (!raw_wifi)
+            esp_system_abort("Wi-Fi parser queue allocation failed");
+        if (xTaskCreate(wifi_worker, "wifi_parse", 4096, nullptr, 4, nullptr) != pdPASS)
+            esp_system_abort("Wi-Fi parser task allocation failed");
         wifi_promiscuous_filter_t filter{};
         filter.filter_mask = WIFI_PROMIS_FILTER_MASK_MGMT | WIFI_PROMIS_FILTER_MASK_DATA;
         ESP_ERROR_CHECK(esp_wifi_set_promiscuous_filter(&filter));
@@ -701,8 +704,10 @@ void start_radios() {
         }
         ESP_ERROR_CHECK(ble_error);
         raw_ble = xQueueCreate(ble_queue_depth, sizeof(RawBle));
-        configASSERT(raw_ble);
-        configASSERT(xTaskCreate(ble_worker, "ble_parse", 4096, nullptr, 4, nullptr) == pdPASS);
+        if (!raw_ble)
+            esp_system_abort("BLE parser queue allocation failed");
+        if (xTaskCreate(ble_worker, "ble_parse", 4096, nullptr, 4, nullptr) != pdPASS)
+            esp_system_abort("BLE parser task allocation failed");
         ESP_LOGI("ble", "Bounded assembly=%u bytes; completed queue=%u bytes; parser stack=4096",
                  unsigned(sizeof(ble_assembler)), unsigned(ble_queue_depth * sizeof(RawBle)));
         ble_npl_event_init(&ble_scan_barrier, ble_barrier_drained, nullptr);
@@ -716,11 +721,16 @@ void start_radios() {
                                  nullptr);
             ble_npl_callout_reset(&standalone_timer, ble_npl_time_ms_to_ticks32(10));
         }
-        nimble_port_freertos_init(ble_task);
+        // The SDK wrapper ignores task allocation failure. Preserve its stack,
+        // priority and core, but check creation of our application-owned task.
+        if (xTaskCreatePinnedToCore(ble_task, "nimble_host", NIMBLE_HS_STACK_SIZE, nullptr,
+                                    configMAX_PRIORITIES - 4, nullptr, NIMBLE_CORE) != pdPASS)
+            esp_system_abort("NimBLE host task allocation failed");
     }
-    if (standalone_scheduler() && !wiknow::config::ble_enabled)
-        configASSERT(xTaskCreate(standalone_wifi_task, "local_scan", 4096, nullptr, 4, nullptr) ==
-                     pdPASS);
+    if (standalone_scheduler() && !wiknow::config::ble_enabled) {
+        if (xTaskCreate(standalone_wifi_task, "local_scan", 4096, nullptr, 4, nullptr) != pdPASS)
+            esp_system_abort("Standalone Wi-Fi task allocation failed");
+    }
     ESP_LOGI("radio", "Startup complete: internal free=%u largest=%u",
              unsigned(heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)),
              unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));

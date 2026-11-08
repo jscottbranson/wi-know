@@ -1,6 +1,7 @@
 #pragma once
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
+#include "freertos/task.h"
 #include "log_helpers.hpp"
 #include "settings.hpp"
 #include "wiknow/core.hpp"

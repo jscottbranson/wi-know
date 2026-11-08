@@ -235,7 +235,7 @@ On the card side, contact numbers are CLK=5, CMD=3, DAT0=7, DAT3/CS=2, VDD=4
 and VSS=6; these are not the module's header order. Account for fitted resistors:
 CMD and DAT0–DAT3 each need a 10 kΩ pull-up to **3.3 V**, including unused DAT1
 (contact 8) and DAT2 (contact 1). No pull-up/down goes on CLK. See
-[Espressif's SD pull-up requirements](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/api-reference/peripherals/sd_pullup_requirements.html).
+[Espressif's SD pull-up requirements](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32c5/api-reference/peripherals/sd_pullup_requirements.html).
 GPIO25's pull-up affects an SDIO clock-edge strap; this firmware uses normal SPI
 boot and SPI2, not SDIO. GPIO2/3 also serve pad JTAG/SDIO strap functions; this
 plan uses native USB JTAG. Keep wires short; the example uses a 4 MHz SPI clock.
@@ -280,7 +280,7 @@ the shipped ruleset includes enabled surveillance signatures. Hardware operation
 Use a manually controlled, half-duplex transceiver with **3.3 V supply and logic
 compatibility**. A module that drives RO at 5 V is unsuitable for direct ESP32 input.
 This wiring corresponds to circuit B in
-[Espressif's RS-485 interface documentation](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/api-reference/peripherals/uart.html#interface-connection-options).
+[Espressif's RS-485 interface documentation](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32c5/api-reference/peripherals/uart.html#interface-connection-options).
 The D-to-GPIO mapping comes from the
 [Seeed XIAO ESP32-C5 pin map](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/).
 
@@ -424,7 +424,7 @@ with universal firmware: that profile already uses GPIO26 for GPS RX.
 The pin maps were checked against the
 [Seeed pin documentation](https://wiki.seeedstudio.com/xiao_esp32c5_getting_started/),
 [Waveshare schematic](https://files.waveshare.com/wiki/ESP32-C5-WIFI6-KIT-NXRX/ESP32-C5-WIFI6-KIT-NXRX-Schematic.pdf),
-and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/api-reference/peripherals/gpio.html).
+and [Espressif GPIO restrictions](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32c5/api-reference/peripherals/gpio.html).
 These are intended circuits, not hardware-tested builds.
 
 The examples enable `internal_pulldown: true`, keeping an absent switch OFF.

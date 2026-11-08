@@ -24,8 +24,8 @@ This change adds no production connected-service signatures and makes no vendor
 parity claim. Generic standard services and Nordic DFU are not vendor identity.
 A custom rule must have reviewed provenance; the included fixture is synthetic.
 
-The SDK audited is ESP-IDF v5.5.5 and its pinned NimBLE revision
-[`685675c0128deafdd201c9eb82e61d227364646c`](https://github.com/espressif/esp-nimble/tree/685675c0128deafdd201c9eb82e61d227364646c):
+The SDK audited is ESP-IDF v6.1 and its pinned NimBLE revision
+[`139cada0ae932957fa06ba37d17e3c9c2c95c773`](https://github.com/espressif/esp-nimble/tree/139cada0ae932957fa06ba37d17e3c9c2c95c773):
 `host/include/host/ble_gap.h`, `ble_gatt.h`, `host/src/ble_gap.c`, and `ble_sm.c`.
 `ble_gap_conn_cancel()` acknowledges the controller command before delivering its
 CONNECT cancellation callback. The application keeps the attempt occupied until

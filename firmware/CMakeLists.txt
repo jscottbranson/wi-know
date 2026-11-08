@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.20)
 set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/../components")
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-set(WIKNOW_SUPPORTED_IDF "5.5.5")
+set(WIKNOW_SUPPORTED_IDF "6.1.0")
 set(WIKNOW_ACTIVE_IDF "${IDF_VERSION_MAJOR}.${IDF_VERSION_MINOR}.${IDF_VERSION_PATCH}")
 if(NOT WIKNOW_ACTIVE_IDF STREQUAL WIKNOW_SUPPORTED_IDF)
     message(FATAL_ERROR "wi-know requires ESP-IDF v${WIKNOW_SUPPORTED_IDF}; found v${WIKNOW_ACTIVE_IDF}. Activate the pinned SDK and use a fresh build directory.")
 endif()
 project(wi_know)
+# The numeric version is also reported by prereleases and development checkouts.
+# IDF_VER is populated by project() from the SDK's release file or Git revision.
+idf_build_get_property(WIKNOW_IDF_RELEASE IDF_VER)
+if(NOT WIKNOW_IDF_RELEASE STREQUAL "v6.1" AND NOT WIKNOW_IDF_RELEASE STREQUAL "v6.1.0")
+    message(FATAL_ERROR "wi-know requires the ESP-IDF v6.1 release; found ${WIKNOW_IDF_RELEASE}. Activate the pinned SDK and use a fresh build directory.")
+endif()

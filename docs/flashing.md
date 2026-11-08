@@ -20,8 +20,8 @@ capture GPIO before flashing.
 
 ## One-time prerequisites
 
-- Install **ESP-IDF v5.5.5** with its **ESP32-C5** tools using
-  [Espressif's setup guide](https://docs.espressif.com/projects/esp-idf/en/v5.5.5/esp32c5/get-started/index.html).
+- Install **ESP-IDF v6.1** with its **ESP32-C5** tools using
+  [Espressif's setup guide](https://docs.espressif.com/projects/esp-idf/en/v6.1/esp32c5/get-started/index.html).
 - Activate ESP-IDF before starting the helper. On Linux/macOS, source the installed
   checkout's `export.sh`. On Windows, open its ESP-IDF terminal and use `python`
   instead of `python3` if necessary.
@@ -31,11 +31,16 @@ capture GPIO before flashing.
 The helper itself uses only Python's standard library; it uses pyserial for port
 listing if available in your environment, otherwise falls back to platform discovery.
 It does not download/install the SDK, change your shell environment, or run a full-chip
-`erase-flash`. Normal flashing writes the firmware's bootloader, partition table and app.
+`erase-flash`. Normal flashing targets the firmware's bootloader, partition table and app.
+ESP-IDF 6.1 may write only changed regions, then verifies the result; see the
+[migration record](esp-idf-6.1.md) for full-write behavior.
 
-### Upgrading from ESP-IDF v5.5.1
+### Upgrading from ESP-IDF v5.x
 
-Activate an ESP-IDF **v5.5.5** installation before rebuilding. This release includes
+Activate an ESP-IDF **v6.1** installation before rebuilding with a fresh build
+directory and sdkconfig. Earlier SDK releases are no longer accepted. See the
+[migration record](esp-idf-6.1.md) for the audit and pending hardware validation.
+This release includes
 [Espressif's USB reset fix](https://github.com/espressif/esp-idf/commit/ffc08c2)
 for ESP32-C5 silicon revisions 1.0 and earlier: with USB Serial/JTAG as the primary
 console, the old SDK could disable a UART0 clock needed by ROM during a USB reset.
@@ -151,7 +156,7 @@ python3 tools/flash.py --role child --port /dev/ttyACM0 --baud 115200
 ```
 
 `--idf-path` locates an installed SDK; its tools/Python environment still needs
-activation. The helper accepts exactly the tested release, **v5.5.5**.
+activation. The helper accepts exactly the tested release, **v6.1**.
 
 ## Build isolation and troubleshooting
 
@@ -207,7 +212,7 @@ not allocate the table. Hardware tests still need to verify radio and storage
 headroom on boards without PSRAM. Task stacks and radio/DMA buffers stay internal.
 
 `CONFIG_BT_NIMBLE_STATIC_TO_DYNAMIC=n` retains the previous static allocation of
-NimBLE host state covered by that option. This avoids a newly enabled startup
+NimBLE host state covered by that option. The pinned 6.1 source still has a startup
 allocation path that can return early on out-of-memory without failing port
 initialization. BLE still uses heap allocations elsewhere; total memory use and
 radio/storage headroom must be measured on the boards.
