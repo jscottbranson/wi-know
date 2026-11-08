@@ -28,6 +28,9 @@ jobs:
       security-events: write
     steps:
       - uses: actions/checkout@v4
+      - name: Trust mounted checkout
+        shell: bash
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - name: Initialize CodeQL
         id: init
         uses: github/codeql-action/init@v4
@@ -37,6 +40,7 @@ jobs:
       - name: Build host code
         shell: bash
         run: |
+          . /opt/esp/idf/export.sh
           cmake -S . -B build-codeql-host -DCMAKE_BUILD_TYPE=Debug
           cmake --build build-codeql-host --parallel 2
       - name: Build universal and GATT firmware
@@ -60,7 +64,7 @@ jobs:
         shell: bash
         env:
           CODEQL: ${{ steps.init.outputs.codeql-path }}
-          DATABASE: ${{ fromJSON(steps.analyze.outputs.db-locations).cpp }}
+          DATABASE: ${{ fromJSON(steps.analyze.outputs.db-locations || '{}').cpp }}
         run: |
           # Resolve cpp-all from this CLI bundle, not a newer registry release.
           "$CODEQL" query run .github/codeql/coverage.ql --database="$DATABASE" \
