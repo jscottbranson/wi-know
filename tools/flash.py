@@ -17,13 +17,13 @@ import generate_config
 
 ROOT = Path(__file__).resolve().parents[1]
 SDK_DEFAULTS = ROOT/'firmware/sdkconfig.defaults'
-SUPPORTED_IDF = '5.5.1'
+SUPPORTED_IDF = '6.1'
 ROLES = ('universal', 'parent', 'child', 'follower')
 
 
 def parser():
     result = argparse.ArgumentParser(description=__doc__, epilog=(
-        'The default universal image detects its identity at boot. Activate ESP-IDF v5.5.1 first. '
+        f'The default universal image detects its identity at boot. Activate ESP-IDF v{SUPPORTED_IDF} first. '
         'No full-chip erase is performed. See docs/flashing.md.'))
     result.add_argument('--role', choices=ROLES,
                         help='Override the config role; a board profile defaults universal configs to parent')
@@ -120,7 +120,7 @@ def idf_command(idf_path=None, dry_run=False):
         if not discovered:
             if dry_run:
                 return [sys.executable, 'idf.py']
-            raise ValueError('ESP-IDF is not active. Install v5.5.1 and run its export.sh '
+            raise ValueError(f'ESP-IDF is not active. Install v{SUPPORTED_IDF} and run its export.sh '
                              '(or open an ESP-IDF terminal on Windows), then retry. See docs/flashing.md.')
         script = Path(discovered)
     executable = sys.executable
@@ -133,9 +133,10 @@ def idf_command(idf_path=None, dry_run=False):
 
 
 def build_directory(role, config, board='custom'):
-    # Settings/rules rebuild incrementally, but changed SDK defaults need a new
-    # sdkconfig: IDF does not override values already saved in an existing cache.
-    digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + board.encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
+    # Settings/rules rebuild incrementally. A new SDK release or changed SDK
+    # defaults need a fresh cache and sdkconfig, not values saved by an old SDK.
+    digest = hashlib.sha256(str(config.resolve()).encode() + b'\0' + board.encode() + b'\0' +
+                            SUPPORTED_IDF.encode() + b'\0' + SDK_DEFAULTS.read_bytes()).hexdigest()[:10]
     return ROOT/'build'/'devices'/f'{role}-{digest}'
 
 
@@ -162,8 +163,9 @@ def check_idf(idf):
     if result.returncode:
         raise ValueError('ESP-IDF could not start. Activate its installed Python/toolchain environment.\n' +
                          (result.stderr or result.stdout).strip())
-    version = re.search(r'ESP-IDF\s+v(\d+\.\d+\.\d+)(?=\s|$)', result.stdout)
-    if not version or version.group(1) != SUPPORTED_IDF:
+    version = re.fullmatch(r'ESP-IDF\s+v(\d+\.\d+(?:\.\d+)?)', result.stdout.strip())
+    # The v6.1 release tag and its normalized version identify the same SDK.
+    if not version or version.group(1) not in (SUPPORTED_IDF, f'{SUPPORTED_IDF}.0'):
         raise ValueError(f'Expected ESP-IDF v{SUPPORTED_IDF}; got {result.stdout.strip()!r}. '
                          'Activate the pinned SDK before flashing.')
 

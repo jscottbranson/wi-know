@@ -17,6 +17,13 @@
 #include <cstring>
 #include <new>
 
+#if CONFIG_COMPILER_ENABLE_RISCV_ZCMP
+#error "ESP-IDF 6.1 does not support Zcmp on ESP32-C5; disable CONFIG_COMPILER_ENABLE_RISCV_ZCMP"
+#endif
+#if CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE
+#error "wi-know requires assertions enabled so ESP_ERROR_CHECK enforces initialization failures"
+#endif
+
 static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE >= 13312,
               "Set CONFIG_ESP_MAIN_TASK_STACK_SIZE=13312 or greater in firmware/sdkconfig; "
               "Wi-Fi header logging needs the updated main task stack budget");

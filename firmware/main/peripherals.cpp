@@ -8,6 +8,7 @@
 #include "esp_log.h"
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
+#include "esp_system.h"
 #include "esp_vfs_fat.h"
 #include "wiknow/gps_time_request.hpp"
 // These FAT helpers require types declared by esp_vfs_fat.h.
@@ -617,9 +618,10 @@ void start_peripherals() {
              c::buzzer_enabled ? "enabled" : "disabled",
              c::display_enabled ? "enabled" : "disabled");
     console_queue = xQueueCreate(log_queue_depth, sizeof(LogLine));
-    configASSERT(console_queue);
-    configASSERT(xTaskCreate(console_writer, "console_writer", 4608, nullptr, 1, nullptr) ==
-                 pdPASS);
+    if (!console_queue)
+        esp_system_abort("Console queue allocation failed");
+    if (xTaskCreate(console_writer, "console_writer", 4608, nullptr, 1, nullptr) != pdPASS)
+        esp_system_abort("Console writer task allocation failed");
     if (c::gps_enabled) {
         const esp_err_t error =
             uart_setup(c::gps_uart, c::gps_tx_pin, c::gps_rx_pin, -1, c::gps_baud, false);

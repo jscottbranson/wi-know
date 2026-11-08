@@ -110,7 +110,7 @@ must check free heap, flash writes during Wi-Fi/BLE reception, and drop counts.
 ## Reading flash logs
 
 Close the serial monitor, connect the parent over USB, and run this in an
-activated ESP-IDF v5.5.1 terminal:
+activated ESP-IDF v6.1 terminal:
 
 ```sh
 python3 tools/export_flash.py --port /dev/ttyACM1 --format csv

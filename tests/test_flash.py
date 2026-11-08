@@ -2,7 +2,9 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -90,6 +92,14 @@ class FlashTests(unittest.TestCase):
                 new = flash.build_directory('parent', config)
                 self.assertNotEqual(old, new)
                 self.assertEqual(new, flash.build_directory('parent', config))
+
+    def test_changed_sdk_release_selects_fresh_build(self):
+        config = ROOT/'config/settings.child.example.json'
+        current = flash.build_directory('child', config, 'xiao')
+        with patch.object(flash, 'SUPPORTED_IDF', '5.5.5'):
+            previous = flash.build_directory('child', config, 'xiao')
+        self.assertNotEqual(previous, current)
+        self.assertEqual(current, flash.build_directory('child', config, 'xiao'))
 
     def test_sd_formatting_warning_in_dry_run(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -247,12 +257,68 @@ class FlashTests(unittest.TestCase):
             self.assertEqual(flash.select_port(), 'COM5')
 
     def test_sdk_version_check(self):
-        with patch.object(flash.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'ESP-IDF v5.5.1\n', '')):
-            flash.check_idf(['python', 'idf.py'])
-        for version in ('ESP-IDF v5.4.1', 'ESP-IDF v5.5.10', 'ESP-IDF v5.5.1-dirty'):
+        for version in ('ESP-IDF v6.1\n', 'ESP-IDF v6.1.0\n'):
             with patch.object(flash.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, version, '')):
+                flash.check_idf(['python', 'idf.py'])
+        for version in ('ESP-IDF v5.5.5', 'ESP-IDF v6.0', 'ESP-IDF v6.1.1', 'ESP-IDF v6.10',
+                        'ESP-IDF v6.1-dirty', 'ESP-IDF v6.1-rc1', 'ESP-IDF v6.1-dev',
+                        'ESP-IDF v6.1-1-g1234567', 'ESP-IDF v6.1.0-dirty', 'ESP-IDF v6.1 garbage'):
+            with self.subTest(version=version), patch.object(
+                    flash.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, version, '')):
                 with self.assertRaises(ValueError):
                     flash.check_idf(['python', 'idf.py'])
+
+    def test_wrong_sdk_never_builds_or_flashes(self):
+        with patch.object(flash, 'idf_command', return_value=['python', 'idf.py']), \
+             patch.object(flash.subprocess, 'run',
+                          return_value=subprocess.CompletedProcess([], 0, 'ESP-IDF v5.5.5\n', '')) as execute:
+            status, output = self.run_main('--port', 'COM7')
+        self.assertEqual(status, 1, output)
+        self.assertIn('Expected ESP-IDF v6.1', output)
+        self.assertEqual(execute.call_count, 1)
+        self.assertEqual(execute.call_args.args[0][-1], '--version')
+
+    @unittest.skipUnless(shutil.which('cmake'), 'CMake is required')
+    def test_direct_firmware_build_enforces_sdk_release(self):
+        # Supply SDK metadata and project() / build-property stubs. The real
+        # firmware entrypoint must reject wrong numeric versions before project
+        # initialization, then reject prereleases and modified SDK revisions.
+        cases = [(version, 'v' + version, False)
+                 for version in ('5.5.5', '6.0.0', '6.1.1', '6.10.0')]
+        cases += [('6.1.0', release, True) for release in ('v6.1', 'v6.1.0')]
+        cases += [('6.1.0', release, False) for release in (
+            'v6.1-dirty', 'v6.1.0-dirty', 'v6.1-dev', 'v6.1-rc1',
+            'v6.1-1-g1234567', '', 'v6.10')]
+        with tempfile.TemporaryDirectory() as folder:
+            sdk = pathlib.Path(folder)
+            project = sdk/'tools/cmake/project.cmake'
+            project.parent.mkdir(parents=True)
+            for version, release, accepted in cases:
+                with self.subTest(version=version, release=release):
+                    major, minor, patch_version = version.split('.')
+                    project.write_text(
+                        f'set(IDF_VERSION_MAJOR {major})\n'
+                        f'set(IDF_VERSION_MINOR {minor})\n'
+                        f'set(IDF_VERSION_PATCH {patch_version})\n'
+                        'macro(project)\nmessage(STATUS "Firmware project initialized")\nendmacro()\n'
+                        'function(idf_build_get_property output property)\n'
+                        'if(NOT property STREQUAL "IDF_VER")\n'
+                        'message(FATAL_ERROR "Unexpected SDK property")\nendif()\n'
+                        f'set(${{output}} "{release}" PARENT_SCOPE)\nendfunction()\n')
+                    result = subprocess.run(
+                        ['cmake', '-P', str(ROOT/'firmware/CMakeLists.txt')],
+                        env={**os.environ, 'IDF_PATH': str(sdk)},
+                        capture_output=True, text=True)
+                    if accepted:
+                        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                        self.assertIn('Firmware project initialized', result.stdout)
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        if version != '6.1.0':
+                            self.assertIn('requires ESP-IDF v6.1.0', result.stderr)
+                            self.assertNotIn('Firmware project initialized', result.stdout)
+                        else:
+                            self.assertIn('requires the ESP-IDF v6.1 release', result.stderr)
 
     def test_missing_sdk_actionable_error(self):
         with patch.dict(flash.os.environ, {}, clear=True), patch.object(flash.shutil, 'which', return_value=None):
