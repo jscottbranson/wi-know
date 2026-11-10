@@ -730,6 +730,73 @@ static void following_test() {
     o.at_ms = 2000;
     CHECK(immediate.observe(o, {true, .002, 0, 2000}, distance));
 }
+static void decoder_resync_test() {
+    Command command{};
+    Packet packet{};
+    packet.node = 3;
+    packet.sequence = 77;
+    CHECK(pack_command(command, packet));
+    uint8_t frame[max_frame]{};
+    const size_t n = encode_packet(packet, frame, sizeof(frame));
+    CHECK(n > 0);
+    Packet decoded{};
+    auto feed_all = [&](Decoder &decoder, const uint8_t *bytes, size_t size) {
+        unsigned frames = 0;
+        for (size_t i = 0; i < size; ++i)
+            frames += decoder.feed(bytes[i], decoded);
+        return frames;
+    };
+    // A truncated frame followed without an idle gap must not hide the next frame.
+    Decoder truncated;
+    CHECK(feed_all(truncated, frame, 20) == 0);
+    CHECK(feed_all(truncated, frame, n) == 1);
+    CHECK(decoded.node == 3 && decoded.sequence == 77 && truncated.errors() == 1);
+    // An invalid header is rejected after 16 bytes; a sync inside it restarts parsing.
+    Decoder header;
+    uint8_t bad[16]{0x57, 0x4b, uint8_t(protocol_version + 1), 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                    0x57, 0x4b};
+    CHECK(feed_all(header, bad, sizeof(bad)) == 0);
+    CHECK(feed_all(header, frame + 2, n - 2) == 1);
+    CHECK(decoded.sequence == 77 && header.errors() == 1);
+    // A corrupted length swallows the next frame until the bus goes idle; the idle
+    // gap then recovers the complete frame instead of discarding it.
+    uint8_t corrupt[max_frame]{};
+    std::copy(frame, frame + n, corrupt);
+    corrupt[14] = 0xf4;
+    corrupt[15] = 0x01; // 500-byte payload
+    Decoder swallowed;
+    CHECK(feed_all(swallowed, corrupt, 16) == 0);
+    CHECK(feed_all(swallowed, frame, n) == 0);
+    CHECK(!swallowed.next(decoded));
+    swallowed.abandon();
+    decoded = {};
+    CHECK(swallowed.next(decoded) && decoded.sequence == 77);
+    CHECK(!swallowed.next(decoded));
+    // Back-to-back frames each decode; a frame already buffered behind a rejected
+    // candidate is available from next() without another byte.
+    Decoder pair;
+    uint8_t two[2 * max_frame]{};
+    std::copy(frame, frame + n, two);
+    std::copy(frame, frame + n, two + n);
+    CHECK(feed_all(pair, two, 2 * n) == 2);
+    Decoder buffered;
+    uint8_t stream[3 * max_frame]{};
+    size_t used = 0;
+    std::copy(corrupt, corrupt + 16, stream);
+    used += 16;
+    std::copy(frame, frame + n, stream + used);
+    used += n;
+    std::copy(frame, frame + n, stream + used);
+    used += n;
+    // Pad to the bogus 520-byte length so its CRC check runs on the last byte;
+    // that byte decodes the first frame and leaves the second buffered.
+    std::fill(stream + used, stream + 520, 0);
+    used = 520;
+    CHECK(feed_all(buffered, stream, used) == 1);
+    CHECK(buffered.next(decoded) && decoded.sequence == 77);
+    CHECK(!buffered.next(decoded));
+    CHECK(buffered.errors() == 1);
+}
 int main() {
     CHECK(config::channels.size() > 0);
     following_test();
@@ -745,6 +812,7 @@ int main() {
     busy_trend_test();
     retained_delivery_test();
     protocol_test();
+    decoder_resync_test();
     json_test();
     text_evidence_test();
     std::puts("All core tests passed");

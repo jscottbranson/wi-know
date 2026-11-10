@@ -1373,33 +1373,50 @@ size_t encode_packet(const Packet &p, uint8_t *out, size_t cap) {
 bool Decoder::feed(uint8_t byte, Packet &out) {
     if (size_ == 0 && byte != 0x57)
         return false;
-    if (size_ == 1 && byte != 0x4b) {
-        size_ = byte == 0x57 ? 1 : 0;
-        return false;
-    }
+    // next() leaves fewer bytes than the pending frame length (at most 531), or
+    // at most 512 trailing bytes after a decoded frame, so this cannot overrun.
     data_[size_++] = byte;
-    if (size_ < 16)
-        return false;
-    size_t payload = get16(data_.data() + 14);
-    if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 8 || payload > 512) {
-        ++errors_;
-        size_ = 0;
-        return false;
+    return next(out);
+}
+void Decoder::resync(size_t from) {
+    // A rejected candidate may contain the start of the next frame. Restart at
+    // the first later sync byte instead of discarding everything consumed.
+    while (from < size_ && data_[from] != 0x57)
+        ++from;
+    std::copy(data_.begin() + from, data_.begin() + size_, data_.begin());
+    size_ -= from;
+}
+bool Decoder::next(Packet &out) {
+    for (;;) {
+        if (size_ >= 2 && data_[1] != 0x4b) {
+            resync(1);
+            continue;
+        }
+        if (size_ < 16)
+            return false;
+        size_t payload = get16(data_.data() + 14);
+        if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 8 || payload > 512) {
+            ++errors_;
+            resync(1);
+            continue;
+        }
+        const size_t length = 20 + payload;
+        if (size_ < length)
+            return false;
+        if (get32(data_.data() + 16 + payload) != crc(data_.data() + 2, 14 + payload)) {
+            ++errors_;
+            resync(1);
+            continue;
+        }
+        out.type = MessageType(data_[3]);
+        out.node = get16(data_.data() + 4);
+        out.boot = get32(data_.data() + 6);
+        out.sequence = get32(data_.data() + 10);
+        out.size = uint16_t(payload);
+        std::copy(data_.begin() + 16, data_.begin() + 16 + payload, out.payload.begin());
+        resync(length);
+        return true;
     }
-    if (size_ < 20 + payload)
-        return false;
-    size_ = 0;
-    if (get32(data_.data() + 16 + payload) != crc(data_.data() + 2, 14 + payload)) {
-        ++errors_;
-        return false;
-    }
-    out.type = MessageType(data_[3]);
-    out.node = get16(data_.data() + 4);
-    out.boot = get32(data_.data() + 6);
-    out.sequence = get32(data_.data() + 10);
-    out.size = uint16_t(payload);
-    std::copy(data_.begin() + 16, data_.begin() + 16 + payload, out.payload.begin());
-    return true;
 }
 bool RetainedObservation::retain(const Observation &observation) {
     if (pending_)

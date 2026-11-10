@@ -5,6 +5,7 @@
 #include "driver/sdspi_host.h"
 #include "driver/spi_common.h"
 #include "driver/uart.h"
+#include "esp_intr_alloc.h"
 #include "esp_log.h"
 #include "esp_partition.h"
 #include "esp_rom_sys.h"
@@ -116,7 +117,9 @@ static esp_err_t uart_setup(int port, int tx, int rx, int rts, int baud, bool rs
     cfg.flow_ctrl = UART_HW_FLOWCTRL_DISABLE;
     cfg.source_clk = UART_SCLK_DEFAULT;
     const auto uart = uart_port_t(port);
-    esp_err_t error = uart_driver_install(uart, 4096, 0, 0, nullptr, 0);
+    // Flash erase/write disables interrupts that are not IRAM-safe. The 128-byte
+    // RX FIFO overflows in about 11 ms at 115200 baud, so service it from IRAM.
+    esp_err_t error = uart_driver_install(uart, 4096, 0, 0, nullptr, ESP_INTR_FLAG_IRAM);
     if (error != ESP_OK)
         return error; // Do not delete a driver this call did not install.
     error = uart_param_config(uart, &cfg);
@@ -199,33 +202,44 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         return false;
     static wiknow::Decoder decoder;
     static uint64_t last_byte{};
+    const auto uart = uart_port_t(c::bus_uart);
+    auto decoded = [&](uint64_t now) {
+        ++bus_stats.rx_frames;
+        bus_stats.rx_errors = decoder.errors();
+        bus_stats.last_rx_type = unsigned(packet.type);
+        bus_stats.last_rx_node = packet.node;
+        bus_stats.last_rx_sequence = packet.sequence;
+        bus_stats.last_rx_ms = now;
+        return true;
+    };
 
-    // Reset only after an inter-byte idle gap, never at a caller's polling deadline.
+    // Abandon a candidate only after an inter-byte idle gap, never at a caller's
+    // polling deadline.
+    // A zero timeout decodes only bytes already buffered and never waits.
     constexpr uint32_t idle_ms = 20;
     uint64_t until = now_ms() + timeout;
     do {
+        if (decoder.next(packet))
+            return decoded(now_ms());
+        size_t buffered = 0;
+        if (!timeout && (uart_get_buffered_data_len(uart, &buffered) != ESP_OK || !buffered))
+            return false;
         uint8_t byte{};
-        int n = uart_read_bytes(uart_port_t(c::bus_uart), &byte, 1, ticks(1));
+        int n = uart_read_bytes(uart, &byte, 1, timeout ? ticks(1) : 0);
         uint64_t now = now_ms();
         if (n == 0 && now - last_byte >= idle_ms)
-            decoder.reset();
+            decoder.abandon();
         if (n < 0)
             ++bus_stats.read_errors;
         if (n == 1) {
             ++bus_stats.rx_bytes;
             last_byte = now;
-            const bool decoded = decoder.feed(byte, packet);
+            const bool complete = decoder.feed(byte, packet);
             bus_stats.rx_errors = decoder.errors();
-            if (decoded) {
-                ++bus_stats.rx_frames;
-                bus_stats.last_rx_type = unsigned(packet.type);
-                bus_stats.last_rx_node = packet.node;
-                bus_stats.last_rx_sequence = packet.sequence;
-                bus_stats.last_rx_ms = now;
-                return true;
-            }
+            if (complete)
+                return decoded(now);
         }
-    } while (now_ms() < until);
+    } while (!timeout || now_ms() < until);
     return false;
 }
 static bool lcd_write(uint8_t byte) {

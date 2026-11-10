@@ -306,14 +306,23 @@ size_t encode_packet(const Packet &packet, uint8_t *out, size_t capacity);
 class Decoder {
   public:
     bool feed(uint8_t byte, Packet &out);
+    // Decode a frame already buffered behind a previous frame or rejected bytes.
+    bool next(Packet &out);
     void reset() {
         size_ = 0;
+    }
+    // After an idle gap the current candidate cannot be completed. Keep any
+    // later sync bytes so next() can recover a frame it swallowed.
+    void abandon() {
+        if (size_)
+            resync(1);
     }
     uint32_t errors() const {
         return errors_;
     }
 
   private:
+    void resync(size_t from);
     std::array<uint8_t, max_frame> data_{};
     size_t size_{};
     uint32_t errors_{};

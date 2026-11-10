@@ -56,7 +56,9 @@ Pending assignments are retried round-robin, one per discovery opportunity. A
 worker with a missing ACK cannot monopolize retries while other reservations
 expire. During each response window the parent ignores stale or unrelated replies
 and continues waiting for the matching reply until the original deadline;
-controller-conflict checks still run on every decoded frame.
+controller-conflict checks still run on every decoded frame. Frames that had
+already arrived when the deadline passed (for example while the parent task was
+preempted) are still examined, without waiting for further traffic.
 
 Each discovery exchange includes an actual random 1–64 ms receive interval
 before transmission, in addition to a randomized 100–150 ms scheduling interval.
@@ -82,9 +84,10 @@ an existing assignment and never creates a duplicate address.
 
 With one discovered worker, it scans. With two or more, `follower.enabled=true`
 reserves one eligible worker as the dedicated follower, leaving the others to
-share scanning work through the existing channel planner. The highest assigned
-eligible address is chosen initially; an existing follower stays selected as
-more boards join. After its lease expires another eligible worker replaces it.
+share scanning work through the existing channel planner. Only workers that have
+acknowledged an assignment count, so an unconfirmed hello never reassigns
+established workers. The highest such eligible address is chosen initially; an
+existing follower stays selected as more boards join. After its lease expires another eligible worker replaces it.
 If only the follower survives, it becomes a scanning child. Disabling
 `follower.enabled` makes every worker scan. Per-MAC role/address overrides are
 not provided; the NVS override described in the wiring document controls only
@@ -163,7 +166,9 @@ Bus `last_rx_type=4` means the latest decoded frame was a hello. Rising hello/of
 counts with no ACKs locate the failure between discovery and assignment completion;
 ACKs with no accepted reports locate it in session polling. `rx_bytes` without
 corresponding `rx_frames` does not prove successful reception: incomplete frames
-discarded after an idle gap do not increment the CRC/decode error counter. These
+abandoned after an idle gap do not increment the CRC/decode error counter. After a
+rejected header, CRC failure or idle gap, decoding restarts at the next sync byte
+already received, so a corrupt length field cannot hide the frame behind it. These
 counters alone cannot distinguish timing, collisions, or an electrical fault.
 
 Host regression tests exercise five workers through actual framing and session

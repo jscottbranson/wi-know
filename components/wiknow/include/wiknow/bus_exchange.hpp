@@ -3,8 +3,12 @@
 #include "wiknow/discovery.hpp"
 
 namespace wiknow {
+// Frames examined after the deadline; each was already received, so this only
+// bounds work against a bus that keeps the receive buffer full.
+constexpr unsigned bus_drain_frames = 32;
 // Keep the original deadline when stale/unrelated frames arrive. Controller
 // detection must run before reply filtering, including on foreign addresses.
+// receive(packet, 0) must decode only bytes that already arrived, never wait.
 template <class Now, class Receive, class Conflict, class Matches>
 bool receive_bus_reply(Packet &packet, uint32_t timeout, Now now, Receive receive,
                        Conflict conflict, Matches matches) {
@@ -17,6 +21,14 @@ bool receive_bus_reply(Packet &packet, uint32_t timeout, Now now, Receive receiv
                 return true;
         }
     } while (now() < until);
+    // A preempted caller can reach the deadline with a timely reply still
+    // buffered. Inspect frames that already arrived without extending the wait.
+    for (unsigned i = 0; i < bus_drain_frames && receive(packet, 0); ++i) {
+        if (conflict(packet))
+            return false;
+        if (matches(packet))
+            return true;
+    }
     return false;
 }
 
