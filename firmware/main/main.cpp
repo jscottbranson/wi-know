@@ -1,6 +1,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_task.h"
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
@@ -63,12 +64,12 @@ template <class Matches>
 static bool receive_parent(Packet &packet, uint32_t timeout, Matches matches) {
     // Raise priority only while waiting for a reply. Staying raised would let
     // consume() outrun log_writer and overflow its small queue.
-    const UBaseType_t base = uxTaskPriorityGet(nullptr);
-    vTaskPrioritySet(nullptr, std::max(base, bus_task_priority));
+    vTaskPrioritySet(nullptr, bus_task_priority);
     const bool received = receive_bus_reply(
         packet, timeout, platform::now_ms, platform::bus_receive,
         [](const Packet &incoming) { return c::discovery_enabled && conflict(incoming); }, matches);
-    vTaskPrioritySet(nullptr, base);
+    // Restore the configured main priority, not a possibly inherited one.
+    vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO);
     return received;
 }
 static void discovery_step() {

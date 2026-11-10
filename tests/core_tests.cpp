@@ -768,21 +768,26 @@ static void framing_test() {
     CHECK(feed_all(overflow, long_segment.data(), long_segment.size()) == 0);
     CHECK(feed_all(overflow, frame, n) == 1 && overflow.errors() == 1);
     // Every raw length round-trips through COBS, including 254-byte block edges.
-    for (uint16_t size : {0, 1, 233, 234, 235, 253, 254, 255, 488, 489, 508, 512}) {
-        Packet sized{};
-        sized.type = MessageType::report;
-        sized.size = size;
-        for (uint16_t i = 0; i < size; ++i)
-            sized.payload[i] = uint8_t(i % 3 ? i : 0);
-        uint8_t wire[max_frame]{};
-        const size_t length = encode_packet(sized, wire, sizeof(wire));
-        CHECK(length > 0 && length <= max_frame);
-        Decoder decoder;
-        CHECK(feed_all(decoder, wire, length) == 1);
-        CHECK(decoded.size == size &&
-              std::equal(sized.payload.begin(), sized.payload.begin() + size,
-                         decoded.payload.begin()));
-    }
+    // Zero-free payloads of 254+ bytes produce full 254-byte blocks (code 0xff);
+    // sparse zeros exercise short blocks.
+    for (bool zero_free : {false, true})
+        for (uint16_t size :
+             {0, 1, 220, 221, 222, 233, 234, 235, 253, 254, 255, 474, 475, 476, 508, 512}) {
+            Packet sized{};
+            sized.type = MessageType::report;
+            sized.size = size;
+            for (uint16_t i = 0; i < size; ++i)
+                sized.payload[i] = zero_free ? uint8_t(1 + i % 255) : uint8_t(i % 3 ? i : 0);
+            uint8_t wire[max_frame]{};
+            const size_t length = encode_packet(sized, wire, sizeof(wire));
+            CHECK(length > 0 && length <= max_frame);
+            CHECK(!zero_free || size < 254 || std::count(wire, wire + length, 0xff) > 0);
+            Decoder decoder;
+            CHECK(feed_all(decoder, wire, length) == 1);
+            CHECK(decoded.size == size &&
+                  std::equal(sized.payload.begin(), sized.payload.begin() + size,
+                             decoded.payload.begin()));
+        }
     // Radio payload relayed in a report cannot inject a bus frame, even when the
     // report is corrupted: a forged poll in the payload has no delimiters.
     Packet forged{};
