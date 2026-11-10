@@ -283,7 +283,7 @@ class FollowingDetector {
 };
 
 // Versioned little-endian wire protocol. Not a packed native struct.
-constexpr uint8_t protocol_version = 6;
+constexpr uint8_t protocol_version = 7;
 enum class MessageType : uint8_t {
     poll = 1,
     report = 2,
@@ -301,13 +301,21 @@ struct Packet {
     uint16_t size{};
     std::array<uint8_t, 512> payload{};
 };
-constexpr size_t max_frame = 532;
+// Raw frame: "WK", version, type, node, boot, sequence, size, payload, CRC32.
+constexpr size_t max_raw_frame = 20 + 512;
+// On the wire each raw frame is COBS-encoded between 0x00 delimiters. Payload
+// bytes (including relayed radio data) can never form a delimiter, so a corrupt
+// or truncated frame cannot expose a frame embedded in its payload.
+constexpr size_t max_frame = max_raw_frame + max_raw_frame / 254 + 3;
+size_t encode_raw_packet(const Packet &packet, uint8_t *out, size_t capacity);
+size_t frame_bytes(const uint8_t *raw, size_t size, uint8_t *out, size_t capacity);
 size_t encode_packet(const Packet &packet, uint8_t *out, size_t capacity);
 class Decoder {
   public:
     bool feed(uint8_t byte, Packet &out);
     void reset() {
         size_ = 0;
+        overflow_ = false;
     }
     uint32_t errors() const {
         return errors_;
@@ -316,6 +324,7 @@ class Decoder {
   private:
     std::array<uint8_t, max_frame> data_{};
     size_t size_{};
+    bool overflow_{};
     uint32_t errors_{};
 };
 struct Report;

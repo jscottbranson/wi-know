@@ -1,6 +1,7 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_random.h"
+#include "esp_task.h"
 #include "log_helpers.hpp"
 #include "nvs_flash.h"
 #include "platform.hpp"
@@ -20,6 +21,9 @@
 #if CONFIG_COMPILER_ENABLE_RISCV_ZCMP
 #error "ESP-IDF 6.1 does not support Zcmp on ESP32-C5; disable CONFIG_COMPILER_ENABLE_RISCV_ZCMP"
 #endif
+#if !CONFIG_UART_ISR_IN_IRAM
+#error "Set CONFIG_UART_ISR_IN_IRAM=y so flash writes cannot drop RS-485 bytes"
+#endif
 #if CONFIG_COMPILER_OPTIMIZATION_ASSERTIONS_DISABLE
 #error "wi-know requires assertions enabled so ESP_ERROR_CHECK enforces initialization failures"
 #endif
@@ -31,6 +35,9 @@ static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE >= 13312,
 namespace {
 using namespace wiknow;
 namespace c = wiknow::config;
+// Bus replies have deadlines, but the default main priority (1) is below the log
+// writer (2) and capture parsers (4) on this single core.
+constexpr UBaseType_t bus_task_priority = 5;
 static Membership members;
 static std::array<ReportReceipt, max_nodes> report_receipts;
 static std::array<DeviceId, max_nodes> receipt_devices;
@@ -55,9 +62,15 @@ static bool conflict(const Packet &packet) {
 }
 template <class Matches>
 static bool receive_parent(Packet &packet, uint32_t timeout, Matches matches) {
-    return receive_bus_reply(
+    // Raise priority only while waiting for a reply. Staying raised would let
+    // consume() outrun log_writer and overflow its small queue.
+    vTaskPrioritySet(nullptr, bus_task_priority);
+    const bool received = receive_bus_reply(
         packet, timeout, platform::now_ms, platform::bus_receive,
         [](const Packet &incoming) { return c::discovery_enabled && conflict(incoming); }, matches);
+    // Restore the configured main priority, not a possibly inherited one.
+    vTaskPrioritySet(nullptr, ESP_TASK_MAIN_PRIO);
+    return received;
 }
 static void discovery_step() {
     static uint8_t slot{};
@@ -777,7 +790,10 @@ static void worker_loop() {
             last_identity_status = platform::now_ms();
         }
         platform::bus_diagnostics_tick();
-        vTaskDelay(platform::ticks(5));
+        // bus_receive already blocks while the bus is idle. An extra tick of sleep
+        // here delays replies against the parent's poll timeout.
+        if (!c::bus_enabled)
+            vTaskDelay(platform::ticks(5));
     }
 }
 } // namespace
@@ -797,6 +813,10 @@ extern "C" void app_main() {
     platform::start_peripherals();
     platform::start_radios();
     platform::start_storage();
+    // A worker's whole loop serves the parent's reply deadline. It blocks in UART
+    // reads while idle, so capture parsers still run. Workers have no log tasks.
+    if (wiknow::config::bus_enabled && platform::role != wiknow::Role::parent)
+        vTaskPrioritySet(nullptr, bus_task_priority);
     if (platform::role == wiknow::Role::parent)
         parent_loop();
     else

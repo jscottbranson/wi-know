@@ -205,7 +205,7 @@ int main() {
     packet.node = o.node;
     packet.boot = o.boot;
     assert(pack_report(report, packet));
-    assert(packet.size == 137 + o.payload_size && protocol_version == 6);
+    assert(packet.size == 137 + o.payload_size && protocol_version == 7);
     uint8_t wire[max_frame];
     auto n = encode_packet(packet, wire, sizeof(wire));
     Decoder decoder;
@@ -226,8 +226,12 @@ int main() {
     assert(receipt.accept(forwarded.observation));
     assert(!receipt.accept(forwarded.observation));
     assert(retained.acknowledge(receipt.acknowledgement()));
-    wire[2] = 2;
-    checksum(wire, n); // Valid CRC: rejection must be the protocol-version gate.
+    uint8_t raw[max_raw_frame];
+    const auto raw_size = encode_raw_packet(packet, raw, sizeof(raw));
+    raw[2] = 2;
+    checksum(raw, raw_size); // Valid CRC: rejection must be the protocol-version gate.
+    n = frame_bytes(raw, raw_size, wire, sizeof(wire));
+    assert(n);
     decoder.reset();
     for (size_t i = 0; i < n; ++i)
         assert(!decoder.feed(wire[i], decoded));

@@ -1354,7 +1354,7 @@ const char *trend_name(Trend t) {
     }
 }
 
-size_t encode_packet(const Packet &p, uint8_t *out, size_t cap) {
+size_t encode_raw_packet(const Packet &p, uint8_t *out, size_t cap) {
     size_t n = 20 + p.size;
     if (p.size > p.payload.size() || cap < n)
         return 0;
@@ -1370,36 +1370,83 @@ size_t encode_packet(const Packet &p, uint8_t *out, size_t cap) {
     put32(out + 16 + p.size, crc(out + 2, 14 + p.size));
     return n;
 }
-bool Decoder::feed(uint8_t byte, Packet &out) {
-    if (size_ == 0 && byte != 0x57)
-        return false;
-    if (size_ == 1 && byte != 0x4b) {
-        size_ = byte == 0x57 ? 1 : 0;
-        return false;
+size_t frame_bytes(const uint8_t *raw, size_t n, uint8_t *out, size_t cap) {
+    // Leading and trailing delimiters plus at most one COBS code per 254 bytes.
+    if (n > max_raw_frame || cap < n + n / 254 + 3)
+        return 0;
+    size_t o = 0;
+    out[o++] = 0;
+    size_t code_at = o++;
+    uint8_t code = 1;
+    for (size_t i = 0; i < n; ++i) {
+        if (raw[i]) {
+            out[o++] = raw[i];
+            if (++code != 0xff)
+                continue;
+        }
+        out[code_at] = code;
+        code_at = o++;
+        code = 1;
     }
-    data_[size_++] = byte;
-    if (size_ < 16)
-        return false;
-    size_t payload = get16(data_.data() + 14);
-    if (data_[2] != protocol_version || data_[3] < 1 || data_[3] > 8 || payload > 512) {
-        ++errors_;
-        size_ = 0;
-        return false;
+    out[code_at] = code;
+    out[o++] = 0;
+    return o;
+}
+size_t encode_packet(const Packet &p, uint8_t *out, size_t cap) {
+    std::array<uint8_t, max_raw_frame> raw{};
+    const size_t n = encode_raw_packet(p, raw.data(), raw.size());
+    return n ? frame_bytes(raw.data(), n, out, cap) : 0;
+}
+static bool decode_frame(const uint8_t *in, size_t n, Packet &out) {
+    std::array<uint8_t, max_raw_frame> raw{};
+    size_t r = 0;
+    for (size_t i = 0; i < n;) {
+        const uint8_t code = in[i++]; // Never zero: zeros only delimit segments.
+        if (size_t(code - 1) > n - i || size_t(code - 1) > raw.size() - r)
+            return false;
+        std::copy(in + i, in + i + code - 1, raw.begin() + r);
+        i += code - 1;
+        r += code - 1;
+        if (code != 0xff && i < n) {
+            if (r == raw.size())
+                return false;
+            raw[r++] = 0;
+        }
     }
-    if (size_ < 20 + payload)
+    if (r < 20 || raw[0] != 0x57 || raw[1] != 0x4b || raw[2] != protocol_version || raw[3] < 1 ||
+        raw[3] > 8)
         return false;
-    size_ = 0;
-    if (get32(data_.data() + 16 + payload) != crc(data_.data() + 2, 14 + payload)) {
-        ++errors_;
+    const size_t payload = get16(raw.data() + 14);
+    if (payload > 512 || r != 20 + payload ||
+        get32(raw.data() + 16 + payload) != crc(raw.data() + 2, 14 + payload))
         return false;
-    }
-    out.type = MessageType(data_[3]);
-    out.node = get16(data_.data() + 4);
-    out.boot = get32(data_.data() + 6);
-    out.sequence = get32(data_.data() + 10);
+    out.type = MessageType(raw[3]);
+    out.node = get16(raw.data() + 4);
+    out.boot = get32(raw.data() + 6);
+    out.sequence = get32(raw.data() + 10);
     out.size = uint16_t(payload);
-    std::copy(data_.begin() + 16, data_.begin() + 16 + payload, out.payload.begin());
+    std::copy(raw.begin() + 16, raw.begin() + 16 + payload, out.payload.begin());
     return true;
+}
+bool Decoder::feed(uint8_t byte, Packet &out) {
+    if (byte) {
+        if (size_ < data_.size())
+            data_[size_++] = byte;
+        else
+            overflow_ = true;
+        return false;
+    }
+    const size_t n = size_;
+    const bool overflow = overflow_;
+    reset();
+    // The smallest frame encodes to 21 bytes. Shorter segments are line noise
+    // (for example transceiver turnaround), not a framing error.
+    constexpr size_t min_segment = 21;
+    if (!overflow && n && decode_frame(data_.data(), n, out))
+        return true;
+    if (overflow || n >= min_segment)
+        ++errors_;
+    return false;
 }
 bool RetainedObservation::retain(const Observation &observation) {
     if (pending_)

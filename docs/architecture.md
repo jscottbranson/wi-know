@@ -20,7 +20,7 @@ the parent assigns worker addresses and scanning/follower roles at runtime.
 Workers start unassigned and stop capture when their leases expire.
 See [universal provisioning](universal.md) and [discovery](discovery-protocol.md).
 
-The wired RS-485 bus uses protocol 6 CRC-protected framing, boot sessions and
+The wired RS-485 bus uses protocol 7 COBS-delimited, CRC-protected framing, boot sessions and
 assignment tokens. A worker retains an in-flight observation until acknowledged;
 the parent suppresses duplicate processing. Queues and deduplication state are
 bounded and held in RAM. Reboots can lose queued observations or cause a retained

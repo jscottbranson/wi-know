@@ -70,6 +70,8 @@ static void assignment_token_wrap() {
     assert(table.offer(hello(1), 0, 10000, UINT32_MAX - 1));
     auto *entry = table.offer(hello(2), 0, 10000, UINT32_MAX);
     assert(entry);
+    assert(table.acknowledge(1, table.get(1)->identity, 0, 10000));
+    assert(table.acknowledge(2, entry->identity, 0, 10000));
     WorkerIdentity worker;
     const auto initial = entry->identity;
     assert(worker.assign(initial, entry->node, initial.worker, initial.worker_boot, initial, 0,
@@ -182,8 +184,16 @@ int main() {
     auto *b = table.offer(hello(2), 1, 10000, ++token);
     assert(b && b->node == 2);
     table.roles(true, token);
+    // An unconfirmed hello must not reassign established workers.
+    assert(b->identity.role == Role::child && a->identity.role == Role::child);
+    assert(a->acknowledged);
+    assert(table.acknowledge(2, b->identity, 2, 10000));
+    table.roles(true, token);
+    assert(b->identity.role == Role::follower && a->identity.role == Role::child);
+    assert(!b->acknowledged && a->acknowledged);
+    // The pending role change still counts as a joined worker; no oscillation.
+    table.roles(true, token);
     assert(b->identity.role == Role::follower);
-    assert(!b->acknowledged);
     assert(table.acknowledge(2, b->identity, 2, 10000));
     auto *c = table.offer(hello(3), 2, 10000, ++token);
     assert(c);
@@ -198,6 +208,9 @@ int main() {
     assert(a->identity.role == Role::child && !table.get(2)->node && !table.get(3)->node);
     auto *replacement = table.offer(hello(4), 11001, 10000, ++token);
     assert(replacement->node == 2);
+    table.roles(true, token);
+    assert(replacement->identity.role == Role::child);
+    assert(table.acknowledge(2, replacement->identity, 11002, 10000));
     table.roles(true, token);
     assert(replacement->identity.role == Role::follower);
     auto old = replacement->identity;

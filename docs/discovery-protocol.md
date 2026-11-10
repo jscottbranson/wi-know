@@ -10,8 +10,12 @@ from affecting another assignment; this local-bus protocol is not authenticated.
 
 ## Framing and messages
 
-CRC-protected, little-endian framing is version 6. All nodes must be updated
-together; earlier framing versions are rejected. Reports retain the Wi-Fi subtype
+CRC-protected, little-endian framing is version 7. All nodes must be updated
+together; earlier framing versions are rejected. Each raw frame (`WK`, version,
+type, node, boot, sequence, payload length, payload, CRC32) is COBS-encoded and
+sent between 0x00 delimiters. Payload bytes, including radio data relayed in
+reports, therefore can never be mistaken for a frame boundary, and a corrupt or
+truncated frame never hides the following frame. Reports retain the Wi-Fi subtype
 and bounded MAC header and distinguish BLE advertising from connected primary-service
 discovery. Discovery envelopes and message types retain their existing layout.
 Legacy poll/report types 1/2 are rejected on the bus. All bus-enabled builds use
@@ -56,7 +60,10 @@ Pending assignments are retried round-robin, one per discovery opportunity. A
 worker with a missing ACK cannot monopolize retries while other reservations
 expire. During each response window the parent ignores stale or unrelated replies
 and continues waiting for the matching reply until the original deadline;
-controller-conflict checks still run on every decoded frame.
+controller-conflict checks still run on every decoded frame. Frames already
+buffered when the deadline passes (for example after the parent task was
+preempted) are still examined; the parent reads only bytes already received and
+never waits for further traffic.
 
 Each discovery exchange includes an actual random 1–64 ms receive interval
 before transmission, in addition to a randomized 100–150 ms scheduling interval.
@@ -82,9 +89,10 @@ an existing assignment and never creates a duplicate address.
 
 With one discovered worker, it scans. With two or more, `follower.enabled=true`
 reserves one eligible worker as the dedicated follower, leaving the others to
-share scanning work through the existing channel planner. The highest assigned
-eligible address is chosen initially; an existing follower stays selected as
-more boards join. After its lease expires another eligible worker replaces it.
+share scanning work through the existing channel planner. Only workers that have
+acknowledged an assignment count, so an unconfirmed hello never reassigns
+established workers. The highest such eligible address is chosen initially; an
+existing follower stays selected as more boards join. After its lease expires another eligible worker replaces it.
 If only the follower survives, it becomes a scanning child. Disabling
 `follower.enabled` makes every worker scan. Per-MAC role/address overrides are
 not provided; the NVS override described in the wiring document controls only
@@ -163,7 +171,8 @@ Bus `last_rx_type=4` means the latest decoded frame was a hello. Rising hello/of
 counts with no ACKs locate the failure between discovery and assignment completion;
 ACKs with no accepted reports locate it in session polling. `rx_bytes` without
 corresponding `rx_frames` does not prove successful reception: incomplete frames
-discarded after an idle gap do not increment the CRC/decode error counter. These
+abandoned after an idle gap, and delimited segments shorter than the smallest frame
+(transceiver turnaround noise), do not increment the CRC/decode error counter. These
 counters alone cannot distinguish timing, collisions, or an electrical fault.
 
 Host regression tests exercise five workers through actual framing and session

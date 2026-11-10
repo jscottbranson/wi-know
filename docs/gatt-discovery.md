@@ -126,7 +126,7 @@ JSONL identifies `ble_acquisition: "connected_primary_discovery"` and retains
 retention and rule provenance apply. Service rules never match advertising evidence,
 and advertising predicates cannot inspect connected-service bytes.
 
-Bus protocol 6 includes the BLE evidence discriminator at report offset 132; payload
+Bus protocol 7 (report layout unchanged since 6) includes the BLE evidence discriminator at report offset 132; payload
 starts at 133. Maximum report payload is 392 bytes (424 within a universal identity
 envelope). Upgrade every bus participant together; older protocol versions are
 rejected rather than interpreted as advertising.

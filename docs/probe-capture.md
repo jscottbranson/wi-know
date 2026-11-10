@@ -34,7 +34,7 @@ The BLE evidence discriminator is at 132 and payload bytes start at 133. Values
 are 4=probe request, 5=probe response, 8=beacon, 13=supported NAN action,
 16=data, 24=QoS data, and 255=unknown/not applicable. BLE requires 255. Maximum report payload is 392
 bytes; the 32-byte universal envelope still fits the existing 512-byte packet.
-Bus framing is **version 6** and rejects earlier versions; reflash all nodes together.
+Bus framing is **version 7** and rejects earlier versions; reflash all nodes together.
 Subtype 4 selects complete `probe_ie_v1` evidence. Other Wi-Fi subtypes retain
 existing Remote ID vendor-IE/NAN-body semantics; BLE separately distinguishes AD data from connected-service evidence.
 Probe-request vendor IEs are not a supported Remote ID transport and cannot

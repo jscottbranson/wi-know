@@ -129,7 +129,15 @@ def validate(settings, role_override=None, base=ROOT, board_override=None):
     require(bus['first_node_id'] <= bus['last_node_id'], 'invalid bus ID range')
     integer(bus['poll_timeout_ms'], 20, 1000, 'bus.poll_timeout_ms')
     integer(bus['baud'], 9600, 921600, 'bus.baud')
-    require(bus['poll_timeout_ms'] >= (532 * 10000 + bus['baud'] - 1) // bus['baud'] + 10, 'poll timeout too short for bus baud rate')
+    # The largest reply is a session report: 20-byte envelope, 32-byte identity,
+    # 137-byte report and 255-byte observation payload, plus COBS overhead and two
+    # delimiters. Workers also need time to wake (one 10 ms FreeRTOS tick), decode
+    # the poll and retune before replying.
+    raw_reply = 20 + 32 + 137 + 255
+    max_reply_frame = raw_reply + raw_reply // 254 + 3
+    worker_turnaround_ms = 20
+    require(bus['poll_timeout_ms'] >= (max_reply_frame * 10000 + bus['baud'] - 1) // bus['baud'] + worker_turnaround_ms,
+            'poll timeout too short for bus baud rate and worker reply latency')
     integer(bus['membership_lease_ms'], 100, 60000, 'bus.membership_lease_ms')
     integer(bus['assignment_lease_ms'], 100, 60000, 'bus.assignment_lease_ms')
     sweep = (bus['last_node_id'] - bus['first_node_id'] + 1) * (bus['poll_timeout_ms'] + 5)

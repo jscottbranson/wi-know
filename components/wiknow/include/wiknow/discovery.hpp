@@ -127,7 +127,8 @@ struct DiscoveredNode {
     Identity identity{};
     uint16_t node{};
     uint64_t expires{};
-    bool acknowledged{};
+    // acknowledged tracks the current token; joined survives role reassignment.
+    bool acknowledged{}, joined{};
 };
 class DiscoveryTable {
   public:
@@ -182,17 +183,19 @@ class DiscoveryTable {
         auto *n = get(node);
         if (!n || !n->node || now >= n->expires || !same_session(n->identity, identity))
             return false;
-        n->acknowledged = true;
+        n->acknowledged = n->joined = true;
         n->expires = now + lease;
         return true;
     }
     // At two workers reserve one follower; a single survivor always scans.
-    // Role transitions get a fresh token and must be acknowledged again.
+    // Role transitions get a fresh token and must be acknowledged again. Only
+    // workers that completed assignment count, so an unconfirmed hello cannot
+    // reassign established workers.
     void roles(bool enabled, uint32_t &token) {
         size_t count = 0;
         uint16_t follower = 0, existing = 0;
         for (const auto &n : nodes_)
-            if (n.node) {
+            if (n.node && n.joined) {
                 ++count;
                 if (n.identity.capabilities & capability_follow) {
                     follower = n.node;

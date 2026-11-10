@@ -105,6 +105,35 @@ static void response_filtering() {
         },
         matches));
     CHECK(halted && bus.now == 2 && bus.next == 2);
+
+    // A caller preempted past the deadline still accepts a reply that arrived in
+    // time, but zero-timeout draining never waits for later traffic.
+    bus = {0, 0, {{1, stale}, {2, expected}}};
+    bool preempted = false;
+    auto slow = [&](Packet &p, uint32_t t) {
+        if (!preempted) {
+            preempted = true;
+            bus.now = 20; // other tasks ran
+        }
+        return bus.receive(p, t);
+    };
+    CHECK(receive_bus_reply(out, 5, [&] { return bus.now; }, slow, no_conflict, matches));
+    CHECK(bus.now == 21 && bus.next == 2 && out.sequence == 9);
+    bus = {0, 0, {{1, stale}, {30, expected}}};
+    preempted = false;
+    CHECK(!receive_bus_reply(out, 5, [&] { return bus.now; }, slow, no_conflict, matches));
+    CHECK(bus.now == 21 && bus.next == 1); // drained only data present at resume
+    bus = {0, 0, {{1, stale}, {2, identity_packet(foreign, MessageType::discover)}, {3, expected}}};
+    preempted = false;
+    halted = false;
+    CHECK(!receive_bus_reply(
+        out, 1, [&] { return bus.now; }, slow,
+        [&](const Packet &p) {
+            halted = controller_conflict(p, identity.parent, identity.parent_boot);
+            return halted;
+        },
+        matches));
+    CHECK(halted && bus.next == 2); // conflicts still stop draining
 }
 static void report_lease() {
     DiscoveryTable table(1, 1);

@@ -34,6 +34,11 @@ int main() {
         table.roles(true, token);
         assert(table.acknowledge(entry->node, entry->identity, 1, 10000));
     }
+    // Joined workers may receive a role change; confirm the reassignment.
+    table.roles(true, token);
+    for (const auto &entry : table.nodes())
+        if (entry.node && !entry.acknowledged)
+            assert(table.acknowledge(entry.node, entry.identity, 2, 10000));
     unsigned children = 0, followers = 0;
     for (const auto &entry : table.nodes()) {
         if (!entry.node)
