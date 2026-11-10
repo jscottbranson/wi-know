@@ -203,24 +203,12 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
     static wiknow::Decoder decoder;
     static uint64_t last_byte{};
     const auto uart = uart_port_t(c::bus_uart);
-    auto decoded = [&](uint64_t now) {
-        ++bus_stats.rx_frames;
-        bus_stats.rx_errors = decoder.errors();
-        bus_stats.last_rx_type = unsigned(packet.type);
-        bus_stats.last_rx_node = packet.node;
-        bus_stats.last_rx_sequence = packet.sequence;
-        bus_stats.last_rx_ms = now;
-        return true;
-    };
 
-    // Abandon a candidate only after an inter-byte idle gap, never at a caller's
-    // polling deadline.
+    // Reset only after an inter-byte idle gap, never at a caller's polling deadline.
     // A zero timeout decodes only bytes already buffered and never waits.
     constexpr uint32_t idle_ms = 20;
     uint64_t until = now_ms() + timeout;
     do {
-        if (decoder.next(packet))
-            return decoded(now_ms());
         size_t buffered = 0;
         if (!timeout && (uart_get_buffered_data_len(uart, &buffered) != ESP_OK || !buffered))
             return false;
@@ -228,16 +216,24 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         int n = uart_read_bytes(uart, &byte, 1, timeout ? ticks(1) : 0);
         uint64_t now = now_ms();
         if (n == 0 && now - last_byte >= idle_ms)
-            decoder.abandon();
+            decoder.reset();
         if (n < 0)
             ++bus_stats.read_errors;
+        if (n != 1 && !timeout)
+            return false;
         if (n == 1) {
             ++bus_stats.rx_bytes;
             last_byte = now;
-            const bool complete = decoder.feed(byte, packet);
+            const bool decoded = decoder.feed(byte, packet);
             bus_stats.rx_errors = decoder.errors();
-            if (complete)
-                return decoded(now);
+            if (decoded) {
+                ++bus_stats.rx_frames;
+                bus_stats.last_rx_type = unsigned(packet.type);
+                bus_stats.last_rx_node = packet.node;
+                bus_stats.last_rx_sequence = packet.sequence;
+                bus_stats.last_rx_ms = now;
+                return true;
+            }
         }
     } while (!timeout || now_ms() < until);
     return false;

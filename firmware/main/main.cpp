@@ -34,6 +34,8 @@ static_assert(CONFIG_ESP_MAIN_TASK_STACK_SIZE >= 13312,
 namespace {
 using namespace wiknow;
 namespace c = wiknow::config;
+// Bus replies have deadlines, but the default main priority (1) is below the log
+// writer (2) and capture parsers (4) on this single core.
 constexpr UBaseType_t bus_task_priority = 5;
 static Membership members;
 static std::array<ReportReceipt, max_nodes> report_receipts;
@@ -59,9 +61,15 @@ static bool conflict(const Packet &packet) {
 }
 template <class Matches>
 static bool receive_parent(Packet &packet, uint32_t timeout, Matches matches) {
-    return receive_bus_reply(
+    // Raise priority only while waiting for a reply. Staying raised would let
+    // consume() outrun log_writer and overflow its small queue.
+    const UBaseType_t base = uxTaskPriorityGet(nullptr);
+    vTaskPrioritySet(nullptr, std::max(base, bus_task_priority));
+    const bool received = receive_bus_reply(
         packet, timeout, platform::now_ms, platform::bus_receive,
         [](const Packet &incoming) { return c::discovery_enabled && conflict(incoming); }, matches);
+    vTaskPrioritySet(nullptr, base);
+    return received;
 }
 static void discovery_step() {
     static uint8_t slot{};
@@ -804,10 +812,9 @@ extern "C" void app_main() {
     platform::start_peripherals();
     platform::start_radios();
     platform::start_storage();
-    // Bus replies have deadlines; the default main priority (1) runs below the
-    // log writer (2) and capture parsers (4) on this single core. The loops block
-    // in UART reads and delays, so lower-priority work still runs.
-    if (wiknow::config::bus_enabled)
+    // A worker's whole loop serves the parent's reply deadline. It blocks in UART
+    // reads while idle, so capture parsers still run. Workers have no log tasks.
+    if (wiknow::config::bus_enabled && platform::role != wiknow::Role::parent)
         vTaskPrioritySet(nullptr, bus_task_priority);
     if (platform::role == wiknow::Role::parent)
         parent_loop();

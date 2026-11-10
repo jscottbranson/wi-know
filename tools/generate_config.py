@@ -130,9 +130,11 @@ def validate(settings, role_override=None, base=ROOT, board_override=None):
     integer(bus['poll_timeout_ms'], 20, 1000, 'bus.poll_timeout_ms')
     integer(bus['baud'], 9600, 921600, 'bus.baud')
     # The largest reply is a session report: 20-byte envelope, 32-byte identity,
-    # 137-byte report and 255-byte observation payload. Workers also need time to
-    # wake (one 10 ms FreeRTOS tick), decode the poll and retune before replying.
-    max_reply_frame = 20 + 32 + 137 + 255
+    # 137-byte report and 255-byte observation payload, plus COBS overhead and two
+    # delimiters. Workers also need time to wake (one 10 ms FreeRTOS tick), decode
+    # the poll and retune before replying.
+    raw_reply = 20 + 32 + 137 + 255
+    max_reply_frame = raw_reply + raw_reply // 254 + 3
     worker_turnaround_ms = 20
     require(bus['poll_timeout_ms'] >= (max_reply_frame * 10000 + bus['baud'] - 1) // bus['baud'] + worker_turnaround_ms,
             'poll timeout too short for bus baud rate and worker reply latency')

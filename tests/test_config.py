@@ -861,6 +861,14 @@ class ConfigTests(unittest.TestCase):
             with self.subTest(variant=variant), self.assertRaisesRegex(ValueError, 'two worst-case bus sweeps'):
                 generate.validate(settings)
 
+    def test_poll_timeout_covers_largest_reply_and_turnaround(self):
+        # 448-byte framed session report at 115200 baud (39 ms) plus 20 ms turnaround.
+        self.settings['bus'].update(baud=115200, poll_timeout_ms=59)
+        generate.validate(self.settings)
+        self.settings['bus']['poll_timeout_ms'] = 58
+        with self.assertRaisesRegex(ValueError, 'poll timeout too short'):
+            generate.validate(self.settings)
+
     def test_universal_discovery_budget(self):
         self.settings['node']['role'] = 'universal'
         self.settings['bus'].update(baud=9600, poll_timeout_ms=600, last_node_id=16,

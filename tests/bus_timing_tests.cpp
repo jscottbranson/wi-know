@@ -16,7 +16,7 @@ int main() {
     // A 114-byte report fits the C5 FIFO but still needs 118.75ms on the wire.
     // The previous fixed 100ms wait falsely counted this successful send as lost.
     CHECK(bus_tx_wait_ms(114, 9600) == 139);
-    CHECK(bus_tx_wait_ms(max_frame, 9600) == 575);
+    CHECK(bus_tx_wait_ms(max_frame, 9600) == 580);
     CHECK(bus_tx_wait_ms(max_frame, 115200) == 67);
     CHECK(bus_tx_wait_ms(114, 115200) == 30);
     CHECK(bus_tx_wait_ms(1, 9600) == 22);

@@ -99,11 +99,11 @@ Add reviewed rules under `rules/` and flash the same rule set to every board.
   heartbeat expiry, and exclusion of the follower from normal Wi-Fi assignments.
 - All bus-enabled builds use a versioned little-endian discovery and polling/report
   protocol with CRC32, node boot IDs, command sequences and assignment leases.
-  Protocol version 6 includes a Wi-Fi subtype/evidence discriminator, bounded MAC
+  Protocol version 7 delimits COBS-encoded frames with 0x00 bytes and includes a Wi-Fi subtype/evidence discriminator, bounded MAC
   headers and BLE acquisition discriminator; observation acknowledgments retain their existing
   behavior: a worker retains its in-flight observation until the parent acknowledges its boot ID and observation sequence. Lost replies or acknowledgments
   are retried on subsequent polls; the parent suppresses duplicate processing.
-  Rebuild and flash every node together; version 6 cannot communicate
+  Rebuild and flash every node together; version 7 cannot communicate
   with other framing versions. Local RS-485 bus is assumed trusted;
   CRC detects corruption and is not authentication.
 - Receive-only Wi-Fi beacon/probe-response metadata, bounded probe-request IE evidence,
@@ -218,7 +218,7 @@ for the validity checks and firmware-dependent retained-time availability. Older
 Air530 modules remain active-RMC-only; neither model uses indefinite software
 holdover when the receiver stops supplying valid time.
 
-Bus protocol 6 includes a four-byte
+Bus protocol 7 includes a four-byte
 little-endian high word for the channel coverage mask after each report (after
 the observation payload when present). Empty reports are 22 bytes; observation
 reports are 137 + payload length bytes. All nodes must use the same version.
