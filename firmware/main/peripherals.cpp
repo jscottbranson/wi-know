@@ -202,6 +202,8 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         return false;
     static wiknow::Decoder decoder;
     static uint64_t last_byte{};
+    static uint8_t burst[24];
+    static size_t burst_size{}, burst_total{};
     const auto uart = uart_port_t(c::bus_uart);
     auto decoded = [&](uint64_t now) {
         ++bus_stats.rx_frames;
@@ -227,11 +229,24 @@ bool bus_receive(wiknow::Packet &packet, uint32_t timeout) {
         uint8_t byte{};
         int n = uart_read_bytes(uart, &byte, 1, timeout ? ticks(1) : 0);
         uint64_t now = now_ms();
-        if (n == 0 && now - last_byte >= idle_ms)
+        if (n == 0 && now - last_byte >= idle_ms) {
             decoder.abandon();
+            // TEMPORARY diagnostic: dump the start of each received burst, at most once a second.
+            static uint64_t last_dump{};
+            if (burst_total && now - last_dump >= 1000) {
+                last_dump = now;
+                ESP_LOGI("bus", "rx burst len=%u frames=%u", unsigned(burst_total),
+                         unsigned(bus_stats.rx_frames));
+                ESP_LOG_BUFFER_HEX("bus", burst, burst_size);
+            }
+            burst_size = burst_total = 0;
+        }
         if (n < 0)
             ++bus_stats.read_errors;
         if (n == 1) {
+            if (burst_size < sizeof(burst))
+                burst[burst_size++] = byte;
+            ++burst_total;
             ++bus_stats.rx_bytes;
             last_byte = now;
             const bool complete = decoder.feed(byte, packet);
